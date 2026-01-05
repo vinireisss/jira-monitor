@@ -211,6 +211,30 @@ npm run build
 
 ## 🔧 Troubleshooting
 
+### Erro: `Node.js v20 não está ativo!`
+
+**Sintoma:**
+```bash
+./start.sh: line 22: nvm: command not found
+📦 Node.js: v25.2.1 (/opt/homebrew/bin/node)
+❌ ERRO: Node.js v20 não está ativo!
+```
+
+**Causa:** Você tem Node.js instalado via Homebrew, mas o app precisa de Node.js v20 via nvm.
+
+**Solução:** Consulte o guia completo: [FIX-NODE-VERSION.md](./FIX-NODE-VERSION.md)
+
+**Solução Rápida:**
+```bash
+# Execute o script de correção
+./fix-environment.sh
+
+# Feche e reabra o terminal, depois:
+npm start
+```
+
+---
+
 ### Erro: `Library not loaded: libsimdjson.28.dylib`
 
 **Sintoma:**

@@ -1278,6 +1278,32 @@ body {
   box-shadow: 0 2px 8px var(--expand-btn-shadow);
 }
 
+.jira-link-btn {
+  background: var(--expand-btn-bg);
+  border: 2px solid var(--expand-btn-border);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  min-width: 32px;
+  min-height: 32px;
+  color: var(--expand-btn-color);
+}
+
+.jira-link-btn:hover {
+  background: var(--expand-btn-hover-bg);
+  border-color: var(--expand-btn-color);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px var(--expand-btn-shadow);
+}
+
+.jira-link-btn svg {
+  fill: currentColor;
+}
+
 .expand-btn.expanded {
   background: var(--expand-btn-hover-bg);
   border-color: var(--expand-btn-color);
@@ -2620,6 +2646,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.no-comments-msg {
+  padding: 20px;
+  text-align: center;
+  color: var(--modal-text-secondary);
+  font-style: italic;
+  background: var(--modal-section-bg);
+  border-radius: 8px;
+  margin: 10px 0;
 }
 
 .comment-item {

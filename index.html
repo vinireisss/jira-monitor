@@ -396,11 +396,18 @@
               </div>
               <h3>Tickets Pending - IT</h3>
             </div>
-            <button class="expand-btn" data-card="pending" title="Expandir">
-              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
-                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
-              </svg>
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="jira-link-btn" id="pending-jira-link-btn" title="Ver no Jira" onclick="ipcRenderer.invoke('open-url', 'https://nubank.atlassian.net/issues?jql=resolution%20%3D%20Unresolved%20AND%20status%20IN%20(%22Pending%22%2C%20%22Pendente%22)%20AND%20assignee%20%3D%20currentUser()')">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                </svg>
+              </button>
+              <button class="expand-btn" data-card="pending" title="Expandir">
+                <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+                  <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+                </svg>
+              </button>
+            </div>
           </div>
           <div class="stat-number" id="stat-pending">0</div>
           <div class="tickets-list" id="tickets-list-pending" style="display: none;">

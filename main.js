@@ -597,11 +597,17 @@ ipcMain.handle('fetch-mentions', async (event) => {
 
 ipcMain.handle('get-ticket-details', async (event, ticketKey) => {
   try {
+    console.log(`🎫 [IPC] Recebida solicitação de detalhes para: ${ticketKey}`);
     const service = getJiraService();
     const details = await service.getTicketDetails(ticketKey);
+    console.log(`✅ [IPC] Detalhes obtidos para ${ticketKey}:`, {
+      key: details.key,
+      hasComments: !!details.comments,
+      commentsLength: details.comments?.length
+    });
     return { success: true, data: details };
   } catch (error) {
-    console.error('Erro ao buscar detalhes do ticket:', error);
+    console.error(`❌ [IPC] Erro ao buscar detalhes do ticket ${ticketKey}:`, error);
     return { success: false, error: error.message };
   }
 });

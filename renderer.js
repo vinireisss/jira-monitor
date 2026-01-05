@@ -3446,29 +3446,61 @@ async function openTicketPreview(ticketKey) {
   error.style.display = 'none';
   
   try {
+    console.log(`🔍 Buscando detalhes do ticket: ${ticketKey}`);
     const result = await ipcRenderer.invoke('get-ticket-details', ticketKey);
     
+    console.log('📦 Resultado recebido:', result);
+    
     if (result.success) {
+      console.log('✅ Dados do ticket:', {
+        key: result.data?.key,
+        summary: result.data?.summary,
+        hasComments: !!result.data?.comments,
+        commentsLength: result.data?.comments?.length,
+        hasAttachments: !!result.data?.attachments,
+        attachmentsLength: result.data?.attachments?.length
+      });
+      
       displayTicketPreview(result.data);
       loading.style.display = 'none';
       body.style.display = 'block';
     } else {
+      console.error('❌ Erro no resultado:', result.error);
       throw new Error(result.error);
     }
   } catch (err) {
-    console.error('Erro ao carregar ticket:', err);
+    console.error('❌ Erro ao carregar ticket:', err);
+    console.error('Stack trace:', err.stack);
     loading.style.display = 'none';
     error.style.display = 'block';
+    error.innerHTML = `
+      <h3>Erro ao carregar ticket</h3>
+      <p>${err.message}</p>
+      <button onclick="closeTicketPreview()">Fechar</button>
+    `;
   }
 }
 
 let currentPreviewTicket = null;
 
 function displayTicketPreview(ticket) {
+  console.log('🎨 Renderizando preview do ticket:', ticket);
+  
+  if (!ticket) {
+    console.error('❌ Ticket vazio ou undefined!');
+    return;
+  }
+  
   const body = document.getElementById('ticket-preview-body');
+  if (!body) {
+    console.error('❌ Elemento ticket-preview-body não encontrado!');
+    return;
+  }
+  
   currentPreviewTicket = ticket; // Store for later use
   
-  const html = `
+  try {
+    const html = `
     <div class="ticket-preview-header">
       <div class="ticket-preview-title-section">
         <div class="ticket-key-large">${ticket.key}</div>
@@ -3601,9 +3633,9 @@ function displayTicketPreview(ticket) {
     ` : ''}
     
     <div class="ticket-section">
-      <h3 class="ticket-section-title">💬 Comentários (${ticket.comments.length})</h3>
+      <h3 class="ticket-section-title">💬 Comentários (${ticket.comments?.length || 0})</h3>
       <div class="ticket-comments">
-        ${ticket.comments.map(comment => `
+        ${(ticket.comments && Array.isArray(ticket.comments) && ticket.comments.length > 0) ? ticket.comments.map(comment => `
           <div class="comment-item">
             <div class="comment-header">
               <span class="comment-author">${comment.author}</span>
@@ -3612,7 +3644,7 @@ function displayTicketPreview(ticket) {
             </div>
             <div class="comment-body">${comment.body}</div>
           </div>
-        `).join('')}
+        `).join('') : '<p class="no-comments-msg">Nenhum comentário ainda</p>'}
       </div>
       
       <div class="add-comment-section">
@@ -3655,12 +3687,25 @@ function displayTicketPreview(ticket) {
     });
   }
   
-  // Carregar previews de imagens
-  ticket.attachments?.forEach(att => {
-    if (att.mimeType && att.mimeType.startsWith('image/')) {
-      loadAttachmentPreview(att.id);
-    }
-  });
+    // Carregar previews de imagens
+    ticket.attachments?.forEach(att => {
+      if (att.mimeType && att.mimeType.startsWith('image/')) {
+        loadAttachmentPreview(att.id);
+      }
+    });
+    
+    console.log('✅ Preview renderizado com sucesso');
+  } catch (err) {
+    console.error('❌ Erro ao renderizar preview:', err);
+    console.error('Stack:', err.stack);
+    body.innerHTML = `
+      <div style="padding: 40px; text-align: center;">
+        <h3>Erro ao exibir ticket</h3>
+        <p style="color: #666; margin: 20px 0;">${err.message}</p>
+        <button class="btn-primary" onclick="closeTicketPreview()">Fechar</button>
+      </div>
+    `;
+  }
 }
 
 function formatFileSize(bytes) {
@@ -3872,10 +3917,13 @@ function renderMentionSuggestions(ticketKey, users) {
   let html = '';
   users.forEach((user, index) => {
     const isSelected = index === selectedIndex;
+    
     html += `
       <div class="mention-item ${isSelected ? 'selected' : ''}" 
            data-index="${index}"
-           onclick="insertMention('${ticketKey}', '${escapeHtml(user.displayName)}', '${user.accountId}')"
+           data-ticket-key="${ticketKey}"
+           data-display-name="${user.displayName}"
+           data-account-id="${user.accountId}"
            onmouseenter="setSelectedMention('${ticketKey}', ${index})">
         <div class="mention-avatar">
           ${user.displayName.charAt(0).toUpperCase()}
@@ -3889,6 +3937,100 @@ function renderMentionSuggestions(ticketKey, users) {
   });
   
   suggestionsDiv.innerHTML = html;
+  
+  // FORÇAR estilos inline para garantir que funcione
+  suggestionsDiv.style.position = 'absolute';
+  suggestionsDiv.style.zIndex = '999999'; // MUITO alto
+  suggestionsDiv.style.pointerEvents = 'auto';
+  suggestionsDiv.style.display = 'block';
+  
+  console.log('🎨 Renderizou', users.length, 'sugestões de menção para ticket', ticketKey);
+  console.log('📍 SuggestionsDiv:', suggestionsDiv);
+  console.log('🎨 Estilos computed:', {
+    display: getComputedStyle(suggestionsDiv).display,
+    zIndex: getComputedStyle(suggestionsDiv).zIndex,
+    pointerEvents: getComputedStyle(suggestionsDiv).pointerEvents,
+    position: getComputedStyle(suggestionsDiv).position
+  });
+  
+  // Teste para ver qual elemento está realmente sob o cursor
+  setTimeout(() => {
+    const rect = suggestionsDiv.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const elementAtPoint = document.elementFromPoint(centerX, centerY);
+    console.log('🎯 Elemento no centro do suggestionsDiv:', elementAtPoint);
+    console.log('🎯 É o suggestionsDiv ou filho?', suggestionsDiv.contains(elementAtPoint));
+    console.log('📏 BoundingRect:', rect);
+  }, 100);
+  
+  // Aguardar DOM estar pronto e adicionar listeners
+  setTimeout(() => {
+    console.log('⏰ Adicionando listeners após render...');
+    
+    // Event handler usando mousedown (mais confiável)
+    const mousedownHandler = function(e) {
+      console.log('🖱️ MOUSEDOWN detectado!', e.target);
+      
+      // Buscar o elemento .mention-item mais próximo
+      const mentionItem = e.target.closest('.mention-item');
+      
+      if (mentionItem) {
+        console.log('✅ Encontrou .mention-item:', mentionItem);
+        console.log('📦 Datasets:', mentionItem.dataset);
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const tKey = mentionItem.dataset.ticketKey;
+        const dName = mentionItem.dataset.displayName;
+        const aId = mentionItem.dataset.accountId;
+        
+        console.log('🔑 Extraindo dados:', { tKey, dName, aId });
+        
+        if (tKey && dName && aId) {
+          insertMention(tKey, dName, aId);
+          // Esconder sugestões imediatamente
+          suggestionsDiv.style.display = 'none';
+        } else {
+          console.error('❌ Dados inválidos:', mentionItem.dataset);
+        }
+      } else {
+        console.log('⚠️ Click fora de .mention-item');
+      }
+    };
+    
+    // REMOVER listeners antigos
+    if (suggestionsDiv._mousedownHandler) {
+      suggestionsDiv.removeEventListener('mousedown', suggestionsDiv._mousedownHandler, true);
+    }
+    
+    // Adicionar listener com capture=true (captura ANTES de qualquer outro)
+    suggestionsDiv.addEventListener('mousedown', mousedownHandler, true);
+    suggestionsDiv._mousedownHandler = mousedownHandler;
+    
+    console.log('✅ Listener MOUSEDOWN adicionado ao suggestionsDiv');
+    
+    // Também adicionar diretamente em cada item como fallback
+    const items = suggestionsDiv.querySelectorAll('.mention-item');
+    items.forEach((item, idx) => {
+      item.addEventListener('mousedown', function(e) {
+        console.log(`🎯 MOUSEDOWN DIRETO no item ${idx}`);
+        e.stopPropagation();
+        
+        const tKey = this.dataset.ticketKey;
+        const dName = this.dataset.displayName;
+        const aId = this.dataset.accountId;
+        
+        if (tKey && dName && aId) {
+          insertMention(tKey, dName, aId);
+          suggestionsDiv.style.display = 'none';
+        }
+      }, true);
+    });
+    
+    console.log(`✅ Listeners diretos adicionados a ${items.length} itens`);
+  }, 50); // 50ms de delay
 }
 
 // Definir menção selecionada (ao passar mouse)
@@ -3965,18 +4107,63 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Inserir menção a partir do elemento clicado (data-attributes)
+function insertMentionFromElement(element) {
+  console.log('🖱️ Clicou em elemento de menção:', element);
+  
+  // Se clicou em um elemento filho, buscar o pai com a classe mention-item
+  let mentionItem = element;
+  if (!mentionItem.classList.contains('mention-item')) {
+    mentionItem = element.closest('.mention-item');
+  }
+  
+  if (!mentionItem) {
+    console.error('❌ Elemento .mention-item não encontrado');
+    return;
+  }
+  
+  console.log('📋 Elemento mention-item encontrado:', mentionItem);
+  console.log('📋 Datasets disponíveis:', mentionItem.dataset);
+  
+  const ticketKey = mentionItem.dataset.ticketKey;
+  const displayName = mentionItem.dataset.displayName;
+  const accountId = mentionItem.dataset.accountId;
+  
+  console.log('🔑 Dados extraídos:', { ticketKey, displayName, accountId });
+  
+  if (!ticketKey || !displayName || !accountId) {
+    console.error('❌ Dados de menção inválidos:', { ticketKey, displayName, accountId });
+    console.error('❌ Elemento HTML:', mentionItem.outerHTML);
+    return;
+  }
+  
+  insertMention(ticketKey, displayName, accountId);
+}
+
 // Inserir menção no texto
 function insertMention(ticketKey, displayName, accountId) {
+  console.log('📝 Inserindo menção:', { ticketKey, displayName, accountId });
+  
   const textarea = document.getElementById(`new-comment-textarea-${ticketKey}`);
-  if (!textarea) return;
+  if (!textarea) {
+    console.error('❌ Textarea não encontrado:', `new-comment-textarea-${ticketKey}`);
+    return;
+  }
   
   const text = textarea.value;
   const atIndex = text.lastIndexOf('@');
+  
+  if (atIndex === -1) {
+    console.warn('⚠️ Símbolo @ não encontrado no texto');
+    return;
+  }
   
   // Substituir @query por @displayName
   const before = text.substring(0, atIndex);
   const after = text.substring(atIndex).replace(/@[^\s]*/, `@${displayName} `);
   textarea.value = before + after;
+  
+  console.log('✅ Texto atualizado:', textarea.value);
   
   // Guardar accountId para envio
   if (!textarea.dataset.mentions) {
@@ -3985,6 +4172,8 @@ function insertMention(ticketKey, displayName, accountId) {
   const mentions = JSON.parse(textarea.dataset.mentions);
   mentions[displayName] = accountId;
   textarea.dataset.mentions = JSON.stringify(mentions);
+  
+  console.log('✅ Menções salvas:', mentions);
   
   // Esconder sugestões
   const suggestionsDiv = document.getElementById(`mention-suggestions-${ticketKey}`);

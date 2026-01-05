@@ -36,7 +36,8 @@ echo "   ✅ Node.js $(node --version) ativo"
 # 4. Limpar projeto
 echo ""
 echo "4️⃣  Limpando projeto..."
-cd "/Users/gabriel.silva.digisystem/jira monitor"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_DIR"
 rm -rf node_modules package-lock.json
 
 # 5. Reinstalar dependências

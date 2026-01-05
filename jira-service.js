@@ -1022,14 +1022,30 @@ class JiraService {
       
       // Processar comentários
       const comments = issue.comment?.comments || [];
-      const processedComments = comments.map(comment => ({
-        id: comment.id,
-        author: comment.author.displayName,
-        authorAccountId: comment.author.accountId,
-        created: comment.created,
-        body: this._convertADFToHTML(comment.body),
-        isInternal: comment.jsdPublic === false || comment.properties?.some(p => p.key === 'sd.public.comment' && p.value?.internal === true)
-      }));
+      console.log(`💬 Processando ${comments.length} comentários para ${ticketKey}`);
+      
+      const processedComments = comments.map(comment => {
+        try {
+          return {
+            id: comment.id,
+            author: comment.author?.displayName || 'Desconhecido',
+            authorAccountId: comment.author?.accountId || '',
+            created: comment.created,
+            body: this._convertADFToHTML(comment.body),
+            isInternal: comment.jsdPublic === false || comment.properties?.some(p => p.key === 'sd.public.comment' && p.value?.internal === true)
+          };
+        } catch (err) {
+          console.error('❌ Erro ao processar comentário:', err);
+          return {
+            id: comment.id || 'unknown',
+            author: 'Erro',
+            authorAccountId: '',
+            created: new Date().toISOString(),
+            body: '<p>Erro ao processar comentário</p>',
+            isInternal: false
+          };
+        }
+      });
       
       // Processar anexos
       const attachments = issue.attachment || [];
@@ -1090,7 +1106,7 @@ class JiraService {
         to: t.to
       }));
       
-      return {
+      const ticketDetails = {
         key: ticketKey,
         summary: issue.summary,
         description,
@@ -1120,8 +1136,18 @@ class JiraService {
         supportLevel: supportLevel,
         team: team
       };
+      
+      console.log(`✅ Ticket ${ticketKey} processado:`, {
+        key: ticketDetails.key,
+        summary: ticketDetails.summary,
+        commentsCount: ticketDetails.comments?.length || 0,
+        attachmentsCount: ticketDetails.attachments?.length || 0
+      });
+      
+      return ticketDetails;
     } catch (error) {
-      console.error('Erro ao buscar detalhes do ticket:', error);
+      console.error(`❌ Erro ao buscar detalhes do ticket ${ticketKey}:`, error);
+      console.error('Stack:', error.stack);
       throw error;
     }
   }
