@@ -1,0 +1,6272 @@
+const { ipcRenderer } = require('electron');
+
+// Estado Global
+let currentConfig = {};
+let currentStats = null;
+let slaStatusCache = new Map(); // Cache do status de SLA de cada ticket
+let searchTickets = [];
+let updateInterval = null;
+let isProMode = false;
+let isHorizontalLayout = false;
+
+// 🚀 OTIMIZAÇÃO: Limpar cache de SLA periodicamente (a cada 10 minutos)
+setInterval(() => {
+  if (!currentStats) return;
+  
+  // Pegar todas as keys de tickets atuais
+  const currentTicketKeys = new Set();
+  ['allTickets', 'supportTickets', 'customerTickets', 'pendingTickets'].forEach(listName => {
+    const tickets = currentStats[listName] || [];
+    tickets.forEach(t => currentTicketKeys.add(t.key));
+  });
+  
+  // Remover do cache tickets que não estão mais nas listas
+  for (const key of slaStatusCache.keys()) {
+    if (!currentTicketKeys.has(key)) {
+      slaStatusCache.delete(key);
+    }
+  }
+  
+  console.log(`🧹 Cache de SLA limpo: ${slaStatusCache.size} tickets mantidos`);
+}, 600000); // 10 minutos
+let connectionStatus = 'offline'; // online, offline, loading
+let progressInterval = null;
+let lastUpdateTime = null;
+let densityMode = 'default'; // default, compact, comfortable
+let isSecondaryWindow = false; // Se esta é uma janela secundária de monitoramento
+let previousTicketKeys = new Set(); // Para detectar novos tickets
+let previousTicketStates = new Map(); // Para detectar mudanças de status { key: { status, assignee } }
+let viewedTickets = new Set(); // Tickets que o usuário já visualizou
+let windowOpacity = 1.0; // Opacidade da janela (0.2 - 1.0)
+let internalNotifications = []; // Notificações internas (sino)
+let isFocusMode = false; // Modo focus ativo
+let dailyActivity = {
+  received: 0,      // Tickets recebidos hoje
+  resolved: 0,      // Tickets resolvidos/fechados hoje
+  commented: 0,     // Comentários adicionados hoje
+  statusChanged: 0, // Status alterados hoje
+  lastReset: new Date().toDateString(), // Data do último reset
+  receivedTickets: [],  // Lista de tickets recebidos
+  resolvedTickets: [],  // Lista de tickets fechados
+  commentedTickets: []  // Lista de tickets com comentários
+}; // Atividade do dia
+let lastMentionsCheck = {}; // Rastrear últimas menções verificadas
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  setupEventListeners();
+  setupKeyboardShortcuts();
+  
+  // Inicializar contadores de atividade diária
+  checkDailyReset();
+  updateDailyActivityDisplay();
+  
+  // Verificar reset à meia-noite a cada minuto
+  setInterval(checkDailyReset, 60000);
+  
+  // 🚀 OTIMIZAÇÃO: Salvar estado a cada 2 minutos (reduz I/O)
+  setInterval(() => {
+    saveCurrentState();
+  }, 120000); // 2 minutos ao invés de 30s
+  
+  // Salvar estado antes de fechar o app
+  window.addEventListener('beforeunload', (e) => {
+    // Usar forma síncrona pois beforeunload não aguarda promises
+    const stateToSave = {
+      ...currentConfig,
+      proMode: isProMode,
+      isHorizontalLayout: isHorizontalLayout,
+      windowOpacity: windowOpacity,
+      focusMode: isFocusMode
+    };
+    console.log('🚪 ========================================');
+    console.log('🚪 FECHANDO APP - SALVANDO ESTADO FINAL');
+    console.log('🚪 Modo Pro ao fechar:', isProMode);
+    console.log('🚪 ========================================');
+    ipcRenderer.send('save-config-sync', stateToSave);
+  });
+  
+  // Solicitar permissão para notificações desktop
+  if ('Notification' in window) {
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      console.log('🔔 Permissão de notificações:', permission);
+    } else {
+      console.log('🔔 Permissão de notificações atual:', Notification.permission);
+    }
+  } else {
+    console.warn('⚠️ Notificações desktop não suportadas neste navegador');
+  }
+  
+  // Aplicar opacidade salva
+  if (currentConfig.windowOpacity) {
+    updateWindowOpacity(currentConfig.windowOpacity);
+  }
+  
+  // Aplicar tema customizado
+  if (currentConfig.themePreset && currentConfig.themePreset !== 'default') {
+    console.log('🎨 Aplicando tema preset:', currentConfig.themePreset);
+    applyThemePreset(currentConfig.themePreset);
+  } else if (currentConfig.accentColor) {
+    console.log('🎨 Aplicando cor de acento:', currentConfig.accentColor);
+    applyAccentColor(currentConfig.accentColor);
+  }
+  
+  // Aplicar modo focus se estava ativo
+  if (currentConfig.focusMode) {
+    isFocusMode = true;
+    document.body.classList.add('focus-mode');
+  }
+  
+  // Inicializar status de conexão
+  updateConnectionStatus('offline');
+  
+  // Verificar se está configurado
+  if (currentConfig.jiraEmail && currentConfig.jiraApiToken) {
+    await fetchAndUpdateStats();
+    startAutoUpdate();
+  } else {
+    showConfigPanel();
+  }
+});
+
+// Listener para configurar usuário monitorado (quando aberto em nova janela)
+ipcRenderer.on('set-monitored-user', async (event, userEmail) => {
+  if (userEmail) {
+    currentConfig.monitorOtherUser = true;
+    currentConfig.otherUserEmail = userEmail;
+    
+    // Atualizar indicador
+    updateMonitoredUserIndicator();
+    
+    // Recarregar stats
+    await fetchAndUpdateStats();
+    
+    // Atualizar título da janela para indicar que está monitorando outro usuário
+    const header = document.querySelector('.header h3');
+    if (header) {
+      const displayName = userEmail.split('@')[0].split('.').map(part => 
+        part.charAt(0).toUpperCase() + part.slice(1)
+      ).join(' ');
+      header.textContent = `Jira Monitor - ${displayName}`;
+    }
+  }
+});
+
+// Carregar Configuração
+async function loadConfig() {
+  try {
+    const config = await ipcRenderer.invoke('get-config');
+    currentConfig = config;
+    
+    console.log('📥 Config carregada:', {
+      monitorOtherUser: config.monitorOtherUser,
+      otherUserEmail: config.otherUserEmail,
+      jiraEmail: config.jiraEmail
+    });
+    
+    // Aplicar configurações na UI
+    if (config.jiraUrl) document.getElementById('jira-url').value = config.jiraUrl;
+    if (config.jiraEmail) document.getElementById('jira-email').value = config.jiraEmail;
+    if (config.jiraApiToken) document.getElementById('jira-api-token').value = config.jiraApiToken;
+    if (config.queueId) document.getElementById('queue-id').value = config.queueId;
+    if (config.refreshInterval) document.getElementById('refresh-interval').value = config.refreshInterval;
+    if (config.oldTicketsDays) document.getElementById('old-tickets-days').value = config.oldTicketsDays;
+    
+    document.getElementById('alert-sla').checked = config.alertSla !== false;
+    document.getElementById('alert-old-tickets').checked = config.alertOldTickets !== false;
+    document.getElementById('desktop-notifications').checked = config.desktopNotifications !== false;
+    document.getElementById('sound-notifications').checked = config.soundNotifications !== false;
+    document.getElementById('pro-mode').checked = config.proMode === true;
+    
+    // Opções de tipos de notificações
+    document.getElementById('notify-new-tickets').checked = config.notifyNewTickets !== false;
+    document.getElementById('notify-status-changes').checked = config.notifyStatusChanges !== false;
+    document.getElementById('notify-reassignments').checked = config.notifyReassignments !== false;
+    document.getElementById('notify-mentions').checked = config.notifyMentions !== false;
+    
+    // Mostrar/ocultar opções de tipos de notificações
+    const notificationTypesGroup = document.getElementById('notification-types-group');
+    if (notificationTypesGroup) {
+      notificationTypesGroup.style.display = config.desktopNotifications !== false ? 'block' : 'none';
+    }
+    
+    // Aplicar tema
+    const theme = config.theme || 'default';
+    const themeSelect = document.getElementById('theme-select');
+    if (themeSelect) {
+      themeSelect.value = theme;
+    }
+    applyTheme(theme);
+    
+    // Mostrar/ocultar campo de outro usuário
+    const otherUserGroup = document.getElementById('other-user-email-group');
+    if (otherUserGroup) {
+      otherUserGroup.style.display = config.monitorOtherUser ? 'block' : 'none';
+    }
+    
+    // Aplicar Modo Pro
+    console.log('📥 ========================================');
+    console.log('📥 CARREGANDO MODO PRO DA CONFIGURAÇÃO');
+    console.log('📥 config.proMode:', config.proMode);
+    console.log('📥 tipo:', typeof config.proMode);
+    console.log('📥 ========================================');
+    isProMode = config.proMode === true;
+    console.log('✅ MODO PRO DEFINIDO COMO:', isProMode);
+    console.log('📥 ========================================');
+    updateProModeUI();
+    
+    // Restaurar layout horizontal
+    isHorizontalLayout = config.isHorizontalLayout === true;
+    if (isHorizontalLayout) {
+      document.body.classList.add('horizontal-layout');
+    }
+    
+    // Restaurar focus mode
+    isFocusMode = config.focusMode === true;
+    if (isFocusMode) {
+      document.body.classList.add('focus-mode');
+    }
+    
+    // Restaurar atividade diária
+    if (config.dailyActivity && config.dailyActivity.lastReset === new Date().toDateString()) {
+      dailyActivity = config.dailyActivity;
+      console.log('📥 Atividade diária restaurada:', dailyActivity);
+    } else {
+      console.log('🔄 Reset de atividade diária (nova data)');
+      dailyActivity.lastReset = new Date().toDateString();
+    }
+    
+    // Atualizar indicador de usuário monitorado
+    updateMonitoredUserIndicator();
+  } catch (error) {
+    console.error('Erro ao carregar configuração:', error);
+  }
+}
+
+// Salvar Configuração
+async function saveConfig() {
+  try {
+    const config = {
+      jiraUrl: document.getElementById('jira-url').value,
+      jiraEmail: document.getElementById('jira-email').value,
+      jiraApiToken: document.getElementById('jira-api-token').value,
+      queueId: document.getElementById('queue-id').value,
+      refreshInterval: parseInt(document.getElementById('refresh-interval').value),
+      oldTicketsDays: parseInt(document.getElementById('old-tickets-days').value),
+      theme: document.getElementById('theme-select').value,
+      alertSla: document.getElementById('alert-sla').checked,
+      alertOldTickets: document.getElementById('alert-old-tickets').checked,
+      desktopNotifications: document.getElementById('desktop-notifications').checked,
+      soundNotifications: document.getElementById('sound-notifications').checked,
+      proMode: document.getElementById('pro-mode').checked,
+      notifyNewTickets: document.getElementById('notify-new-tickets').checked,
+      notifyStatusChanges: document.getElementById('notify-status-changes').checked,
+      notifyReassignments: document.getElementById('notify-reassignments').checked,
+      notifyMentions: document.getElementById('notify-mentions').checked,
+      // monitorOtherUser e otherUserEmail agora são gerenciados pelo botão no header
+      monitorOtherUser: currentConfig.monitorOtherUser || false,
+      otherUserEmail: currentConfig.otherUserEmail || '',
+      userHistory: currentConfig.userHistory || [],
+      // Configurações de UI/UX que devem persistir
+      isHorizontalLayout: isHorizontalLayout,
+      windowOpacity: windowOpacity,
+      focusMode: isFocusMode,
+      accentColor: currentConfig.accentColor,
+      themePreset: currentConfig.themePreset,
+      clearedNotifications: currentConfig.clearedNotifications || [],
+      customShortcuts: currentConfig.customShortcuts
+    };
+    
+    await ipcRenderer.invoke('save-config', config);
+    currentConfig = config;
+    
+    // Aplicar tema
+    applyTheme(config.theme);
+    
+    // Aplicar Modo Pro
+    isProMode = config.proMode;
+    updateProModeUI();
+    
+    // Atualizar indicador de usuário monitorado
+    updateMonitoredUserIndicator();
+    
+    hideConfigPanel();
+    await fetchAndUpdateStats();
+    startAutoUpdate();
+    
+    showToast('Sucesso!', 'Configurações salvas com sucesso', 'success');
+  } catch (error) {
+    console.error('Erro ao salvar configuração:', error);
+    showToast('Erro', 'Não foi possível salvar as configurações', 'error');
+  }
+}
+
+// Atualizar Indicador de Usuário Monitorado
+function updateMonitoredUserIndicator() {
+  const label = document.getElementById('user-monitor-label');
+  
+  if (currentConfig.monitorOtherUser && currentConfig.otherUserEmail) {
+    // Mostrar só o primeiro nome do email
+    const emailParts = currentConfig.otherUserEmail.split('@')[0];
+    const firstName = emailParts.split('.')[0];
+    label.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+  } else {
+    label.textContent = 'Você';
+  }
+  
+  updateUserListDropdown();
+  updateProMonitoredUserBadge();
+}
+
+// Atualizar badges de usuário monitorado nas seções PRO
+function updateProMonitoredUserBadge() {
+  const dashboardBadge = document.getElementById('dashboard-monitored-user');
+  const alertsBadge = document.getElementById('alerts-monitored-user');
+  
+  if (currentConfig.monitorOtherUser && currentConfig.otherUserEmail) {
+    const emailParts = currentConfig.otherUserEmail.split('@')[0];
+    const firstName = emailParts.split('.')[0];
+    const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+    const badgeText = `👤 ${displayName}`;
+    
+    if (dashboardBadge) {
+      dashboardBadge.textContent = badgeText;
+      dashboardBadge.style.display = 'inline-flex';
+    }
+    
+    if (alertsBadge) {
+      alertsBadge.textContent = badgeText;
+      alertsBadge.style.display = 'inline-flex';
+    }
+  } else {
+    if (dashboardBadge) dashboardBadge.style.display = 'none';
+    if (alertsBadge) alertsBadge.style.display = 'none';
+  }
+}
+
+// Gerenciamento de Histórico de Usuários
+function getUserHistory() {
+  const history = currentConfig.userHistory || [];
+  return history;
+}
+
+async function saveUserHistory(history) {
+  currentConfig.userHistory = history.slice(0, 5); // Manter apenas os últimos 5
+  // Salvar no disco
+  await ipcRenderer.invoke('save-config', { userHistory: currentConfig.userHistory });
+}
+
+async function addUserToHistory(email) {
+  if (!email) return;
+  
+  let history = getUserHistory();
+  
+  // Remover duplicatas
+  history = history.filter(e => e.toLowerCase() !== email.toLowerCase());
+  
+  // Adicionar no início
+  history.unshift(email);
+  
+  // Manter apenas 5 e salvar
+  await saveUserHistory(history);
+}
+
+// Remover usuário do histórico
+async function removeUserFromHistory(email) {
+  if (!email) return;
+  
+  console.log('🗑️ Removendo usuário do histórico:', email);
+  
+  let history = getUserHistory();
+  const historyBefore = [...history];
+  history = history.filter(e => e.toLowerCase() !== email.toLowerCase());
+  
+  console.log('📋 Histórico antes:', historyBefore);
+  console.log('📋 Histórico depois:', history);
+  
+  await saveUserHistory(history);
+  console.log('💾 Histórico salvo no disco');
+  
+  // Se estava monitorando esse usuário, voltar para "você"
+  if (currentConfig.otherUserEmail === email) {
+    console.log('⚠️ Estava monitorando este usuário, voltando para "você"');
+    await switchMonitoredUser('');
+  }
+  
+  // Atualizar dropdown
+  updateUserListDropdown();
+  
+  showToast('Removido', `${email} removido permanentemente`, 'success');
+}
+
+// Abrir usuário em nova janela
+async function openUserInNewWindow(email) {
+  if (!email) return;
+  
+  try {
+    await ipcRenderer.invoke('open-user-window', email);
+    showToast('Nova Janela', `Monitorando ${email} em nova janela`, 'success');
+  } catch (error) {
+    console.error('Erro ao abrir nova janela:', error);
+    showToast('Erro', 'Não foi possível abrir nova janela', 'error');
+  }
+}
+
+// Atualizar Dropdown de Usuários
+function updateUserListDropdown() {
+  const userList = document.getElementById('user-list');
+  const history = getUserHistory();
+  
+  let html = '';
+  
+  // Opção "Você"
+  const isMonitoringSelf = !currentConfig.monitorOtherUser;
+  html += `
+    <div class="user-item ${isMonitoringSelf ? 'active' : ''}" data-user="">
+      <div class="user-info" data-user-select="">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+        </svg>
+        <span class="user-name">Você</span>
+      </div>
+      ${isMonitoringSelf ? '<svg viewBox="0 0 24 24" width="18" height="18" class="check-icon"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>' : ''}
+    </div>
+  `;
+  
+  // Histórico de usuários
+  if (history.length > 0) {
+    html += '<div class="user-divider"></div>';
+    
+    history.forEach(email => {
+      const isActive = currentConfig.monitorOtherUser && currentConfig.otherUserEmail === email;
+      const emailParts = email.split('@')[0];
+      const displayName = emailParts.split('.').map(part => 
+        part.charAt(0).toUpperCase() + part.slice(1)
+      ).join(' ');
+      
+      html += `
+        <div class="user-item ${isActive ? 'active' : ''}" data-user="${email}">
+          <div class="user-info" data-user-select="${email}">
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            <div class="user-details">
+              <span class="user-name">${displayName}</span>
+              <span class="user-email">${email}</span>
+            </div>
+          </div>
+          <div class="user-actions">
+            <button class="user-action-btn open-new-window-btn" data-user="${email}" title="Abrir em nova janela">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+              </svg>
+            </button>
+            <button class="user-action-btn remove-user-btn" data-user="${email}" title="Remover do histórico">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+            ${isActive ? '<svg viewBox="0 0 24 24" width="18" height="18" class="check-icon"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>' : ''}
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  userList.innerHTML = html;
+  
+  // Adicionar event listeners para seleção
+  userList.querySelectorAll('.user-info[data-user-select]').forEach(item => {
+    item.addEventListener('click', () => {
+      const email = item.getAttribute('data-user-select');
+      switchMonitoredUser(email);
+    });
+  });
+  
+  // Event listeners para abrir em nova janela
+  userList.querySelectorAll('.open-new-window-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const email = btn.getAttribute('data-user');
+      openUserInNewWindow(email);
+    });
+  });
+  
+  // Event listeners para remover usuário
+  userList.querySelectorAll('.remove-user-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const email = btn.getAttribute('data-user');
+      await removeUserFromHistory(email);
+    });
+  });
+}
+
+// Trocar Usuário Monitorado
+async function switchMonitoredUser(email) {
+  console.log('🔄 Trocando usuário monitorado:', email || 'você');
+  
+  if (!email || email === '') {
+    // Monitorar "você"
+    currentConfig.monitorOtherUser = false;
+    currentConfig.otherUserEmail = '';
+    console.log('✅ Configurado para monitorar você');
+  } else {
+    // Monitorar outro usuário
+    currentConfig.monitorOtherUser = true;
+    currentConfig.otherUserEmail = email;
+    await addUserToHistory(email);
+    console.log('✅ Configurado para monitorar:', email);
+  }
+  
+  // Salvar config completa
+  const configToSave = {
+    ...currentConfig,
+    monitorOtherUser: currentConfig.monitorOtherUser,
+    otherUserEmail: currentConfig.otherUserEmail
+  };
+  await ipcRenderer.invoke('save-config', configToSave);
+  
+  console.log('💾 Config salva:', {
+    monitorOtherUser: configToSave.monitorOtherUser,
+    otherUserEmail: configToSave.otherUserEmail
+  });
+  
+  // Atualizar UI
+  updateMonitoredUserIndicator();
+  hideUserMonitorDropdown();
+  
+  // Limpar notificações internas do usuário anterior
+  internalNotifications = [];
+  console.log('🗑️ Notificações internas limpas ao trocar usuário');
+  
+  // Limpar estados de tickets anteriores para o novo usuário
+  previousTicketKeys = new Set();
+  previousTicketStates = new Map();
+  console.log('🗑️ Estados de tickets resetados ao trocar usuário');
+  
+  // Recarregar stats e notificações do usuário selecionado
+  showToast('Sucesso!', `Agora monitorando ${email || 'você'}`, 'success');
+  await fetchAndUpdateStats();
+  
+  // Sempre recarregar notificações ao trocar usuário
+  await loadNotifications();
+  
+  console.log('✅ Stats e notificações atualizadas para:', email || 'você');
+}
+
+// Aplicar Tema
+function applyTheme(theme) {
+  const container = document.querySelector('.app-container');
+  container.setAttribute('data-theme', theme);
+  
+  console.log('🎨 Tema aplicado:', theme);
+}
+
+// Modo de Densidade
+function toggleDensityMode() {
+  const container = document.querySelector('.app-container');
+  const modes = ['default', 'compact', 'comfortable'];
+  const currentIndex = modes.indexOf(densityMode);
+  const nextIndex = (currentIndex + 1) % modes.length;
+  densityMode = modes[nextIndex];
+  
+  // Remover classes anteriores
+  container.classList.remove('density-compact', 'density-comfortable');
+  
+  // Adicionar nova classe
+  if (densityMode !== 'default') {
+    container.classList.add(`density-${densityMode}`);
+  }
+  
+  // Mostrar toast com o modo atual
+  const modeNames = {
+    default: 'Padrão',
+    compact: 'Compacto',
+    comfortable: 'Confortável'
+  };
+  
+  showToast('Modo de Densidade', `Modo ${modeNames[densityMode]} ativado`, 'info');
+  console.log('📐 Modo de densidade:', densityMode);
+}
+
+// Atualizar Mini Stats
+function updateMiniStats(stats) {
+  if (!stats) return;
+  
+  const dashboard = document.getElementById('mini-stats-dashboard');
+  
+  // Mostrar mini stats apenas em Modo Pro
+  if (isProMode) {
+    dashboard.style.display = 'flex';
+    
+    // Calcular taxa de resolução (exemplo simplificado)
+    const resolutionRate = stats.total > 0 ? Math.round((stats.waitingForSupport / stats.total) * 100) : 0;
+    document.getElementById('mini-resolution-rate').textContent = `${resolutionRate}%`;
+    
+    // Tempo médio (placeholder - pode ser calculado com dados reais)
+    document.getElementById('mini-avg-time').textContent = '2.5h';
+    
+    // Tickets de hoje (placeholder - precisa de dados de criação)
+    document.getElementById('mini-today-count').textContent = stats.total || 0;
+  } else {
+    dashboard.style.display = 'none';
+  }
+}
+
+// Event Listeners
+function setupEventListeners() {
+  // Header buttons
+  document.getElementById('menu-btn').addEventListener('click', toggleMenu);
+  document.getElementById('user-monitor-btn').addEventListener('click', toggleUserMonitorDropdown);
+  document.getElementById('notifications-btn').addEventListener('click', toggleNotifications);
+  document.getElementById('docs-btn').addEventListener('click', toggleDocsDropdown);
+  document.getElementById('toggle-layout-btn').addEventListener('click', toggleLayout);
+  document.getElementById('toggle-density-btn').addEventListener('click', toggleDensityMode);
+  document.getElementById('minimize-btn').addEventListener('click', () => ipcRenderer.invoke('minimize-window'));
+  document.getElementById('close-btn').addEventListener('click', () => ipcRenderer.invoke('close-window'));
+  
+  // Menu items
+  document.getElementById('menu-pro').addEventListener('click', () => {
+    toggleProMode();
+    hideMenu();
+  });
+  document.getElementById('menu-refresh').addEventListener('click', () => {
+    fetchAndUpdateStats();
+    hideMenu();
+  });
+  document.getElementById('menu-settings').addEventListener('click', () => {
+    showConfigPanel();
+    hideMenu();
+  });
+  document.getElementById('menu-okta').addEventListener('click', () => {
+    ipcRenderer.invoke('open-url', 'https://nubank.okta.com/');
+    hideMenu();
+  });
+  document.getElementById('menu-jamf').addEventListener('click', () => {
+    ipcRenderer.invoke('open-url', 'https://nubank.jamfcloud.com/');
+    hideMenu();
+  });
+  document.getElementById('menu-search').addEventListener('click', () => {
+    toggleSearch();
+    hideMenu();
+  });
+  document.getElementById('menu-shortcuts').addEventListener('click', () => {
+    showShortcutsModal();
+    hideMenu();
+  });
+  document.getElementById('menu-templates')?.addEventListener('click', () => {
+    showTemplatesModal();
+    hideMenu();
+  });
+  document.getElementById('menu-focus-mode').addEventListener('click', () => {
+    toggleFocusMode();
+    hideMenu();
+  });
+  // Opacity slider
+  const opacitySlider = document.getElementById('opacity-slider');
+  if (opacitySlider) {
+    opacitySlider.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value) / 100;
+      updateWindowOpacity(value);
+    });
+    opacitySlider.addEventListener('click', (e) => {
+      e.stopPropagation(); // Não fechar o menu ao clicar no slider
+    });
+  }
+  document.getElementById('menu-themes').addEventListener('click', () => {
+    showThemeCustomizer();
+    hideMenu();
+  });
+  document.getElementById('menu-export').addEventListener('click', () => {
+    showExportModal();
+    hideMenu();
+  });
+  
+  // Config panel
+  document.getElementById('save-config-btn').addEventListener('click', saveConfig);
+  document.getElementById('cancel-config-btn').addEventListener('click', hideConfigPanel);
+  document.getElementById('close-config-btn').addEventListener('click', hideConfigPanel);
+  document.getElementById('toggle-password-btn').addEventListener('click', togglePasswordVisibility);
+  document.getElementById('test-notification-btn').addEventListener('click', testDesktopNotification);
+  
+  // Mostrar/ocultar opções de tipos de notificações
+  document.getElementById('desktop-notifications').addEventListener('change', (e) => {
+    const notificationTypesGroup = document.getElementById('notification-types-group');
+    notificationTypesGroup.style.display = e.target.checked ? 'block' : 'none';
+  });
+  
+  // Theme selector - aplicar tema em tempo real
+  document.getElementById('theme-select').addEventListener('change', (e) => {
+    applyTheme(e.target.value);
+  });
+  
+  // Refresh button
+  document.getElementById('refresh-btn').addEventListener('click', fetchAndUpdateStats);
+  
+  // Badge listeners - tornando badges clicáveis
+  document.getElementById('badge-sla').addEventListener('click', (e) => {
+    e.stopPropagation();
+    showBadgeTickets('sla');
+  });
+  
+  document.getElementById('badge-old').addEventListener('click', (e) => {
+    e.stopPropagation();
+    showBadgeTickets('old');
+  });
+  
+  // SIM Cards expand button
+  const expandSimCardsBtn = document.getElementById('expand-sim-cards');
+  if (expandSimCardsBtn) {
+    expandSimCardsBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevenir propagação para o botão pai
+      toggleSimCardsExpansion();
+    });
+  }
+  
+  // Evaluated Tickets expand button
+  const expandEvaluatedTicketsBtn = document.getElementById('expand-evaluated-tickets');
+  if (expandEvaluatedTicketsBtn) {
+    expandEvaluatedTicketsBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevenir propagação para o botão pai
+      toggleEvaluatedTicketsExpansion();
+    });
+  }
+  
+  // SIM Cards count button - abre o filtro no Jira
+  const simCardsCountBtn = document.getElementById('sim-cards-count-btn');
+  if (simCardsCountBtn) {
+    simCardsCountBtn.addEventListener('click', () => {
+      if (currentStats && currentStats.simCardsTickets && currentStats.simCardsTickets.jql) {
+        const jiraUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+        ipcRenderer.send('open-url', `${jiraUrl}/issues/?filter=52128`);
+      }
+    });
+  }
+  
+  // Evaluated Tickets count button - abre o filtro no Jira
+  const evaluatedTicketsCountBtn = document.getElementById('evaluated-tickets-count-btn');
+  if (evaluatedTicketsCountBtn) {
+    evaluatedTicketsCountBtn.addEventListener('click', () => {
+      const jiraUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+      ipcRenderer.send('open-url', `${jiraUrl}/issues/?filter=52358`);
+    });
+  }
+  
+  // Search
+  document.getElementById('search-input').addEventListener('input', performSearch);
+  document.getElementById('search-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideSearch();
+    if (e.key === 'Enter' && document.querySelector('.search-result-item')) {
+      document.querySelector('.search-result-item').click();
+    }
+  });
+  
+  // Shortcuts modal
+  document.getElementById('close-shortcuts-btn').addEventListener('click', hideShortcutsModal);
+  document.getElementById('shortcuts-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'shortcuts-modal') hideShortcutsModal();
+  });
+  
+  // Error banner
+  document.getElementById('error-retry-btn').addEventListener('click', fetchAndUpdateStats);
+  document.getElementById('error-close-btn').addEventListener('click', hideErrorBanner);
+  
+  // Docs dropdown
+  document.getElementById('close-docs-dropdown').addEventListener('click', hideDocsDropdown);
+  
+  // Docs links
+  document.querySelectorAll('.docs-link-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.getAttribute('data-url');
+      if (url) {
+        ipcRenderer.invoke('open-url', url);
+        hideDocsDropdown();
+      }
+    });
+  });
+  
+  // User Monitor dropdown
+  document.getElementById('close-user-monitor-dropdown').addEventListener('click', hideUserMonitorDropdown);
+  document.getElementById('add-user-btn').addEventListener('click', showAddUserModal);
+  
+  // Add User Modal
+  document.getElementById('close-add-user-btn').addEventListener('click', hideAddUserModal);
+  document.getElementById('cancel-add-user-btn').addEventListener('click', hideAddUserModal);
+  document.getElementById('confirm-add-user-btn').addEventListener('click', confirmAddUser);
+  document.getElementById('new-user-email-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirmAddUser();
+    if (e.key === 'Escape') hideAddUserModal();
+  });
+  
+  // Quick Search Modal
+  document.getElementById('close-quick-search').addEventListener('click', hideQuickSearch);
+  document.getElementById('quick-search-input').addEventListener('input', performQuickSearch);
+  document.getElementById('quick-search-input').addEventListener('keydown', handleQuickSearchKeydown);
+  document.getElementById('quick-search-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'quick-search-modal') hideQuickSearch();
+  });
+  
+  // Theme Customizer Modal
+  const closeThemeBtn = document.getElementById('close-theme-customizer');
+  if (closeThemeBtn) {
+    closeThemeBtn.addEventListener('click', hideThemeCustomizer);
+  }
+  
+  // Os event listeners de cores e temas serão adicionados quando o modal abrir
+  setupThemeCustomizerListeners();
+  
+  // Shortcuts Custom Modal
+  document.getElementById('close-shortcuts-custom').addEventListener('click', hideShortcutsCustomModal);
+  document.getElementById('reset-shortcuts').addEventListener('click', resetShortcutsToDefault);
+  
+  // Export Modal
+  document.getElementById('close-export-modal').addEventListener('click', hideExportModal);
+  document.getElementById('export-download-btn').addEventListener('click', downloadReport);
+  
+  // Botões de notificações
+  document.getElementById('view-all-notifications').addEventListener('click', viewAllNotifications);
+  document.getElementById('clear-notifications').addEventListener('click', clearAllNotifications);
+  document.getElementById('reset-notification-history').addEventListener('click', resetNotificationHistory);
+  document.getElementById('close-notifications-preview').addEventListener('click', () => {
+    document.getElementById('notifications-preview').style.display = 'none';
+  });
+  
+  // Atividade do dia
+  document.getElementById('close-daily-activity').addEventListener('click', closeDailyActivityWidget);
+  
+  // Cards clicáveis
+  setupCardListeners();
+  
+  // Fechar menu ao clicar fora
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('menu-dropdown');
+    const menuBtn = document.getElementById('menu-btn');
+    if (menu.style.display === 'block' && !menu.contains(e.target) && !menuBtn.contains(e.target)) {
+      hideMenu();
+    }
+    
+    // Fechar dropdown de docs ao clicar fora
+    const docsDropdown = document.getElementById('docs-dropdown');
+    const docsBtn = document.getElementById('docs-btn');
+    if (docsDropdown.style.display === 'block' && !docsDropdown.contains(e.target) && !docsBtn.contains(e.target)) {
+      hideDocsDropdown();
+    }
+  });
+  
+  // Resize handle
+  setupResizeHandle();
+  
+  // ============================================
+  // Event listeners para v1.5.0
+  // ============================================
+  
+  // Dashboard de Performance
+  const expandDashboardBtn = document.getElementById('expand-performance-dashboard');
+  if (expandDashboardBtn) {
+    expandDashboardBtn.addEventListener('click', () => {
+      const detailsContainer = document.getElementById('performance-details');
+      const isExpanded = expandDashboardBtn.classList.contains('expanded');
+      
+      if (isExpanded) {
+        expandDashboardBtn.classList.remove('expanded');
+        detailsContainer.style.display = 'none';
+      } else {
+        expandDashboardBtn.classList.add('expanded');
+        detailsContainer.style.display = 'block';
+        
+        // Carregar gráficos se houver dados em cache
+        if (performanceMetricsCache) {
+          generatePerformanceCharts(performanceMetricsCache);
+        } else {
+          loadPerformanceDashboard();
+        }
+      }
+    });
+  }
+  
+  const refreshMetricsBtn = document.getElementById('performance-refresh-btn');
+  if (refreshMetricsBtn) {
+    refreshMetricsBtn.addEventListener('click', () => {
+      loadPerformanceDashboard();
+    });
+  }
+  
+  // Alertas Proativos
+  const expandAlertsBtn = document.getElementById('expand-proactive-alerts');
+  if (expandAlertsBtn) {
+    expandAlertsBtn.addEventListener('click', () => {
+      const container = document.getElementById('proactive-alerts-container');
+      const isExpanded = expandAlertsBtn.classList.contains('expanded');
+      
+      if (isExpanded) {
+        expandAlertsBtn.classList.remove('expanded');
+        container.style.display = 'none';
+      } else {
+        expandAlertsBtn.classList.add('expanded');
+        container.style.display = 'block';
+        checkProactiveAlerts();
+      }
+    });
+  }
+  
+  // Timer & Pomodoro
+  const timerStartBtn = document.getElementById('timer-start-btn');
+  const timerPauseBtn = document.getElementById('timer-pause-btn');
+  const timerStopBtn = document.getElementById('timer-stop-btn');
+  const timerMinimizeBtn = document.getElementById('timer-minimize-btn');
+  const timerCloseBtn = document.getElementById('timer-close-btn');
+  const timerMiniRestore = document.getElementById('timer-mini-restore');
+  const timerSaveWorklogBtn = document.getElementById('timer-save-worklog-btn');
+  
+  if (timerStartBtn) timerStartBtn.addEventListener('click', startTimer);
+  if (timerPauseBtn) timerPauseBtn.addEventListener('click', pauseTimer);
+  if (timerStopBtn) timerStopBtn.addEventListener('click', stopTimer);
+  if (timerMinimizeBtn) timerMinimizeBtn.addEventListener('click', minimizeTimerWidget);
+  if (timerCloseBtn) timerCloseBtn.addEventListener('click', hideTimerWidget);
+  if (timerMiniRestore) timerMiniRestore.addEventListener('click', restoreTimerWidget);
+  
+  if (timerSaveWorklogBtn) {
+    timerSaveWorklogBtn.addEventListener('click', () => {
+      if (timerState.running) {
+        const secondsToSave = timerState.seconds;
+        stopTimer();
+        saveWorklog(secondsToSave);
+      } else {
+        saveWorklog();
+      }
+    });
+  }
+  
+  // Botões de modo do timer
+  document.querySelectorAll('.timer-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTimerMode(btn.dataset.mode));
+  });
+  
+  console.log('✅ Event listeners v1.5.0 configurados');
+}
+
+// Atalhos de Teclado
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // Ignorar atalhos quando estiver em inputs (exceto Esc)
+    if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) && e.key !== 'Escape') return;
+    
+    const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+    
+    if (isCmdOrCtrl && e.key === 'k') {
+      e.preventDefault();
+      showQuickSearch();
+    } else if (isCmdOrCtrl && e.key === 'p') {
+      e.preventDefault();
+      toggleProMode();
+    } else if (isCmdOrCtrl && e.key === 'l') {
+      e.preventDefault();
+      toggleLayout();
+    } else if (isCmdOrCtrl && e.key === 'r') {
+      e.preventDefault();
+      fetchAndUpdateStats();
+    } else if (isCmdOrCtrl && e.key === ',') {
+      e.preventDefault();
+      showConfigPanel();
+    } else if (isCmdOrCtrl && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+      e.preventDefault();
+      toggleFocusMode();
+    } else if (isCmdOrCtrl && e.key === 'e') {
+      e.preventDefault();
+      showExportModal();
+    } else if (isCmdOrCtrl && e.key === 't') {
+      e.preventDefault();
+      showTimerWidget();
+    } else if (isCmdOrCtrl && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+      e.preventDefault();
+      ipcRenderer.invoke('toggle-devtools');
+    } else if (e.key === 'F12') {
+      e.preventDefault();
+      ipcRenderer.invoke('toggle-devtools');
+    } else if (e.key === 'Escape') {
+      if (document.getElementById('quick-search-modal').style.display !== 'none') {
+        hideQuickSearch();
+      } else if (document.getElementById('search-container')?.style.display !== 'none') {
+        hideSearch();
+      } else if (document.getElementById('config-panel').style.display !== 'none') {
+        hideConfigPanel();
+      } else if (document.getElementById('shortcuts-modal').style.display !== 'none') {
+        hideShortcutsModal();
+      } else if (document.getElementById('ticket-preview-modal').style.display !== 'none') {
+        hideTicketPreview();
+      } else if (document.getElementById('attachment-preview-modal')?.style.display === 'flex') {
+        hideAttachmentPreview();
+      } else if (document.getElementById('theme-customizer-modal')?.style.display === 'flex') {
+        hideThemeCustomizer();
+      } else if (document.getElementById('export-modal')?.style.display === 'flex') {
+        hideExportModal();
+      } else {
+        ipcRenderer.invoke('minimize-window');
+      }
+    } else if (['1', '2', '3', '4'].includes(e.key)) {
+      const cards = ['total', 'support', 'customer', 'pending'];
+      const card = document.getElementById(`card-${cards[parseInt(e.key) - 1]}`);
+      if (card) card.click();
+    }
+  });
+}
+
+// Menu
+function toggleMenu() {
+  const menu = document.getElementById('menu-dropdown');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+function hideMenu() {
+  document.getElementById('menu-dropdown').style.display = 'none';
+}
+
+// Notificações
+function toggleNotifications() {
+  const preview = document.getElementById('notifications-preview');
+  preview.style.display = preview.style.display === 'none' ? 'block' : 'none';
+  
+  if (preview.style.display === 'block') {
+    loadNotifications();
+  }
+}
+
+function viewAllNotifications() {
+  // Abrir o Jira na página de notificações
+  const baseUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+  const url = `${baseUrl}/secure/ViewProfile.jspa`;
+  ipcRenderer.invoke('open-url', url);
+  
+  // Fechar o preview
+  document.getElementById('notifications-preview').style.display = 'none';
+}
+
+async function resetNotificationHistory() {
+  // Limpar histórico de notificações limpas
+  await ipcRenderer.invoke('save-config', { clearedNotifications: [] });
+  
+  // Recarregar notificações
+  await loadNotifications();
+  
+  showToast('Notificações', 'Histórico resetado - todas as notificações serão mostradas novamente', 'success');
+}
+
+async function testDesktopNotification() {
+  console.log('🧪 Testando notificação desktop...');
+  
+  // Verificar se notificações estão habilitadas
+  if (!Notification) {
+    showToast('Erro', 'Notificações não são suportadas neste navegador', 'error');
+    return;
+  }
+  
+  // Verificar permissão
+  if (Notification.permission === 'denied') {
+    showToast('Erro', 'Permissão de notificações foi negada. Ative nas configurações do sistema.', 'error');
+    return;
+  }
+  
+  // Solicitar permissão se necessário
+  if (Notification.permission !== 'granted') {
+    const permission = await Notification.requestPermission();
+    console.log('🔔 Permissão solicitada:', permission);
+    
+    if (permission !== 'granted') {
+      showToast('Erro', 'Permissão de notificações negada', 'error');
+      return;
+    }
+  }
+  
+  // Criar notificação de teste
+  try {
+    const notification = new Notification('🧪 Teste de Notificação - Jira Monitor', {
+      body: 'Se você está vendo isso, as notificações estão funcionando! ✅',
+      icon: 'https://nubank.atlassian.net/favicon.ico',
+      requireInteraction: false
+    });
+    
+    notification.onclick = () => {
+      console.log('🖱️ Notificação de teste clicada');
+      notification.close();
+    };
+    
+    notification.onerror = (error) => {
+      console.error('❌ Erro na notificação de teste:', error);
+      showToast('Erro', 'Erro ao mostrar notificação', 'error');
+    };
+    
+    // Tocar som se habilitado
+    if (currentConfig.soundNotifications !== false) {
+      playNotificationSound();
+    }
+    
+    showToast('Sucesso', 'Notificação de teste enviada! Verifique seu sistema.', 'success');
+    console.log('✅ Notificação de teste enviada com sucesso');
+  } catch (error) {
+    console.error('❌ Erro ao criar notificação:', error);
+    showToast('Erro', `Erro ao criar notificação: ${error.message}`, 'error');
+  }
+}
+
+async function clearAllNotifications() {
+  // Marcar todas as notificações atuais como limpas
+  if (window.currentNotifications && window.currentNotifications.length > 0) {
+    const notificationIds = window.currentNotifications.map(notif => 
+      `${notif.ticketKey}-${notif.commentId}`
+    );
+    
+    // Carregar IDs já limpos e adicionar os novos
+    const config = await ipcRenderer.invoke('get-config');
+    const clearedNotifications = config.clearedNotifications || [];
+    const updatedCleared = [...new Set([...clearedNotifications, ...notificationIds])];
+    
+    // Manter apenas os últimos 100 IDs para não crescer indefinidamente
+    const limitedCleared = updatedCleared.slice(-100);
+    
+    // Salvar no config
+    await ipcRenderer.invoke('save-config', { clearedNotifications: limitedCleared });
+  }
+  
+  // Limpar UI
+  const body = document.getElementById('notifications-preview-body');
+  body.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">Nenhuma notificação recente</p>';
+  
+  // Limpar badge
+  const badge = document.getElementById('notification-badge');
+  badge.style.display = 'none';
+  badge.textContent = '0';
+  
+  // Limpar notificações armazenadas
+  window.currentNotifications = [];
+  internalNotifications = [];
+  
+  showToast('Notificações', 'Notificações limpas', 'success');
+}
+
+async function removeNotification(index) {
+  if (!window.currentNotifications || !window.currentNotifications[index]) return;
+  
+  // Marcar esta notificação como limpa
+  const notif = window.currentNotifications[index];
+  const notifId = `${notif.ticketKey}-${notif.commentId || notif.id || 'unknown'}`;
+  
+  // Se for notificação interna, remover do array interno
+  if (notif.id && notif.id.startsWith('internal-')) {
+    const internalIndex = internalNotifications.findIndex(n => n.id === notif.id);
+    if (internalIndex !== -1) {
+      internalNotifications.splice(internalIndex, 1);
+    }
+  }
+  
+  // Carregar IDs já limpos e adicionar este
+  const config = await ipcRenderer.invoke('get-config');
+  const clearedNotifications = config.clearedNotifications || [];
+  const updatedCleared = [...new Set([...clearedNotifications, notifId])];
+  
+  // Manter apenas os últimos 100 IDs
+  const limitedCleared = updatedCleared.slice(-100);
+  
+  // Salvar no config
+  await ipcRenderer.invoke('save-config', { clearedNotifications: limitedCleared });
+  
+  // Remover notificação do array
+  window.currentNotifications.splice(index, 1);
+  
+  // Reexibir notificações
+  displayNotifications(window.currentNotifications);
+  
+  // Se não houver mais notificações, esconder badge
+  if (window.currentNotifications.length === 0) {
+    const badge = document.getElementById('notification-badge');
+    badge.style.display = 'none';
+  }
+}
+
+// Docs Dropdown
+function toggleDocsDropdown() {
+  const dropdown = document.getElementById('docs-dropdown');
+  const isVisible = dropdown.style.display === 'block';
+  
+  // Fechar outros dropdowns/menus
+  hideMenu();
+  document.getElementById('notifications-preview').style.display = 'none';
+  
+  dropdown.style.display = isVisible ? 'none' : 'block';
+}
+
+function hideDocsDropdown() {
+  document.getElementById('docs-dropdown').style.display = 'none';
+}
+
+// User Monitor Dropdown
+function toggleUserMonitorDropdown() {
+  const dropdown = document.getElementById('user-monitor-dropdown');
+  const isVisible = dropdown.style.display === 'block';
+  
+  // Fechar outros dropdowns/menus
+  hideMenu();
+  document.getElementById('notifications-preview').style.display = 'none';
+  document.getElementById('docs-dropdown').style.display = 'none';
+  
+  if (!isVisible) {
+    updateUserListDropdown();
+  }
+  
+  dropdown.style.display = isVisible ? 'none' : 'block';
+}
+
+function hideUserMonitorDropdown() {
+  document.getElementById('user-monitor-dropdown').style.display = 'none';
+}
+
+// Add User Modal
+function showAddUserModal() {
+  document.getElementById('add-user-modal').style.display = 'flex';
+  document.getElementById('new-user-email-input').value = '';
+  document.getElementById('new-user-email-input').focus();
+  hideUserMonitorDropdown();
+}
+
+function hideAddUserModal() {
+  document.getElementById('add-user-modal').style.display = 'none';
+}
+
+async function confirmAddUser() {
+  const input = document.getElementById('new-user-email-input');
+  const email = input.value.trim();
+  
+  if (!email) {
+    showToast('Atenção', 'Por favor, digite um e-mail válido', 'warning');
+    return;
+  }
+  
+  // Validar formato de email básico
+  if (!email.includes('@')) {
+    showToast('Erro', 'E-mail inválido', 'error');
+    return;
+  }
+  
+  hideAddUserModal();
+  await switchMonitoredUser(email);
+}
+
+async function loadNotifications() {
+  try {
+    console.log('🔔 Carregando notificações para:', {
+      monitorOtherUser: currentConfig.monitorOtherUser,
+      otherUserEmail: currentConfig.otherUserEmail,
+      jiraEmail: currentConfig.jiraEmail
+    });
+    
+    const result = await ipcRenderer.invoke('get-recent-notifications', 15);
+    let allNotifications = [];
+    
+    if (result.success) {
+      allNotifications = result.data;
+      console.log('✅ Notificações do Jira:', allNotifications.length);
+    }
+    
+    // Adicionar notificações internas (mudanças de tickets)
+    allNotifications = [...internalNotifications, ...allNotifications];
+    console.log('✅ Total (Jira + Internas):', allNotifications.length, '(Internas:', internalNotifications.length, ')');
+    
+    // Carregar notificações limpas do config
+    const config = await ipcRenderer.invoke('get-config');
+    const clearedNotifications = config.clearedNotifications || [];
+    
+    // Filtrar notificações que já foram limpas
+    const filteredNotifications = allNotifications.filter(notif => {
+      const notifId = `${notif.ticketKey}-${notif.commentId || notif.id}`;
+      return !clearedNotifications.includes(notifId);
+    });
+    
+    console.log('✅ Notificações após filtrar limpas:', filteredNotifications.length);
+    
+    displayNotifications(filteredNotifications);
+  } catch (error) {
+    console.error('Erro ao carregar notificações:', error);
+  }
+}
+
+// Adicionar notificação interna ao sino
+function addInternalNotification(ticket, changeType, changeDescription) {
+  const timestamp = Date.now();
+  const notif = {
+    id: `internal-${ticket.key}-${changeType}-${timestamp}`,
+    ticketKey: ticket.key,
+    ticketSummary: ticket.summary || ticket.fields?.summary || 'Sem título',
+    priority: ticket.priority || ticket.fields?.priority?.name || 'Medium',
+    type: changeType,
+    author: 'Sistema',
+    created: new Date().toISOString(),
+    body: changeDescription,
+    isInternal: false,
+    commentId: `internal-${timestamp}`
+  };
+  
+  // Verificar se já existe uma notificação similar (mesmo ticket e tipo nos últimos 5 minutos)
+  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+  const exists = internalNotifications.some(n => 
+    n.ticketKey === ticket.key && 
+    n.type === changeType &&
+    new Date(n.created).getTime() > fiveMinutesAgo
+  );
+  
+  if (exists) {
+    console.log('⚠️ Notificação duplicada ignorada:', notif);
+    return;
+  }
+  
+  // Adicionar no início do array (mais recente primeiro)
+  internalNotifications.unshift(notif);
+  
+  // Manter apenas as últimas 20 notificações internas
+  internalNotifications = internalNotifications.slice(0, 20);
+  
+  // Atualizar o sino
+  updateNotificationBadge();
+  
+  console.log('🔔 Notificação interna adicionada:', notif);
+}
+
+// Atualizar badge do sino
+function updateNotificationBadge() {
+  const badge = document.getElementById('notification-badge');
+  const totalNotifications = internalNotifications.length;
+  
+  if (totalNotifications > 0) {
+    badge.textContent = totalNotifications;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function displayNotifications(notifications) {
+  const body = document.getElementById('notifications-preview-body');
+  const badge = document.getElementById('notification-badge');
+  
+  if (notifications.length === 0) {
+    body.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">Nenhuma notificação recente</p>';
+    badge.style.display = 'none';
+    return;
+  }
+  
+  // Atualizar badge
+  badge.textContent = notifications.length;
+  badge.style.display = 'inline-flex';
+  
+  body.innerHTML = notifications.map((notif, index) => {
+    // Determinar ícone baseado no tipo
+    let typeIcon = '📝 Comentário';
+    let typeClass = 'comment';
+    
+    if (notif.type === 'mention') {
+      typeIcon = '💬 Menção';
+      typeClass = 'mention';
+    } else if (notif.type === 'new') {
+      typeIcon = '🎫 Novo';
+      typeClass = 'new';
+    } else if (notif.type === 'status') {
+      typeIcon = '🔄 Status';
+      typeClass = 'status';
+    } else if (notif.type === 'reassigned') {
+      typeIcon = '👤 Reatribuído';
+      typeClass = 'reassigned';
+    }
+    
+    return `
+      <div class="notification-item" data-notification-index="${index}" data-type="${typeClass}">
+        <button class="notification-close-btn" onclick="event.stopPropagation(); removeNotification(${index})" title="Remover notificação">✕</button>
+        <div class="notification-content" onclick="openTicketPreview('${notif.ticketKey}')">
+          <div class="notification-header">
+            <span class="notification-ticket-key">${notif.ticketKey}</span>
+            <span class="notification-time">${getTimeAgo(notif.created)}</span>
+          </div>
+          <div class="notification-summary">${notif.ticketSummary}</div>
+          <div class="notification-body">${notif.body}</div>
+          <div class="notification-badges">
+            <span class="notification-badge-item ${typeClass}">${typeIcon}</span>
+            ${notif.isInternal ? '<span class="notification-badge-item">🔒 Interno</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Armazenar notificações para poder remover individualmente
+  window.currentNotifications = notifications;
+}
+
+function getTimeAgo(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  
+  if (seconds < 60) return 'agora';
+  if (seconds < 3600) return `há ${Math.floor(seconds / 60)} minutos`;
+  if (seconds < 86400) return `há ${Math.floor(seconds / 3600)} horas`;
+  return `há ${Math.floor(seconds / 86400)} dias`;
+}
+
+// ===================================
+// Badge Tickets Modal
+// ===================================
+
+function showBadgeTickets(type) {
+  const tickets = type === 'sla' ? window.slaTicketsList : window.oldTicketsList;
+  
+  if (!tickets || tickets.length === 0) {
+    return;
+  }
+  
+  const title = type === 'sla' 
+    ? '⏰ Tickets com SLA em Alerta (vencendo em até 4 horas)'
+    : '📅 Tickets Antigos (sem atualização há 7+ dias)';
+  
+  const modalHtml = `
+    <div class="badge-modal-overlay" id="badge-modal-overlay" onclick="closeBadgeModal()">
+      <div class="badge-modal" onclick="event.stopPropagation()">
+        <div class="badge-modal-header">
+          <h3>${title}</h3>
+          <button class="badge-modal-close" onclick="closeBadgeModal()">✕</button>
+        </div>
+        <div class="badge-modal-body">
+          ${tickets.map(ticket => {
+            let timeInfo, timeClass, urgencyIcon;
+            
+            if (type === 'sla') {
+              const slaInfo = getSlaInfo(ticket.fields.duedate);
+              timeInfo = slaInfo.text;
+              timeClass = slaInfo.class;
+              urgencyIcon = slaInfo.icon;
+            } else {
+              timeInfo = `Última atualização: ${getTimeAgo(ticket.fields.updated)}`;
+              timeClass = 'old';
+              urgencyIcon = '📅';
+            }
+            
+            return `
+              <div class="badge-ticket-item" onclick="openTicketPreview('${ticket.key}'); closeBadgeModal();">
+                <div class="badge-ticket-header">
+                  <span class="badge-ticket-key">${ticket.key}</span>
+                  <span class="badge-ticket-status">${ticket.fields.status.name}</span>
+                </div>
+                <div class="badge-ticket-summary">${ticket.fields.summary}</div>
+                <div class="badge-ticket-time ${timeClass}">${urgencyIcon} ${timeInfo}</div>
+                <div class="badge-ticket-actions">
+                  <button class="badge-ticket-btn" onclick="event.stopPropagation(); navigator.clipboard.writeText('${ticket.key}'); showToast('Key copiada!');" title="Copiar key">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                  </button>
+                  <button class="badge-ticket-btn" onclick="event.stopPropagation(); ipcRenderer.invoke('open-url', 'https://nubank.atlassian.net/browse/${ticket.key}');" title="Abrir no Jira">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path fill="currentColor" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Remover modal anterior se existir
+  const existingModal = document.getElementById('badge-modal-overlay');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // Adicionar novo modal
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function getSlaInfo(dueDateString) {
+  if (!dueDateString) return { text: 'Sem data', class: 'unknown', icon: '❓' };
+  
+  const dueDate = new Date(dueDateString);
+  const now = new Date();
+  const diffMs = dueDate - now;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  
+  if (diffMinutes < 0) {
+    return {
+      text: `SLA ESTOURADO (atrasado ${Math.abs(diffMinutes)} min)`,
+      class: 'overdue',
+      icon: '🚨'
+    };
+  }
+  
+  if (diffMinutes < 30) {
+    return {
+      text: `CRÍTICO: Vence em ${diffMinutes} minutos`,
+      class: 'critical',
+      icon: '🔴'
+    };
+  }
+  
+  const diffHours = Math.floor(diffMinutes / 60);
+  const remainingMinutes = diffMinutes % 60;
+  
+  if (diffMinutes < 120) {
+    return {
+      text: `ATENÇÃO: Vence em ${diffHours}h ${remainingMinutes}min`,
+      class: 'warning',
+      icon: '⚠️'
+    };
+  }
+  
+  return {
+    text: `Vence em ${diffHours}h ${remainingMinutes}min`,
+    class: 'normal',
+    icon: '⏰'
+  };
+}
+
+function closeBadgeModal() {
+  const modal = document.getElementById('badge-modal-overlay');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+function formatDueDate(dueDateString) {
+  if (!dueDateString) return 'Sem data';
+  
+  const dueDate = new Date(dueDateString);
+  const now = new Date();
+  const diffMs = dueDate - now;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  
+  if (diffMinutes < 0) {
+    return `⚠️ Atrasado`;
+  }
+  
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minutos`;
+  }
+  
+  const diffHours = Math.floor(diffMinutes / 60);
+  const remainingMinutes = diffMinutes % 60;
+  
+  if (diffHours < 1) {
+    return `${diffMinutes} minutos`;
+  }
+  
+  return `${diffHours}h ${remainingMinutes}min`;
+}
+
+// Busca Rápida
+function toggleSearch() {
+  const container = document.getElementById('search-container');
+  if (container.style.display === 'none') {
+    container.style.display = 'block';
+    document.getElementById('search-input').focus();
+  } else {
+    hideSearch();
+  }
+}
+
+function hideSearch() {
+  document.getElementById('search-container').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function performSearch() {
+  const query = document.getElementById('search-input').value.toLowerCase();
+  const resultsContainer = document.getElementById('search-results');
+  
+  if (!query || searchTickets.length === 0) {
+    resultsContainer.innerHTML = '';
+    return;
+  }
+  
+  const results = searchTickets.filter(ticket => 
+    ticket.key.toLowerCase().includes(query) ||
+    ticket.fields.summary.toLowerCase().includes(query) ||
+    ticket.fields.status.name.toLowerCase().includes(query)
+  );
+  
+  if (results.length === 0) {
+    resultsContainer.innerHTML = '<div style="padding: 12px; color: #666; text-align: center;">Nenhum ticket encontrado</div>';
+    return;
+  }
+  
+  resultsContainer.innerHTML = results.slice(0, 10).map(ticket => `
+    <div class="search-result-item" onclick="openTicketInJira('${ticket.key}')">
+      <div class="search-result-key">${ticket.key}</div>
+      <div class="search-result-summary">${ticket.fields.summary}</div>
+      <div class="search-result-status">${ticket.fields.status.name}</div>
+    </div>
+  `).join('');
+}
+
+// Modal de Atalhos
+function showShortcutsModal() {
+  document.getElementById('shortcuts-modal').style.display = 'flex';
+}
+
+function hideShortcutsModal() {
+  document.getElementById('shortcuts-modal').style.display = 'none';
+}
+
+// Config Panel
+function showConfigPanel() {
+  document.getElementById('config-panel').style.display = 'flex';
+}
+
+function hideConfigPanel() {
+  document.getElementById('config-panel').style.display = 'none';
+}
+
+function togglePasswordVisibility() {
+  const input = document.getElementById('jira-api-token');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// Layout
+function toggleLayout() {
+  isHorizontalLayout = !isHorizontalLayout;
+  const container = document.querySelector('.app-container');
+  
+  if (isHorizontalLayout) {
+    container.classList.add('horizontal-layout');
+  } else {
+    container.classList.remove('horizontal-layout');
+  }
+}
+
+// Salvar configurações atuais automaticamente (sem UI)
+async function saveCurrentState() {
+  try {
+    const stateToSave = {
+      ...currentConfig,
+      proMode: isProMode,
+      isHorizontalLayout: isHorizontalLayout,
+      windowOpacity: windowOpacity,
+      focusMode: isFocusMode,
+      dailyActivity: dailyActivity // Salvar atividade diária
+    };
+    
+    await ipcRenderer.invoke('save-config', stateToSave);
+    console.log('💾 Estado salvo automaticamente:', {
+      proMode: stateToSave.proMode,
+      focusMode: stateToSave.focusMode,
+      windowOpacity: stateToSave.windowOpacity,
+      dailyActivity: stateToSave.dailyActivity
+    });
+  } catch (error) {
+    console.error('❌ Erro ao salvar estado:', error);
+  }
+}
+
+// Modo Pro
+async function toggleProMode() {
+  isProMode = !isProMode;
+  currentConfig.proMode = isProMode;
+  await saveCurrentState(); // Salvar automaticamente
+  console.log('💾 Modo Pro alterado e salvo:', isProMode);
+  updateProModeUI();
+}
+
+function updateProModeUI() {
+  console.log('🎨 updateProModeUI chamada, isProMode:', isProMode);
+  const proSection = document.getElementById('pro-mode-section');
+  proSection.style.display = isProMode ? 'block' : 'none';
+  
+  // Atualizar botão PRO no menu
+  const menuProBtn = document.getElementById('menu-pro');
+  if (isProMode) {
+    menuProBtn.style.color = '#667eea';
+    menuProBtn.style.fontWeight = '600';
+    
+    // Configurar drag-and-drop e edição para botões customizáveis
+    setupCustomButtonsFunctionality();
+    
+    // Atualizar indicador de usuário no Modo Pro
+    updateProModeUserIndicator();
+    
+    // ✨ v1.5.0 - Iniciar novas funcionalidades
+    // Carregar Dashboard de Performance
+    if (typeof loadPerformanceDashboard === 'function') {
+      loadPerformanceDashboard(30);
+    }
+    
+    // Iniciar Alertas Proativos
+    if (typeof startProactiveAlerts === 'function') {
+      startProactiveAlerts();
+    }
+    
+    console.log('✅ Funcionalidades v1.5.0 ativadas (Dashboard + Alertas)');
+  } else {
+    menuProBtn.style.color = 'white';
+    menuProBtn.style.fontWeight = 'normal';
+    
+    // Parar alertas proativos ao desativar Modo Pro
+    if (proactiveAlertsInterval) {
+      clearInterval(proactiveAlertsInterval);
+      proactiveAlertsInterval = null;
+      console.log('⏹️ Alertas proativos desativados');
+    }
+  }
+}
+
+// Atualizar indicador de usuário no Modo Pro
+function updateProModeUserIndicator() {
+  const indicator = document.getElementById('pro-mode-user-indicator');
+  const nameSpan = document.getElementById('pro-mode-user-name');
+  
+  if (!indicator || !nameSpan) return;
+  
+  if (currentConfig.monitorOtherUser && currentConfig.otherUserEmail) {
+    const email = currentConfig.otherUserEmail;
+    const displayName = email.split('@')[0].split('.').map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1)
+    ).join(' ');
+    
+    nameSpan.textContent = `Dados de: ${displayName}`;
+    indicator.style.display = 'flex';
+  } else {
+    indicator.style.display = 'none';
+  }
+}
+
+// ===================================
+// Atividade Diária (Modo Pro)
+// ===================================
+
+// Resetar contadores à meia-noite
+function checkDailyReset() {
+  const today = new Date().toDateString();
+  if (dailyActivity.lastReset !== today) {
+    console.log('🔄 Resetando contadores de atividade diária...');
+    dailyActivity = {
+      received: 0,
+      resolved: 0,
+      commented: 0,
+      statusChanged: 0,
+      lastReset: today,
+      receivedTickets: [],
+      resolvedTickets: [],
+      commentedTickets: []
+    };
+    updateDailyActivityDisplay();
+    updateDailyActivityDetails();
+  }
+}
+
+// Atualizar display dos cards de atividade
+function updateDailyActivityDisplay() {
+  const receivedEl = document.getElementById('activity-received');
+  const resolvedEl = document.getElementById('activity-resolved');
+  const commentedEl = document.getElementById('activity-commented');
+  
+  if (receivedEl) receivedEl.textContent = dailyActivity.received;
+  if (resolvedEl) resolvedEl.textContent = dailyActivity.resolved;
+  if (commentedEl) commentedEl.textContent = dailyActivity.commented;
+}
+
+// Calcular atividade do dia baseada nos tickets atuais
+function calculateDailyActivityFromTickets(allTickets) {
+  if (!allTickets || allTickets.length === 0) {
+    console.log('⚠️ Nenhum ticket para calcular atividade');
+    return;
+  }
+  
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  // Fallback: últimas 24h se não houver atividade hoje
+  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  
+  console.log('📊 Calculando atividade do dia a partir dos tickets...');
+  console.log('📊 Total de tickets:', allTickets.length);
+  console.log('📊 Início do dia:', startOfDay.toISOString());
+  
+  let todayCount = 0;
+  let last24hCount = 0;
+  
+  allTickets.forEach(ticket => {
+    const createdDate = ticket.fields?.created ? new Date(ticket.fields.created) : null;
+    const updatedDate = ticket.fields?.updated ? new Date(ticket.fields.updated) : null;
+    const resolutionDate = ticket.fields?.resolutiondate ? new Date(ticket.fields.resolutiondate) : null;
+    const status = ticket.fields?.status?.name || '';
+    
+    // Tickets recebidos hoje (criados hoje)
+    if (createdDate && createdDate >= startOfDay) {
+      todayCount++;
+      trackNewTicketReceived({
+        key: ticket.key,
+        summary: ticket.fields?.summary || ticket.key
+      });
+    } 
+    // Fallback: tickets das últimas 24h
+    else if (createdDate && createdDate >= last24h && dailyActivity.received === 0) {
+      last24hCount++;
+      trackNewTicketReceived({
+        key: ticket.key,
+        summary: ticket.fields?.summary || ticket.key
+      });
+    }
+    
+    // Tickets fechados hoje (resolvidos hoje)
+    const closedStatuses = ['Fechado', 'Closed', 'Resolvido', 'Resolved', 'Concluído', 'Concluido', 'Done'];
+    if (closedStatuses.includes(status)) {
+      if (resolutionDate && resolutionDate >= startOfDay) {
+        trackTicketResolved({
+          key: ticket.key,
+          summary: ticket.fields?.summary || ticket.key
+        });
+      }
+      // Fallback: se foi atualizado hoje e está fechado
+      else if (updatedDate && updatedDate >= startOfDay && dailyActivity.resolved === 0) {
+        trackTicketResolved({
+          key: ticket.key,
+          summary: ticket.fields?.summary || ticket.key
+        });
+      }
+    }
+  });
+  
+  console.log('📊 Atividade calculada:', {
+    recebidos: dailyActivity.received,
+    fechados: dailyActivity.resolved,
+    comentarios: dailyActivity.commented,
+    todayCount: todayCount,
+    last24hCount: last24hCount
+  });
+  
+  // Se ainda estiver zerado, mostrar mensagem
+  if (dailyActivity.received === 0 && dailyActivity.resolved === 0) {
+    console.log('ℹ️ Nenhuma atividade detectada hoje. Aguarde novos tickets ou interações.');
+  }
+}
+
+// Rastrear novos tickets recebidos hoje
+function trackNewTicketReceived(ticket) {
+  if (!ticket) return;
+  
+  // Garantir que o array existe
+  if (!dailyActivity.receivedTickets) {
+    dailyActivity.receivedTickets = [];
+  }
+  
+  // Evitar duplicatas
+  if (!dailyActivity.receivedTickets.find(t => t.key === ticket.key)) {
+    dailyActivity.received++;
+    dailyActivity.receivedTickets.push({
+      key: ticket.key,
+      summary: ticket.summary,
+      time: new Date().toISOString()
+    });
+    updateDailyActivityDisplay();
+    updateDailyActivityDetails();
+    console.log('📥 Ticket recebido hoje:', ticket.key);
+  }
+}
+
+// Rastrear ticket resolvido/fechado hoje
+function trackTicketResolved(ticket) {
+  if (!ticket) return;
+  
+  // Garantir que o array existe
+  if (!dailyActivity.resolvedTickets) {
+    dailyActivity.resolvedTickets = [];
+  }
+  
+  // Evitar duplicatas
+  if (!dailyActivity.resolvedTickets.find(t => t.key === ticket.key)) {
+    dailyActivity.resolved++;
+    dailyActivity.resolvedTickets.push({
+      key: ticket.key,
+      summary: ticket.summary,
+      time: new Date().toISOString()
+    });
+    updateDailyActivityDisplay();
+    updateDailyActivityDetails();
+    console.log('✅ Ticket resolvido hoje:', ticket.key);
+  }
+}
+
+// Rastrear comentário adicionado hoje
+function trackCommentAdded(ticketKey, ticketSummary) {
+  if (!ticketKey) return;
+  
+  // Garantir que o array existe
+  if (!dailyActivity.commentedTickets) {
+    dailyActivity.commentedTickets = [];
+  }
+  
+  dailyActivity.commented++;
+  dailyActivity.commentedTickets.push({
+    key: ticketKey,
+    summary: ticketSummary || ticketKey,
+    time: new Date().toISOString()
+  });
+  updateDailyActivityDisplay();
+  updateDailyActivityDetails();
+  console.log('💬 Comentário adicionado hoje:', ticketKey);
+}
+
+// Atualizar listas de detalhes
+function updateDailyActivityDetails() {
+  // Garantir que os arrays existem antes de atualizar
+  if (!dailyActivity.receivedTickets) dailyActivity.receivedTickets = [];
+  if (!dailyActivity.resolvedTickets) dailyActivity.resolvedTickets = [];
+  if (!dailyActivity.commentedTickets) dailyActivity.commentedTickets = [];
+  
+  updateActivityList('received', dailyActivity.receivedTickets);
+  updateActivityList('resolved', dailyActivity.resolvedTickets);
+  updateActivityList('commented', dailyActivity.commentedTickets);
+}
+
+function updateActivityList(type, tickets) {
+  const listEl = document.getElementById(`activity-${type}-list`);
+  if (!listEl) return;
+  
+  // Garantir que tickets é um array válido
+  if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
+    const typeLabels = {
+      received: 'Nenhum ticket recebido hoje',
+      resolved: 'Nenhum ticket fechado hoje',
+      commented: 'Nenhum comentário hoje'
+    };
+    listEl.innerHTML = `<p class="no-activity-msg">${typeLabels[type]}</p>`;
+  } else {
+    listEl.innerHTML = tickets.map(ticket => `
+      <div class="activity-detail-item ${type}" onclick="openTicketPreview('${ticket.key}')">
+        <div>
+          <span class="item-key">${ticket.key}</span>
+          <span class="item-summary">${ticket.summary}</span>
+        </div>
+        <div class="item-time">${getTimeAgo(ticket.time)}</div>
+      </div>
+    `).join('');
+  }
+}
+
+// Expandir/colapsar detalhes de atividade
+function toggleActivityDetails(type) {
+  const detailsEl = document.getElementById('daily-activity-details');
+  const expandBtn = document.getElementById('expand-daily-activity');
+  
+  if (detailsEl.style.display === 'none') {
+    detailsEl.style.display = 'block';
+    if (expandBtn) expandBtn.classList.add('expanded');
+  }
+  
+  // Scroll suave para a seção correspondente
+  setTimeout(() => {
+    const section = document.querySelector(`#activity-${type}-list`).closest('.activity-detail-section');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, 100);
+}
+
+// Configurar funcionalidades dos botões customizáveis
+function setupCustomButtonsFunctionality() {
+  // Configurar para cada container de botões
+  const containers = [
+    'sim-cards-buttons-container',
+    'project-stats' // Container único para todos os projetos (IT, DCI, GTC)
+  ];
+  
+  containers.forEach(containerId => {
+    const container = document.getElementById(containerId);
+    if (container) {
+      setupDragAndDropForContainer(container);
+      setupEditableButtons(container);
+    }
+  });
+  
+  console.log('✅ Funcionalidades de drag-and-drop e edição configuradas');
+}
+
+// Fetch Stats
+// Verificar menções ao usuário
+async function checkForMentions() {
+  try {
+    console.log('📢 Verificando menções...');
+    
+    const result = await ipcRenderer.invoke('fetch-mentions');
+    
+    if (!result.success) {
+      console.error('❌ Erro ao buscar menções:', result.error);
+      return;
+    }
+    
+    const mentions = result.data.issues || [];
+    console.log('📢 Menções encontradas:', mentions.length);
+    
+    // Verificar novas menções
+    const newMentions = mentions.filter(mention => {
+      const mentionKey = `${mention.key}-${mention.latestMentionComment.id}`;
+      const lastCheck = lastMentionsCheck[mentionKey];
+      
+      // É nova se nunca foi verificada ou se o comentário é mais recente
+      if (!lastCheck) return true;
+      
+      const mentionTime = new Date(mention.mentionedAt).getTime();
+      return mentionTime > lastCheck;
+    });
+    
+    console.log('📢 Novas menções:', newMentions.length);
+    
+    if (newMentions.length > 0) {
+      // Atualizar registro de menções verificadas
+      newMentions.forEach(mention => {
+        const mentionKey = `${mention.key}-${mention.latestMentionComment.id}`;
+        lastMentionsCheck[mentionKey] = new Date(mention.mentionedAt).getTime();
+      });
+      
+      // Criar notificações
+      newMentions.forEach(mention => {
+        const comment = mention.latestMentionComment;
+        const author = comment.author?.displayName || 'Alguém';
+        
+        // Notificação no sino
+        addInternalNotification(
+          {
+            key: mention.key,
+            summary: mention.fields.summary,
+            fields: mention.fields
+          },
+          'mention',
+          `${author} mencionou você em um comentário`
+        );
+        
+        // Notificação desktop (se habilitada e se notificações de menção estão ativas)
+        if (currentConfig.desktopNotifications && 
+            currentConfig.notifyMentions !== false && 
+            Notification.permission === 'granted') {
+          const notification = new Notification(`📢 Você foi mencionado - ${mention.key}`, {
+            body: `${author}: ${mention.fields.summary}`,
+            icon: 'https://nubank.atlassian.net/favicon.ico',
+            tag: `mention-${mention.key}-${comment.id}`,
+            requireInteraction: false
+          });
+          
+          notification.onclick = () => {
+            openTicketPreview(mention.key);
+            notification.close();
+          };
+          
+          if (currentConfig.soundNotifications) {
+            playNotificationSound();
+          }
+        }
+      });
+      
+      updateNotificationBadge();
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro ao verificar menções:', error);
+  }
+}
+
+async function fetchAndUpdateStats() {
+  try {
+    showLoading();
+    updateConnectionStatus('loading');
+    hideErrorBanner();
+    
+    // Adicionar spinner no botão de refresh
+    const refreshBtn = document.getElementById('refresh-btn');
+    refreshBtn.classList.add('loading');
+    
+    // Verificar se precisa resetar contadores diários
+    checkDailyReset();
+    
+    const result = await ipcRenderer.invoke('fetch-jira-stats', currentConfig);
+    
+    if (result.success) {
+      console.log('📊 Dados recebidos do Jira:', result.data);
+      
+      // Usar dados específicos de atividade diária do backend
+      if (result.data.todayReceived || result.data.todayResolved || result.data.todayComments) {
+        console.log('📊 Atualizando atividade diária com dados do Jira...');
+        
+        // Limpar e recalcular atividade do dia
+        dailyActivity.received = 0;
+        dailyActivity.resolved = 0;
+        dailyActivity.commented = 0;
+        dailyActivity.receivedTickets = [];
+        dailyActivity.resolvedTickets = [];
+        dailyActivity.commentedTickets = [];
+        
+        // Tickets recebidos hoje
+        if (result.data.todayReceived && result.data.todayReceived.length > 0) {
+          result.data.todayReceived.forEach(ticket => {
+            trackNewTicketReceived({
+              key: ticket.key,
+              summary: ticket.fields?.summary || ticket.key
+            });
+          });
+        }
+        
+        // Tickets fechados hoje
+        if (result.data.todayResolved && result.data.todayResolved.length > 0) {
+          result.data.todayResolved.forEach(ticket => {
+            trackTicketResolved({
+              key: ticket.key,
+              summary: ticket.fields?.summary || ticket.key
+            });
+          });
+        }
+        
+        // Comentários feitos hoje
+        if (result.data.todayComments && result.data.todayComments.length > 0) {
+          dailyActivity.commented = result.data.todayComments.length;
+          dailyActivity.commentedTickets = result.data.todayComments.map(comment => ({
+            key: comment.ticketKey,
+            summary: comment.ticketSummary,
+            time: comment.commentCreated
+          }));
+          console.log(`✅ ${dailyActivity.commented} comentários detectados hoje`);
+        }
+        
+        console.log('📊 Atividade diária atualizada:', {
+          recebidos: dailyActivity.received,
+          fechados: dailyActivity.resolved,
+          comentarios: dailyActivity.commented
+        });
+      }
+      
+      currentStats = result.data;
+      searchTickets = result.data.allTickets || [];
+      updateUI(result.data);
+      updateExpandedTicketsLists();
+      
+      // Atualizar display de atividade diária
+      updateDailyActivityDisplay();
+      
+      // Atualizar status de sucesso
+      updateConnectionStatus('online');
+      lastUpdateTime = new Date();
+      updateLastUpdateTime();
+      startProgressBar();
+    } else {
+      showError(result.error);
+      updateConnectionStatus('offline');
+      showErrorBanner('Erro ao buscar dados', result.error);
+    }
+    
+    refreshBtn.classList.remove('loading');
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas:', error);
+    showError(error.message);
+    updateConnectionStatus('offline');
+    showErrorBanner('Erro de Conexão', 'Não foi possível conectar ao Jira. Verifique sua conexão e credenciais.');
+    
+    const refreshBtn = document.getElementById('refresh-btn');
+    refreshBtn.classList.remove('loading');
+  } finally {
+    hideLoading();
+  }
+}
+
+function updateUI(stats) {
+  // Debug: verificar os dados recebidos
+  console.log('🔢 Atualizando contadores:', {
+    total: stats.total,
+    support: stats.waitingForSupport,
+    customer: stats.waitingForCustomer,
+    pending: stats.pending
+  });
+  
+  // Detectar novos tickets e enviar notificações
+  if (currentConfig.desktopNotifications !== false && stats.allTickets) {
+    console.log('🔔 Verificando novos tickets para notificações...');
+    checkForNewTickets(stats.allTickets);
+  } else {
+    console.log('⚠️ Notificações ou stats não disponíveis:', {
+      notificationsEnabled: currentConfig.desktopNotifications !== false,
+      hasStats: !!stats.allTickets
+    });
+  }
+  
+  // Atualizar contadores com animação
+  animateNumber('stat-total', stats.total || 0);
+  animateNumber('stat-support', stats.waitingForSupport || 0);
+  animateNumber('stat-customer', stats.waitingForCustomer || 0);
+  animateNumber('stat-pending', stats.pending || 0);
+  
+  // Atualizar badges
+  const slaBadge = document.getElementById('badge-sla');
+  const oldBadge = document.getElementById('badge-old');
+  
+  // Armazenar listas de tickets para os badges
+  window.slaTicketsList = stats.slaTickets || [];
+  window.oldTicketsList = stats.oldTicketsList || [];
+  
+  if (stats.slaAlerts > 0 && currentConfig.alertSla !== false) {
+    slaBadge.style.display = 'inline-flex';
+    slaBadge.style.cursor = 'pointer';
+    slaBadge.title = `${stats.slaAlerts} ticket(s) com SLA em alerta (até 4h ou atrasados) - Clique para ver detalhes`;
+    document.getElementById('badge-sla-text').textContent = stats.slaAlerts;
+  } else {
+    slaBadge.style.display = 'none';
+  }
+  
+  if (stats.oldTickets > 0 && currentConfig.alertOldTickets !== false) {
+    oldBadge.style.display = 'inline-flex';
+    oldBadge.style.cursor = 'pointer';
+    oldBadge.title = `${stats.oldTickets} ticket(s) sem atualização há 7+ dias - Clique para ver`;
+    document.getElementById('badge-old-text').textContent = stats.oldTickets;
+  } else {
+    oldBadge.style.display = 'none';
+  }
+  
+  // Atualizar Modo Pro
+  if (isProMode) {
+    updateProModeSection(stats);
+  }
+  
+  // Atualizar última atualização
+  document.getElementById('last-update').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+}
+
+// Detectar novos tickets e mudanças
+function checkForNewTickets(allTickets) {
+  console.log('🔍 checkForNewTickets chamado:', {
+    ticketsCount: allTickets?.length || 0,
+    previousCount: previousTicketKeys.size,
+    isFirstTime: previousTicketKeys.size === 0
+  });
+  
+  if (!allTickets || allTickets.length === 0) {
+    console.log('⚠️ Nenhum ticket para verificar');
+    return;
+  }
+  
+  const currentTicketKeys = new Set(allTickets.map(t => t.key));
+  const newTickets = [];
+  const changedTickets = [];
+  
+  // Se é a primeira vez, apenas inicializar
+  if (previousTicketKeys.size === 0) {
+    console.log('📋 Primeira vez - inicializando lista de tickets');
+    previousTicketKeys = currentTicketKeys;
+    
+    // Inicializar estados
+    allTickets.forEach(ticket => {
+      previousTicketStates.set(ticket.key, {
+        status: ticket.status || ticket.fields?.status?.name,
+        assignee: ticket.assignee || ticket.fields?.assignee?.emailAddress
+      });
+    });
+    return;
+  }
+  
+  // Verificar cada ticket
+  for (const ticket of allTickets) {
+    const ticketKey = ticket.key;
+    const currentStatus = ticket.status || ticket.fields?.status?.name;
+    const currentAssignee = ticket.assignee || ticket.fields?.assignee?.emailAddress;
+    const previousState = previousTicketStates.get(ticketKey);
+    
+    // Caso 1: Ticket NOVO (não existia antes)
+    if (!previousTicketKeys.has(ticketKey)) {
+      console.log('🆕 Novo ticket detectado:', ticketKey);
+      newTickets.push({
+        ...ticket,
+        changeType: 'new',
+        changeDescription: 'Novo ticket atribuído a você'
+      });
+      
+      // Rastrear novo ticket para atividade diária
+      trackNewTicketReceived({
+        key: ticketKey,
+        summary: ticket.summary || ticket.fields?.summary || ticketKey
+      });
+    }
+    // Caso 2: Ticket MUDOU DE STATUS
+    else if (previousState && previousState.status !== currentStatus) {
+      console.log('🔄 Status mudou:', ticketKey, previousState.status, '→', currentStatus);
+      
+      // Rastrear ticket fechado se mudou para um status de fechamento
+      const closedStatuses = ['Fechado', 'Closed', 'Resolvido', 'Resolved', 'Concluído', 'Concluido', 'Done'];
+      if (closedStatuses.includes(currentStatus)) {
+        trackTicketResolved({
+          key: ticketKey,
+          summary: ticket.summary || ticket.fields?.summary || ticketKey
+        });
+      }
+      changedTickets.push({
+        ...ticket,
+        changeType: 'status',
+        changeDescription: `Status mudou: ${previousState.status} → ${currentStatus}`,
+        previousStatus: previousState.status,
+        currentStatus: currentStatus
+      });
+    }
+    // Caso 3: Ticket FOI REATRIBUÍDO PARA O USUÁRIO
+    else if (previousState && previousState.assignee !== currentAssignee) {
+      console.log('👤 Reatribuído:', ticketKey, previousState.assignee, '→', currentAssignee);
+      
+      // Só notificar se foi atribuído PARA o usuário atual
+      const currentUserEmail = currentConfig.jiraEmail;
+      if (currentAssignee === currentUserEmail) {
+        changedTickets.push({
+          ...ticket,
+          changeType: 'reassigned',
+          changeDescription: 'Ticket reatribuído para você',
+          previousAssignee: previousState.assignee,
+          currentAssignee: currentAssignee
+        });
+      }
+    }
+    
+    // Atualizar estado deste ticket
+    previousTicketStates.set(ticketKey, {
+      status: currentStatus,
+      assignee: currentAssignee
+    });
+  }
+  
+  // Atualizar lista de tickets anteriores
+  previousTicketKeys = currentTicketKeys;
+  
+  // Limpar estados de tickets que não existem mais
+  for (const key of previousTicketStates.keys()) {
+    if (!currentTicketKeys.has(key)) {
+      previousTicketStates.delete(key);
+    }
+  }
+  
+  // Filtrar notificações baseado nas preferências do usuário
+  let notificationsToShow = [];
+  
+  if (currentConfig.notifyNewTickets !== false) {
+    notificationsToShow.push(...newTickets.filter(t => t.changeType === 'new'));
+  }
+  
+  if (currentConfig.notifyStatusChanges !== false) {
+    notificationsToShow.push(...changedTickets.filter(t => t.changeType === 'status'));
+  }
+  
+  if (currentConfig.notifyReassignments !== false) {
+    notificationsToShow.push(...changedTickets.filter(t => t.changeType === 'reassigned'));
+  }
+  
+  // Mostrar notificações
+  const allNotifications = [...newTickets, ...changedTickets];
+  
+  if (allNotifications.length > 0) {
+    console.log('✅ Total de mudanças:', {
+      novos: newTickets.length,
+      alterados: changedTickets.length,
+      total: allNotifications.length,
+      aNotificar: notificationsToShow.length
+    });
+    
+    // Adicionar notificações ao sino interno (sempre, independente das preferências)
+    allNotifications.forEach(ticket => {
+      addInternalNotification(ticket, ticket.changeType, ticket.changeDescription);
+    });
+    
+    // Mostrar notificações desktop (baseado nas preferências)
+    if (notificationsToShow.length > 0) {
+      showDesktopNotifications(notificationsToShow);
+    } else {
+      console.log('⚠️ Mudanças detectadas, mas notificações desktop desabilitadas para estes tipos');
+    }
+    
+    // Atualizar atividade do dia
+    dailyActivity.new += newTickets.length;
+    dailyActivity.updated += changedTickets.length;
+    updateDailyActivityUI();
+  } else {
+    console.log('✅ Nenhuma mudança nesta verificação');
+  }
+}
+
+// Mostrar notificações desktop
+function showDesktopNotifications(newTickets) {
+  console.log('🔔 showDesktopNotifications chamado:', {
+    enabled: currentConfig.desktopNotifications,
+    ticketsCount: newTickets.length,
+    permission: Notification.permission
+  });
+  
+  if (!currentConfig.desktopNotifications) {
+    console.log('⚠️ Notificações desktop desabilitadas no config');
+    return;
+  }
+  
+  if (newTickets.length === 0) {
+    console.log('⚠️ Nenhum ticket novo para notificar');
+    return;
+  }
+  
+  // Verificar permissão
+  if (Notification.permission !== 'granted') {
+    console.warn('⚠️ Permissão de notificações não concedida:', Notification.permission);
+    // Tentar solicitar permissão novamente
+    Notification.requestPermission().then(permission => {
+      console.log('🔔 Nova tentativa de permissão:', permission);
+      if (permission === 'granted') {
+        showDesktopNotifications(newTickets); // Tentar novamente
+      }
+    });
+    return;
+  }
+  
+  console.log('✅ Mostrando', newTickets.length, 'notificações desktop');
+  
+  // Limite de notificações simultâneas
+  const maxNotifications = 3;
+  const ticketsToNotify = newTickets.slice(0, maxNotifications);
+  
+  ticketsToNotify.forEach((ticket, index) => {
+    setTimeout(() => {
+      // Determinar título e corpo baseado no tipo de mudança
+      let title, body;
+      
+      switch (ticket.changeType) {
+        case 'new':
+          title = '🎫 Novo Ticket no Jira';
+          body = `${ticket.key}: ${ticket.summary || ticket.fields?.summary || 'Sem título'}`;
+          break;
+        
+        case 'status':
+          title = '🔄 Status Alterado';
+          body = `${ticket.key}: ${ticket.previousStatus} → ${ticket.currentStatus}`;
+          break;
+        
+        case 'reassigned':
+          title = '👤 Ticket Reatribuído';
+          body = `${ticket.key}: Agora é seu!\n${ticket.summary || ticket.fields?.summary || ''}`;
+          break;
+        
+        case 'mention':
+          title = '📢 Você foi mencionado no Jira';
+          body = `${ticket.key}: ${ticket.changeDescription || ticket.summary || ticket.fields?.summary || 'Você foi mencionado em um comentário'}`;
+          break;
+        
+        default:
+          title = '🎫 Atualização no Jira';
+          body = `${ticket.key}: ${ticket.summary || ticket.fields?.summary || 'Sem título'}`;
+      }
+      
+      console.log('📨 Enviando notificação:', title, body);
+      
+      const notification = new Notification(title, {
+        body: body,
+        icon: 'https://nubank.atlassian.net/favicon.ico',
+        tag: ticket.key + '-' + ticket.changeType,
+        requireInteraction: false
+      });
+      
+      notification.onclick = () => {
+        console.log('🖱️ Notificação clicada:', ticket.key);
+        openTicketPreview(ticket.key);
+        notification.close();
+      };
+      
+      notification.onerror = (error) => {
+        console.error('❌ Erro ao mostrar notificação:', error);
+      };
+      
+      // Tocar som se habilitado
+      if (currentConfig.soundNotifications !== false) {
+        playNotificationSound();
+      }
+    }, index * 300); // Espaçar notificações por 300ms
+  });
+  
+  // Se houver mais mudanças, mostrar notificação resumida
+  if (newTickets.length > maxNotifications) {
+    setTimeout(() => {
+      const remaining = newTickets.length - maxNotifications;
+      new Notification('🎫 Jira Monitor', {
+        body: `+${remaining} ${remaining === 1 ? 'atualização' : 'atualizações'}`,
+        icon: 'https://nubank.atlassian.net/favicon.ico'
+      });
+    }, maxNotifications * 300);
+  }
+}
+
+// Tocar som de notificação
+function playNotificationSound() {
+  const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBi2A0fPbhzYHGWe56+idTgwOUKzk7bllHAU2k9n1y3goB');
+  audio.volume = 0.3;
+  audio.play().catch(() => {}); // Ignorar erro se não puder tocar
+}
+
+function updateProModeSection(stats) {
+  console.log('📊 Atualizando Modo Pro com dados de:', currentConfig.monitorOtherUser ? currentConfig.otherUserEmail : 'você');
+  
+  // Atualizar indicador de usuário no Modo Pro
+  updateProModeUserIndicator();
+  
+  // SIM Cards
+  if (stats.simCardsTickets) {
+    document.getElementById('sim-cards-count').textContent = stats.simCardsTickets.count || 0;
+  }
+  
+  // Tickets Avaliados
+  if (stats.evaluatedTickets) {
+    document.getElementById('evaluated-tickets-count').textContent = stats.evaluatedTickets.count || 0;
+  }
+  
+  // Projeto Stats
+  updateProjectStats(stats.byProject);
+  
+  // Tickets Recentes
+  updateRecentTickets(stats.recentTickets);
+  
+  // Gráfico de Tendência
+  updateTrendChart(stats.trend);
+  
+  // Atualizar Mini Stats Dashboard
+  updateMiniStats(stats);
+}
+
+function updateProjectStats(byProject) {
+  const container = document.getElementById('project-stats');
+  if (!byProject) return;
+  
+  // 🔥 DINÂMICO: Pega TODOS os projetos que existirem, não apenas IT, DCI, GTC
+  const projects = Object.keys(byProject).sort(); // Ordenado alfabeticamente
+  
+  // Se não houver projetos, exibe mensagem
+  if (projects.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: #666;">Nenhum projeto encontrado</p>';
+    return;
+  }
+  
+  container.innerHTML = projects.map(proj => {
+    const data = byProject[proj] || { count: 0 };
+    const url = `https://nubank.atlassian.net/issues/?jql=assignee%20%3D%20currentUser%28%29%20AND%20resolution%20%3D%20Unresolved%20AND%20status%20NOT%20IN%20%28%22Cancelled%22%2C%20%22Canceled%22%2C%20%22Cancelado%22%2C%20%22Closed%22%29%20AND%20project%20%3D%20${proj}%20ORDER%20BY%20updated%20DESC`;
+    return `
+      <div class="project-card-wrapper">
+        <div class="project-card-main">
+          <button class="custom-btn draggable-btn" data-btn-id="${proj.toLowerCase()}" data-url="${url}">
+            <span class="drag-handle">☰</span>
+            <span class="btn-text" contenteditable="false">${proj}</span>
+            <span class="stat-number-inline">${data.count}</span>
+            <span class="edit-icon">✏️</span>
+          </button>
+          <button class="expand-btn-inline" id="expand-${proj.toLowerCase()}" title="Expandir" data-project="${proj}">
+            <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="tickets-list project-tickets-list" id="tickets-list-${proj.toLowerCase()}" style="display: none;">
+          <!-- Lista de tickets do projeto ${proj} será inserida aqui -->
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  setupDragAndDropForContainer(container);
+  setupEditableButtons(container);
+  setupProjectExpandButtons(projects); // Passa os projetos dinâmicos
+}
+
+// Configurar botões de expandir dos projetos
+function setupProjectExpandButtons(projects = []) {
+  // 🔥 DINÂMICO: Usa os projetos passados como parâmetro
+  const projectsToSetup = projects.map(p => p.toLowerCase());
+  
+  // Expandir atividade diária
+  const dailyActivityBtn = document.getElementById('expand-daily-activity');
+  const dailyActivityDetails = document.getElementById('daily-activity-details');
+  
+  if (dailyActivityBtn && dailyActivityDetails) {
+    dailyActivityBtn.onclick = (e) => {
+      e.stopPropagation();
+      const isExpanded = dailyActivityDetails.style.display !== 'none';
+      
+      if (isExpanded) {
+        dailyActivityDetails.style.display = 'none';
+        dailyActivityBtn.classList.remove('expanded');
+      } else {
+        dailyActivityDetails.style.display = 'block';
+        dailyActivityBtn.classList.add('expanded');
+        updateDailyActivityDetails();
+      }
+    };
+  }
+  
+  projectsToSetup.forEach(proj => {
+    const expandBtn = document.getElementById(`expand-${proj}`);
+    const ticketsList = document.getElementById(`tickets-list-${proj}`);
+    
+    if (expandBtn && ticketsList) {
+      expandBtn.onclick = async (e) => {
+        e.stopPropagation();
+        const isExpanded = ticketsList.style.display !== 'none';
+        
+        if (isExpanded) {
+          // Colapsar
+          ticketsList.style.display = 'none';
+          expandBtn.classList.remove('expanded');
+        } else {
+          // Expandir
+          ticketsList.style.display = 'block';
+          expandBtn.classList.add('expanded');
+          
+          // Carregar tickets do projeto se ainda não foram carregados
+          if (ticketsList.children.length === 0) {
+            ticketsList.innerHTML = '<div class="loading-tickets">Carregando tickets...</div>';
+            await loadProjectTickets(proj.toUpperCase(), ticketsList);
+          }
+        }
+      };
+    }
+  });
+}
+
+// Carregar tickets de um projeto específico
+async function loadProjectTickets(projectKey, container) {
+  try {
+    // Usar a mesma lógica de assignee que o resto do app
+    const assignee = currentConfig.monitorOtherUser && currentConfig.otherUserEmail 
+      ? `"${currentConfig.otherUserEmail}"` 
+      : 'currentUser()';
+    
+    const jql = `assignee = ${assignee} AND resolution = Unresolved AND status NOT IN ("Cancelled", "Canceled", "Cancelado", "Closed") AND project = ${projectKey} ORDER BY updated DESC`;
+    const result = await ipcRenderer.invoke('search-jira-tickets', jql, 50);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Falha ao buscar tickets');
+    }
+    
+    const tickets = result.data;
+    
+    if (tickets && tickets.issues && tickets.issues.length > 0) {
+      container.innerHTML = tickets.issues.map(issue => {
+        const key = issue.key;
+        const summary = issue.fields.summary;
+        const status = issue.fields.status.name;
+        const priority = issue.fields.priority?.name || 'Sem prioridade';
+        const updated = new Date(issue.fields.updated).toLocaleDateString('pt-BR');
+        
+        // 🎨 Calcular status do SLA para tickets IT
+        let slaStatus = '';
+        const project = issue.fields.project?.key || '';
+        const slaDate = getSlaDate(issue);
+        
+        if (project === 'IT' && slaDate) {
+          const now = new Date();
+          const dueDate = new Date(slaDate);
+          const timeDiff = dueDate - now;
+          const diffMinutes = Math.floor(timeDiff / 60000);
+          
+          if (diffMinutes < 0) {
+            slaStatus = 'overdue'; // 🔴 Estourado
+          } else if (diffMinutes <= 60) {
+            slaStatus = 'critical'; // 🔴 Crítico (< 1h)
+          } else if (diffMinutes <= 180) {
+            slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+          } else {
+            slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+          }
+        }
+        
+        return `
+          <div class="ticket-item" data-ticket-key="${key}" ${slaStatus ? `data-sla-status="${slaStatus}"` : ''}>
+            <div class="ticket-key-link">
+              <a href="https://nubank.atlassian.net/browse/${key}" target="_blank" onclick="event.stopPropagation()">${key}</a>
+            </div>
+            <div class="ticket-summary">${summary}</div>
+            <div class="ticket-meta">
+              <span class="ticket-status">${status}</span>
+              <span class="ticket-priority priority-${priority.toLowerCase().replace(/\s+/g, '-')}">${priority}</span>
+              <span class="ticket-updated">${updated}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Adicionar event listeners para abrir preview ao clicar no ticket
+      container.querySelectorAll('.ticket-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const ticketKey = item.dataset.ticketKey;
+          if (ticketKey && typeof openTicketPreview === 'function') {
+            openTicketPreview(ticketKey);
+          }
+        });
+      });
+    } else {
+      container.innerHTML = '<div class="no-tickets">Nenhum ticket encontrado</div>';
+    }
+  } catch (error) {
+    console.error(`Erro ao carregar tickets do projeto ${projectKey}:`, error);
+    container.innerHTML = '<div class="error-tickets">Erro ao carregar tickets</div>';
+  }
+}
+
+function updateRecentTickets(tickets) {
+  const container = document.getElementById('recent-tickets-list');
+  if (!tickets || tickets.length === 0) {
+    container.innerHTML = '<p style="color: #666; text-align: center; padding: 12px;">Nenhum ticket recente</p>';
+    return;
+  }
+  
+  container.innerHTML = tickets.map(ticket => {
+    const isNew = !viewedTickets.has(ticket.key);
+    const newBadge = isNew ? '<span class="ticket-new-badge">NOVO</span>' : '';
+    
+    return `
+      <div class="recent-ticket-item" data-ticket-key="${ticket.key}" style="position: relative;">
+        <div class="recent-ticket-key">${ticket.key} ${newBadge}</div>
+        <div class="recent-ticket-summary">${ticket.summary}</div>
+        <div class="recent-ticket-meta">${ticket.status} • ${getTimeAgo(ticket.updated)}</div>
+        <div class="ticket-quick-actions">
+          <button class="quick-action-btn" onclick="event.stopPropagation(); navigator.clipboard.writeText('${ticket.key}');" title="Copiar Key">
+            <svg viewBox="0 0 24 24"><path fill="white" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          </button>
+          <button class="quick-action-btn" onclick="event.stopPropagation(); window.openTicketInJira('${ticket.key}');" title="Abrir no Jira">
+            <svg viewBox="0 0 24 24"><path fill="white" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Add event listeners
+  container.querySelectorAll('.recent-ticket-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const ticketKey = item.getAttribute('data-ticket-key');
+      viewedTickets.add(ticketKey); // Marcar como visto
+      openTicketPreview(ticketKey);
+    });
+  });
+}
+
+function updateTrendChart(trend) {
+  const container = document.getElementById('trend-chart');
+  if (!trend || trend.length === 0) return;
+  
+  const maxCount = Math.max(...trend.map(d => d.count), 1);
+  
+  container.innerHTML = trend.map(day => {
+    const height = (day.count / maxCount) * 100;
+    const date = new Date(day.date);
+    const dateStr = `${date.getDate()}/${date.getMonth() + 1}`;
+    const fullDate = date.toLocaleDateString('pt-BR');
+    
+    return `
+      <div class="trend-bar-container" data-jql="${day.jql.replace(/"/g, '&quot;')}" style="position: relative;">
+        <div class="trend-bar-tooltip">${fullDate}<br/>${day.count} ticket${day.count !== 1 ? 's' : ''}<br/>Clique para ver</div>
+        <div class="trend-bar-value">${day.count}</div>
+        <div class="trend-bar" style="height: ${height}%; transition: all 0.3s;"></div>
+        <div class="trend-bar-date">${dateStr}</div>
+      </div>
+    `;
+  }).join('');
+  
+  // Add click and hover listeners to trend bars
+  container.querySelectorAll('.trend-bar-container').forEach(bar => {
+    bar.addEventListener('click', () => {
+      const jql = bar.getAttribute('data-jql');
+      if (jql) {
+        openTrendDay(jql);
+      }
+    });
+    
+    // Animação no hover
+    bar.addEventListener('mouseenter', () => {
+      bar.querySelector('.trend-bar').style.transform = 'scaleY(1.1)';
+      bar.querySelector('.trend-bar').style.filter = 'brightness(1.3)';
+    });
+    
+    bar.addEventListener('mouseleave', () => {
+      bar.querySelector('.trend-bar').style.transform = 'scaleY(1)';
+      bar.querySelector('.trend-bar').style.filter = 'brightness(1)';
+    });
+  });
+}
+
+function openTrendDay(jql) {
+  const baseUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+  const url = `${baseUrl}/issues/?jql=${encodeURIComponent(jql)}`;
+  ipcRenderer.invoke('open-url', url);
+}
+
+// Cards
+function setupCardListeners() {
+  const cards = ['total', 'support', 'customer', 'pending'];
+  cards.forEach(cardId => {
+    const card = document.getElementById(`card-${cardId}`);
+    
+    // Click listener
+    card.addEventListener('click', (e) => {
+      if (!e.target.closest('.expand-btn')) {
+        openCardInJira(cardId);
+      }
+    });
+    
+    // Expand button listener
+    const expandBtn = card.querySelector('.expand-btn');
+    expandBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCardExpansion(cardId);
+    });
+    
+    // Drag and drop para reordenar (em Pro Mode)
+    if (isProMode) {
+      card.setAttribute('draggable', 'true');
+      
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', cardId);
+        card.classList.add('dragging');
+      });
+      
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+      });
+      
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        card.classList.add('drag-over');
+      });
+      
+      card.addEventListener('dragleave', () => {
+        card.classList.remove('drag-over');
+      });
+      
+      card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId !== cardId) {
+          // Reordenar cards
+          const container = card.parentElement;
+          const draggedCard = document.getElementById(`card-${draggedId}`);
+          
+          // Inserir antes ou depois baseado na posição
+          const rect = card.getBoundingClientRect();
+          const midpoint = rect.top + rect.height / 2;
+          
+          if (e.clientY < midpoint) {
+            container.insertBefore(draggedCard, card);
+          } else {
+            container.insertBefore(draggedCard, card.nextSibling);
+          }
+          
+          showToast('Cards', 'Ordem atualizada', 'success');
+        }
+      });
+    }
+  });
+}
+
+function openCardInJira(cardId) {
+  const baseUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+  let jql = '';
+  
+  const assignee = currentConfig.monitorOtherUser && currentConfig.otherUserEmail 
+    ? `"${currentConfig.otherUserEmail}"` 
+    : 'currentUser()';
+  
+  switch (cardId) {
+    case 'total':
+      jql = `assignee = ${assignee} AND resolution = Unresolved AND status NOT IN ("Cancelled", "Canceled", "Cancelado", "Closed") ORDER BY updated DESC`;
+      break;
+    case 'support':
+      jql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Waiting for Support", "Aguardando Suporte")`;
+      break;
+    case 'customer':
+      jql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Waiting for Customer", "Aguardando Cliente")`;
+      break;
+    case 'pending':
+      if (currentConfig.monitorOtherUser && currentConfig.otherUserEmail) {
+        jql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Pending", "Pendente", "Pendência")`;
+      } else {
+        jql = `queue = ${currentConfig.queueId || '1104'} AND resolution = Unresolved AND status in ("Pending", "Pendente", "Pendência")`;
+      }
+      break;
+  }
+  
+  const url = `${baseUrl}/issues/?jql=${encodeURIComponent(jql)}`;
+  ipcRenderer.invoke('open-url', url);
+}
+
+function toggleCardExpansion(cardId) {
+  const card = document.getElementById(`card-${cardId}`);
+  const expandBtn = card.querySelector('.expand-btn');
+  const ticketsList = document.getElementById(`tickets-list-${cardId}`);
+  
+  if (ticketsList.style.display === 'none') {
+    expandBtn.classList.add('expanded');
+    ticketsList.style.display = 'block';
+    loadTicketsList(cardId);
+  } else {
+    expandBtn.classList.remove('expanded');
+    ticketsList.style.display = 'none';
+  }
+}
+
+// 🔔 Função para verificar mudança de status de SLA e notificar
+function checkSlaStatusChange(ticketKey, newStatus, summary, minutesRemaining) {
+  const previousStatus = slaStatusCache.get(ticketKey);
+  
+  // Atualizar cache
+  slaStatusCache.set(ticketKey, newStatus);
+  
+  // Se é a primeira vez vendo este ticket, não notificar
+  if (!previousStatus) return;
+  
+  // Se não mudou, não notificar
+  if (previousStatus === newStatus) return;
+  
+  // 🔔 Notificar apenas mudanças críticas
+  let shouldNotify = false;
+  let notificationTitle = '';
+  let notificationBody = '';
+  let notificationIcon = '';
+  
+  if (newStatus === 'overdue' && previousStatus !== 'overdue') {
+    // SLA ESTOUROU! 🔴
+    shouldNotify = true;
+    notificationTitle = '🔴 SLA Estourado!';
+    notificationBody = `${ticketKey}: ${summary}\nO SLA deste ticket expirou!`;
+    notificationIcon = '🔴';
+  } else if (newStatus === 'critical' && previousStatus === 'safe' || previousStatus === 'warning') {
+    // Entrou em CRÍTICO (< 1h) 🔴
+    shouldNotify = true;
+    notificationTitle = '🔴 SLA Crítico!';
+    notificationBody = `${ticketKey}: ${summary}\nMenos de 1 hora para o SLA expirar!`;
+    notificationIcon = '🔴';
+  } else if (newStatus === 'warning' && previousStatus === 'safe') {
+    // Entrou em ATENÇÃO (< 3h) 🟡
+    shouldNotify = true;
+    notificationTitle = '🟡 SLA em Atenção';
+    notificationBody = `${ticketKey}: ${summary}\nMenos de 3 horas para o SLA expirar (${Math.floor(minutesRemaining / 60)}h ${minutesRemaining % 60}min)`;
+    notificationIcon = '🟡';
+  }
+  
+  if (shouldNotify) {
+    // Notificação desktop
+    if (Notification.permission === 'granted') {
+      new Notification(notificationTitle, {
+        body: notificationBody,
+        icon: './assets/icon.png',
+        tag: `sla-${ticketKey}`,
+        requireInteraction: true // Não desaparece automaticamente
+      });
+    }
+    
+    // Notificação interna (sino)
+    addInternalNotification({
+      icon: notificationIcon,
+      title: notificationTitle,
+      message: notificationBody,
+      ticketKey: ticketKey,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log(`🔔 Notificação SLA: ${ticketKey} mudou de ${previousStatus} para ${newStatus}`);
+  }
+}
+
+// 🎨 Função auxiliar para extrair data de SLA de um ticket
+function getSlaDate(ticket) {
+  if (!ticket || !ticket.fields) return null;
+  
+  // 1. 🎯 PRIORIDADE: customfield_10123 (Time to resolution - Jira Service Management)
+  const timeToResolution = ticket.fields.customfield_10123;
+  if (timeToResolution && timeToResolution.ongoingCycle && timeToResolution.ongoingCycle.breachTime) {
+    return timeToResolution.ongoingCycle.breachTime.iso8601;
+  }
+  
+  // 2. Tentar customfield_10124 (Time to first response)
+  const timeToFirstResponse = ticket.fields.customfield_10124;
+  if (timeToFirstResponse && timeToFirstResponse.ongoingCycle && timeToFirstResponse.ongoingCycle.breachTime) {
+    return timeToFirstResponse.ongoingCycle.breachTime.iso8601;
+  }
+  
+  // 3. Tentar duedate padrão
+  if (ticket.fields.duedate) {
+    return ticket.fields.duedate;
+  }
+  
+  // 4. Buscar em outros campos customizados com padrão JSM
+  const slaFieldPatterns = [
+    /customfield.*sla/i,
+    /customfield.*resolution/i,
+    /customfield.*due/i,
+    /time.*resolution/i
+  ];
+  
+  for (const fieldKey in ticket.fields) {
+    if (slaFieldPatterns.some(pattern => pattern.test(fieldKey))) {
+      const value = ticket.fields[fieldKey];
+      // Verificar se é um objeto no formato JSM (com breachTime)
+      if (value && typeof value === 'object') {
+        if (value.ongoingCycle && value.ongoingCycle.breachTime && value.ongoingCycle.breachTime.iso8601) {
+          return value.ongoingCycle.breachTime.iso8601;
+        }
+        if (value.goalDate) {
+          return value.goalDate;
+        }
+        if (value.ongoingCycle && value.ongoingCycle.goalDate) {
+          return value.ongoingCycle.goalDate;
+        }
+      }
+      // Se for string de data
+      if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+        return value;
+      }
+    }
+  }
+  
+  return null;
+}
+
+function loadTicketsList(cardId) {
+  if (!currentStats) return;
+  
+  const ticketsList = document.getElementById(`tickets-list-${cardId}`);
+  let tickets = [];
+  
+  switch (cardId) {
+    case 'total':
+      tickets = currentStats.allTickets || [];
+      break;
+    case 'support':
+      tickets = currentStats.supportTickets || [];
+      break;
+    case 'customer':
+      tickets = currentStats.customerTickets || [];
+      break;
+    case 'pending':
+      tickets = currentStats.pendingTickets || [];
+      break;
+  }
+  
+  if (tickets.length === 0) {
+    showEmptyState(ticketsList, cardId);
+    return;
+  }
+  
+  // 🚀 OTIMIZAÇÃO: Limitar tickets renderizados para economizar memória
+  const MAX_TICKETS_RENDER = 100;
+  const ticketsToRender = tickets.slice(0, MAX_TICKETS_RENDER);
+  const hasMore = tickets.length > MAX_TICKETS_RENDER;
+  
+  ticketsList.innerHTML = ticketsToRender.map(ticket => {
+    const key = ticket.key;
+    const summary = ticket.summary || ticket.fields?.summary || '';
+    const status = ticket.status || ticket.fields?.status?.name || '';
+    
+    // 🎨 Calcular status do SLA para tickets IT
+    let slaStatus = '';
+    const project = ticket.fields?.project?.key || '';
+    
+    if (project === 'IT') {
+      const slaDate = getSlaDate(ticket);
+      
+      if (slaDate) {
+        const now = new Date();
+        const dueDate = new Date(slaDate);
+        const timeDiff = dueDate - now;
+        const diffMinutes = Math.floor(timeDiff / 60000);
+        
+        if (diffMinutes < 0) {
+          slaStatus = 'overdue'; // 🔴 Estourado
+        } else if (diffMinutes <= 60) {
+          slaStatus = 'critical'; // 🔴 Crítico (< 1h)
+        } else if (diffMinutes <= 180) {
+          slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+        } else {
+          slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+        }
+        
+        // 🔔 Verificar se houve mudança de status e notificar
+        checkSlaStatusChange(key, slaStatus, summary, diffMinutes);
+      }
+    }
+    
+    return `
+      <div class="ticket-item" data-ticket-key="${key}" ${slaStatus ? `data-sla-status="${slaStatus}"` : ''}>
+        <div class="ticket-key">${key}</div>
+        <div class="ticket-summary">${summary}</div>
+        <div class="ticket-status">${status}</div>
+      </div>
+    `;
+  }).join('');
+  
+  // 🚀 OTIMIZAÇÃO: Mostrar aviso se houver mais tickets
+  if (hasMore) {
+    ticketsList.innerHTML += `
+      <div style="padding: 10px; text-align: center; color: #888; font-size: 12px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 8px;">
+        📊 +${tickets.length - MAX_TICKETS_RENDER} tickets não exibidos (economia de memória)
+      </div>
+    `;
+  }
+  
+  // Add event listeners to prevent propagation
+  ticketsList.querySelectorAll('.ticket-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ticketKey = item.getAttribute('data-ticket-key');
+      openTicketPreview(ticketKey);
+    });
+  });
+}
+
+function updateExpandedTicketsLists() {
+  const cards = ['total', 'support', 'customer', 'pending'];
+  cards.forEach(cardId => {
+    const ticketsList = document.getElementById(`tickets-list-${cardId}`);
+    if (ticketsList.style.display !== 'none') {
+      loadTicketsList(cardId);
+    }
+  });
+  
+  // Atualizar também lista de SIM Cards se estiver expandida
+  const simCardsTicketsList = document.getElementById('tickets-list-sim-cards');
+  if (simCardsTicketsList && simCardsTicketsList.style.display !== 'none') {
+    loadSimCardsTicketsList();
+  }
+  
+  // Atualizar também lista de Tickets Avaliados se estiver expandida
+  const evaluatedTicketsList = document.getElementById('tickets-list-evaluated-tickets');
+  if (evaluatedTicketsList && evaluatedTicketsList.style.display !== 'none') {
+    loadEvaluatedTicketsTicketsList();
+  }
+}
+
+// Função para expandir/recolher lista de tickets SIM Cards
+function toggleSimCardsExpansion() {
+  const expandBtn = document.getElementById('expand-sim-cards');
+  const ticketsList = document.getElementById('tickets-list-sim-cards');
+  
+  if (ticketsList.style.display === 'none') {
+    expandBtn.classList.add('expanded');
+    ticketsList.style.display = 'block';
+    loadSimCardsTicketsList();
+  } else {
+    expandBtn.classList.remove('expanded');
+    ticketsList.style.display = 'none';
+  }
+}
+
+// Função para expandir/recolher lista de tickets Avaliados
+function toggleEvaluatedTicketsExpansion() {
+  const expandBtn = document.getElementById('expand-evaluated-tickets');
+  const ticketsList = document.getElementById('tickets-list-evaluated-tickets');
+  
+  if (ticketsList.style.display === 'none') {
+    expandBtn.classList.add('expanded');
+    ticketsList.style.display = 'block';
+    loadEvaluatedTicketsTicketsList();
+  } else {
+    expandBtn.classList.remove('expanded');
+    ticketsList.style.display = 'none';
+  }
+}
+
+// Função para carregar lista de tickets SIM Cards
+function loadSimCardsTicketsList() {
+  if (!currentStats || !currentStats.simCardsTickets) {
+    document.getElementById('tickets-list-sim-cards').innerHTML = '<p style="color: #666; text-align: center; padding: 12px;">Nenhum ticket de SIM Card</p>';
+    return;
+  }
+  
+  const tickets = currentStats.simCardsTickets.tickets || [];
+  const ticketsList = document.getElementById('tickets-list-sim-cards');
+  
+  if (tickets.length === 0) {
+    ticketsList.innerHTML = '<p style="color: #666; text-align: center; padding: 12px;">Nenhum ticket de SIM Card</p>';
+    return;
+  }
+  
+  ticketsList.innerHTML = tickets.map(ticket => {
+    // 🎨 Calcular status do SLA para tickets IT (SIM Cards são do projeto IT)
+    let slaStatus = '';
+    const slaDate = ticket.duedate || getSlaDate(ticket);
+    
+    if (slaDate) {
+      const now = new Date();
+      const dueDate = new Date(slaDate);
+      const timeDiff = dueDate - now;
+      const diffMinutes = Math.floor(timeDiff / 60000);
+      
+      if (diffMinutes < 0) {
+        slaStatus = 'overdue'; // 🔴 Estourado
+      } else if (diffMinutes <= 60) {
+        slaStatus = 'critical'; // 🔴 Crítico (< 1h)
+      } else if (diffMinutes <= 180) {
+        slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+      } else {
+        slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+      }
+    }
+    
+    return `
+      <div class="ticket-item" data-ticket-key="${ticket.key}" ${slaStatus ? `data-sla-status="${slaStatus}"` : ''}>
+        <div class="ticket-key">${ticket.key}</div>
+        <div class="ticket-summary">${ticket.summary}</div>
+        <div class="ticket-status">${ticket.status}</div>
+      </div>
+    `;
+  }).join('');
+  
+  // Add event listeners to prevent propagation
+  ticketsList.querySelectorAll('.ticket-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ticketKey = item.getAttribute('data-ticket-key');
+      openTicketPreview(ticketKey);
+    });
+  });
+}
+
+// Função para carregar lista de tickets Avaliados
+function loadEvaluatedTicketsTicketsList() {
+  if (!currentStats || !currentStats.evaluatedTickets) {
+    document.getElementById('tickets-list-evaluated-tickets').innerHTML = '<p style="color: #666; text-align: center; padding: 12px;">Nenhum ticket avaliado</p>';
+    return;
+  }
+  
+  const tickets = currentStats.evaluatedTickets.tickets || [];
+  const ticketsList = document.getElementById('tickets-list-evaluated-tickets');
+  
+  if (tickets.length === 0) {
+    ticketsList.innerHTML = '<p style="color: #888; text-align: center; padding: 20px; font-size: 14px;">📊 Nenhum ticket avaliado encontrado<br><span style="font-size: 12px; color: #666; margin-top: 8px; display: block;">Os tickets aparecem aqui quando você recebe avaliação do cliente</span></p>';
+    return;
+  }
+  
+  ticketsList.innerHTML = tickets.map(ticket => {
+    // Mostrar as estrelas da avaliação com número
+    const starsHtml = ticket.ratingEmoji ? 
+      `<div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+        <span style="font-size: 16px; color: #ffd700; letter-spacing: 2px;" title="Avaliação do cliente: ${ticket.ratingNumber || '?'} estrelas">${ticket.ratingEmoji}</span>
+        ${ticket.ratingNumber ? `<span style="font-size: 12px; color: #ffd700; font-weight: 600;">(${ticket.ratingNumber})</span>` : ''}
+      </div>` : '';
+    
+    return `
+      <div class="ticket-item" data-ticket-key="${ticket.key}">
+        <div class="ticket-key">${ticket.key}</div>
+        ${starsHtml}
+        <div class="ticket-summary">${ticket.summary}</div>
+        <div class="ticket-meta" style="font-size: 11px; color: #888; margin-top: 4px;">
+          <span style="color: #10b981;">✓ ${ticket.status}</span>
+          ${ticket.timeAgo ? ` • ${ticket.timeAgo}` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Add event listeners to prevent propagation
+  ticketsList.querySelectorAll('.ticket-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ticketKey = item.getAttribute('data-ticket-key');
+      openTicketPreview(ticketKey);
+    });
+  });
+}
+
+// Abrir Ticket
+function openTicketInJira(ticketKey) {
+  const baseUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+  const url = `${baseUrl}/browse/${ticketKey}`;
+  ipcRenderer.invoke('open-url', url);
+  hideSearch();
+}
+
+// Preview de Ticket
+async function openTicketPreview(ticketKey) {
+  const modal = document.getElementById('ticket-preview-modal');
+  const loading = document.getElementById('ticket-preview-loading');
+  const body = document.getElementById('ticket-preview-body');
+  const error = document.getElementById('ticket-preview-error');
+  
+  modal.style.display = 'flex';
+  loading.style.display = 'block';
+  body.style.display = 'none';
+  error.style.display = 'none';
+  
+  try {
+    const result = await ipcRenderer.invoke('get-ticket-details', ticketKey);
+    
+    if (result.success) {
+      displayTicketPreview(result.data);
+      loading.style.display = 'none';
+      body.style.display = 'block';
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (err) {
+    console.error('Erro ao carregar ticket:', err);
+    loading.style.display = 'none';
+    error.style.display = 'block';
+  }
+}
+
+let currentPreviewTicket = null;
+
+function displayTicketPreview(ticket) {
+  const body = document.getElementById('ticket-preview-body');
+  currentPreviewTicket = ticket; // Store for later use
+  
+  const html = `
+    <div class="ticket-preview-header">
+      <div class="ticket-preview-title-section">
+        <div class="ticket-key-large">${ticket.key}</div>
+        <div class="ticket-status-badge" style="background: #e3f2fd; color: #1976d2;">${ticket.status.name}</div>
+        <div class="ticket-title-large">${ticket.summary}</div>
+      </div>
+      <div class="ticket-preview-actions">
+        <button class="btn-open-jira" id="btn-open-jira-preview" title="Abrir no Jira">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+          </svg>
+          Abrir no Jira
+        </button>
+        <button class="btn-open-jira-webview" id="btn-open-jira-webview" title="Abrir em janela interna">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zm-10-7h9v6h-9z"/>
+          </svg>
+          Janela Interna
+        </button>
+        <button class="close-preview-btn-large" onclick="hideTicketPreview()">✕</button>
+      </div>
+    </div>
+    
+    <div class="ticket-info-grid">
+      <!-- Status - EDITÁVEL -->
+      <div class="ticket-info-item editable-field">
+        <div class="ticket-info-label">
+          Status
+          <span class="edit-icon" title="Clique para editar">✏️</span>
+        </div>
+        <div class="ticket-info-value-editable" onclick="makeFieldEditable('status', '${ticket.key}', '${ticket.status.name}')">
+          <span id="status-display">${ticket.status.name}</span>
+        </div>
+      </div>
+      
+      <!-- Prioridade - EDITÁVEL -->
+      <div class="ticket-info-item editable-field">
+        <div class="ticket-info-label">
+          Prioridade
+          <span class="edit-icon" title="Clique para editar">✏️</span>
+        </div>
+        <div class="ticket-info-value-editable" onclick="makeFieldEditable('priority', '${ticket.key}', '${ticket.priority}')">
+          <span id="priority-display">${ticket.priority}</span>
+        </div>
+      </div>
+      
+      <!-- Assignee - EDITÁVEL -->
+      <div class="ticket-info-item editable-field">
+        <div class="ticket-info-label">
+          Assignee 
+          <span class="edit-icon" title="Clique para editar">✏️</span>
+        </div>
+        <div class="ticket-info-value-editable" onclick="makeFieldEditable('assignee', '${ticket.key}', '${ticket.assignee?.displayName || ''}')">
+          <span id="assignee-display">${ticket.assignee?.displayName || 'Não atribuído'}</span>
+        </div>
+      </div>
+      
+      <!-- Reporter - EDITÁVEL -->
+      <div class="ticket-info-item editable-field">
+        <div class="ticket-info-label">
+          Reporter
+          <span class="edit-icon" title="Clique para editar">✏️</span>
+        </div>
+        <div class="ticket-info-value-editable" onclick="makeFieldEditable('reporter', '${ticket.key}', '${ticket.reporter?.displayName || ''}')">
+          <span id="reporter-display">${ticket.reporter?.displayName || 'N/A'}</span>
+        </div>
+      </div>
+      
+      <!-- Support Level - EDITÁVEL -->
+      <div class="ticket-info-item editable-field">
+        <div class="ticket-info-label">
+          Support Level - ITOPS
+          <span class="edit-icon" title="Clique para editar">✏️</span>
+        </div>
+        <div class="ticket-info-value-editable" onclick="makeFieldEditable('supportLevel', '${ticket.key}', '${ticket.supportLevel || 'L1'}')">
+          <span id="supportLevel-display">${ticket.supportLevel || 'L1'}</span>
+        </div>
+      </div>
+      
+      <!-- ITOps Team - EDITÁVEL -->
+      <div class="ticket-info-item editable-field">
+        <div class="ticket-info-label">
+          ITOps Team
+          <span class="edit-icon" title="Clique para editar">✏️</span>
+        </div>
+        <div class="ticket-info-value-editable" onclick="makeFieldEditable('team', '${ticket.key}', '${ticket.team || ''}')">
+          <span id="team-display">${ticket.team || 'TechCenter'}</span>
+        </div>
+      </div>
+      
+      <div class="ticket-info-item">
+        <div class="ticket-info-label">Criado</div>
+        <div class="ticket-info-value">${new Date(ticket.created).toLocaleString('pt-BR')}</div>
+      </div>
+      <div class="ticket-info-item">
+        <div class="ticket-info-label">Atualizado</div>
+        <div class="ticket-info-value">${new Date(ticket.updated).toLocaleString('pt-BR')}</div>
+      </div>
+    </div>
+    
+    <div class="ticket-section">
+      <h3 class="ticket-section-title">📝 Descrição</h3>
+      <div class="ticket-description">${ticket.description}</div>
+    </div>
+    
+    ${ticket.attachments && ticket.attachments.length > 0 ? `
+      <div class="ticket-section">
+        <h3 class="ticket-section-title">📎 Anexos (${ticket.attachments.length})</h3>
+        <div class="attachments-list">
+          ${ticket.attachments.map(att => `
+            <div class="attachment-item">
+              ${att.mimeType && att.mimeType.startsWith('image/') ? `
+                <img class="attachment-preview" src="" data-attachment-id="${att.id}" alt="${att.filename}">
+              ` : `
+                <div class="attachment-icon">📄</div>
+              `}
+              <div class="attachment-name">${att.filename}</div>
+              <div class="attachment-meta">${formatFileSize(att.size)} • ${new Date(att.created).toLocaleDateString('pt-BR')}</div>
+              <div class="attachment-actions">
+                ${att.mimeType && att.mimeType.startsWith('image/') ? `
+                  <button class="attachment-btn" onclick="showAttachmentPreview('${att.id}')">👁️ Preview</button>
+                ` : ''}
+                <button class="attachment-btn" onclick="downloadAttachment('${att.id}', '${att.filename}')">⬇️ Baixar</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn-primary" style="margin-top: 12px;" onclick="selectAndUploadAttachments('${ticket.key}')">➕ Adicionar Anexo</button>
+      </div>
+    ` : ''}
+    
+    <div class="ticket-section">
+      <h3 class="ticket-section-title">💬 Comentários (${ticket.comments.length})</h3>
+      <div class="ticket-comments">
+        ${ticket.comments.map(comment => `
+          <div class="comment-item">
+            <div class="comment-header">
+              <span class="comment-author">${comment.author}</span>
+              ${comment.isInternal ? '<span class="comment-badge">🔒 Interno</span>' : ''}
+              <span class="comment-date">${new Date(comment.created).toLocaleString('pt-BR')}</span>
+            </div>
+            <div class="comment-body">${comment.body}</div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <div class="add-comment-section">
+        <div class="comment-input-container" style="position: relative;">
+          <textarea 
+            class="comment-textarea" 
+            id="new-comment-textarea-${ticket.key}"
+            placeholder="Adicionar comentário... (use @ para mencionar)" 
+            oninput="checkForMentions('${ticket.key}', this.value)"
+            onkeydown="return !handleMentionKeyboard('${ticket.key}', event)"
+            rows="4"></textarea>
+          <div class="mention-suggestions" id="mention-suggestions-${ticket.key}" style="display: none;"></div>
+        </div>
+        <div class="comment-actions">
+          <div class="comment-checkbox">
+            <input type="checkbox" id="internal-comment-checkbox-${ticket.key}">
+            <label for="internal-comment-checkbox-${ticket.key}">🔒 Comentário interno</label>
+          </div>
+          <button class="btn-primary" onclick="addComment('${ticket.key}')">💬 Enviar Comentário</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  body.innerHTML = html;
+  
+  // Add event listeners for the new buttons
+  const btnOpenJira = document.getElementById('btn-open-jira-preview');
+  const btnOpenWebview = document.getElementById('btn-open-jira-webview');
+  
+  if (btnOpenJira) {
+    btnOpenJira.addEventListener('click', () => {
+      openCurrentTicketInJira();
+    });
+  }
+  
+  if (btnOpenWebview) {
+    btnOpenWebview.addEventListener('click', () => {
+      openCurrentTicketInWebview();
+    });
+  }
+  
+  // Carregar previews de imagens
+  ticket.attachments?.forEach(att => {
+    if (att.mimeType && att.mimeType.startsWith('image/')) {
+      loadAttachmentPreview(att.id);
+    }
+  });
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function loadAttachmentPreview(attachmentId) {
+  try {
+    const result = await ipcRenderer.invoke('get-attachment-url', attachmentId);
+    if (result.success) {
+      const response = await fetch(result.url, {
+        headers: {
+          'Authorization': `Basic ${btoa(`${result.auth.email}:${result.auth.apiToken}`)}`
+        }
+      });
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      const img = document.querySelector(`img[data-attachment-id="${attachmentId}"]`);
+      if (img) {
+        img.src = url;
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao carregar preview:', error);
+  }
+}
+
+async function downloadAttachment(attachmentId, filename) {
+  try {
+    const result = await ipcRenderer.invoke('download-attachment', attachmentId, filename);
+    if (result.success) {
+      showToast('Anexo baixado com sucesso!', 'success');
+    } else if (!result.cancelled) {
+      showToast('Erro ao baixar anexo', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao baixar anexo:', error);
+    showToast('Erro ao baixar anexo', 'error');
+  }
+}
+
+async function selectAndUploadAttachments(ticketKey) {
+  try {
+    const selectResult = await ipcRenderer.invoke('select-attachment-files');
+    
+    if (selectResult.cancelled || !selectResult.filePaths || selectResult.filePaths.length === 0) {
+      return;
+    }
+    
+    showToast('Enviando anexo(s)...', 'info');
+    
+    const result = await ipcRenderer.invoke('add-attachment', ticketKey, selectResult.filePaths);
+    
+    if (result.success) {
+      showToast('Anexo(s) enviado(s) com sucesso!', 'success');
+      // Recarregar preview
+      setTimeout(() => openTicketPreview(ticketKey), 1000);
+    } else {
+      showToast('Erro ao enviar anexo(s)', 'error');
+    }
+  } catch (error) {
+    console.error('Erro ao enviar anexo:', error);
+    showToast('Erro ao enviar anexo', 'error');
+  }
+}
+
+// Verificar menções enquanto digita
+let mentionTimeout = null;
+let mentionUsers = {};
+let selectedMentionIndex = {};
+let currentMentionUsers = {};
+
+async function checkForMentions(ticketKey, text) {
+  clearTimeout(mentionTimeout);
+  
+  const suggestionsDiv = document.getElementById(`mention-suggestions-${ticketKey}`);
+  if (!suggestionsDiv) return;
+  
+  // Procurar @ seguido de texto
+  const atIndex = text.lastIndexOf('@');
+  if (atIndex === -1) {
+    suggestionsDiv.style.display = 'none';
+    selectedMentionIndex[ticketKey] = -1;
+    return;
+  }
+  
+  // Pegar texto após @
+  const afterAt = text.substring(atIndex + 1);
+  const spaceIndex = afterAt.search(/[\s\n]/);
+  const query = spaceIndex === -1 ? afterAt : afterAt.substring(0, spaceIndex);
+  
+  // Permitir busca com 1 caractere ou mais
+  if (query.length < 1 && atIndex === text.length - 1) {
+    suggestionsDiv.style.display = 'none';
+    return;
+  }
+  
+  // Debounce
+  mentionTimeout = setTimeout(async () => {
+    try {
+      const projectKey = ticketKey.split('-')[0];
+      
+      // BUSCA DINÂMICA via API do Jira (como no Jira nativo)
+      console.log(`🔎 Buscando usuários com query "${query}" via API...`);
+      
+      // Usar search-users com a query do usuário
+      const searchQuery = query.length > 0 ? query : 'a'; // Se vazio, buscar por 'a' para ter resultados
+      const result = await ipcRenderer.invoke('search-users', searchQuery, 15);
+      
+      if (!result.success || !result.data) {
+        console.error('❌ Erro ao buscar usuários:', result.error);
+        suggestionsDiv.innerHTML = '<div class="mention-no-results">Erro ao buscar usuários</div>';
+        suggestionsDiv.style.display = 'block';
+        return;
+      }
+      
+      const users = result.data; // FIX: usar 'data' em vez de 'users'
+      console.log(`✅ ${users.length} usuários encontrados via API`);
+      console.log('👥 Resultados:', users.slice(0, 5).map(u => `${u.displayName} (${u.emailAddress})`));
+      
+      // Se query vazia, mostrar todos
+      if (query.length === 0) {
+        const allUsers = users.slice(0, 10);
+        currentMentionUsers[ticketKey] = allUsers;
+        selectedMentionIndex[ticketKey] = 0;
+        renderMentionSuggestions(ticketKey, allUsers);
+        suggestionsDiv.style.display = 'block';
+        return;
+      }
+      
+      // Aplicar filtro local adicional para refinar
+      const queryLower = query.toLowerCase().trim();
+      const filtered = users.filter(user => {
+        if (!user.displayName) return false;
+        
+        const displayNameLower = user.displayName.toLowerCase();
+        const emailLower = (user.emailAddress || '').toLowerCase();
+        const emailPrefix = emailLower.split('@')[0];
+        
+        // Separar nome em partes (primeiro nome, sobrenomes, etc)
+        const nameParts = displayNameLower.split(/[\s.]+/).filter(p => p.length > 0);
+        
+        // Separar email em partes
+        const emailParts = emailPrefix.split(/[._-]+/).filter(p => p.length > 0);
+        
+        // Match se a query está em QUALQUER parte do nome ou email
+        const matchesName = nameParts.some(part => part.includes(queryLower));
+        const matchesEmail = emailParts.some(part => part.includes(queryLower));
+        const matchesFullName = displayNameLower.includes(queryLower);
+        const matchesFullEmail = emailPrefix.includes(queryLower);
+        
+        return matchesName || matchesEmail || matchesFullName || matchesFullEmail;
+      })
+      .sort((a, b) => {
+        // Priorizar por relevância
+        const aNameLower = a.displayName.toLowerCase();
+        const bNameLower = b.displayName.toLowerCase();
+        
+        // 1. Nome começa com a query
+        const aStartsWith = aNameLower.startsWith(queryLower);
+        const bStartsWith = bNameLower.startsWith(queryLower);
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        
+        // 2. Alguma parte do nome começa com a query
+        const aPartStarts = aNameLower.split(/[\s.]+/).some(p => p.startsWith(queryLower));
+        const bPartStarts = bNameLower.split(/[\s.]+/).some(p => p.startsWith(queryLower));
+        if (aPartStarts && !bPartStarts) return -1;
+        if (!aPartStarts && bPartStarts) return 1;
+        
+        // 3. Ordem alfabética
+        return aNameLower.localeCompare(bNameLower);
+      })
+      .slice(0, 15); // Mostrar até 15 resultados
+      
+      console.log(`✅ ${filtered.length} usuários encontrados com query "${query}"`);
+      if (filtered.length > 0) {
+        console.log('👤 Resultados:', filtered.map(u => `${u.displayName} (${u.emailAddress})`));
+      }
+      
+      if (filtered.length > 0) {
+        currentMentionUsers[ticketKey] = filtered;
+        selectedMentionIndex[ticketKey] = 0; // Selecionar primeiro
+        renderMentionSuggestions(ticketKey, filtered);
+        suggestionsDiv.style.display = 'block';
+      } else {
+        suggestionsDiv.innerHTML = '<div class="mention-no-results">Nenhum usuário encontrado</div>';
+        suggestionsDiv.style.display = 'block';
+        currentMentionUsers[ticketKey] = [];
+        selectedMentionIndex[ticketKey] = -1;
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar usuários para menção:', error);
+      suggestionsDiv.style.display = 'none';
+    }
+  }, 400); // 🚀 OTIMIZAÇÃO: 400ms ao invés de 200ms (reduz chamadas API)
+}
+
+// Renderizar sugestões de menção
+function renderMentionSuggestions(ticketKey, users) {
+  const suggestionsDiv = document.getElementById(`mention-suggestions-${ticketKey}`);
+  if (!suggestionsDiv) return;
+  
+  const selectedIndex = selectedMentionIndex[ticketKey] || 0;
+  
+  let html = '';
+  users.forEach((user, index) => {
+    const isSelected = index === selectedIndex;
+    html += `
+      <div class="mention-item ${isSelected ? 'selected' : ''}" 
+           data-index="${index}"
+           onclick="insertMention('${ticketKey}', '${escapeHtml(user.displayName)}', '${user.accountId}')"
+           onmouseenter="setSelectedMention('${ticketKey}', ${index})">
+        <div class="mention-avatar">
+          ${user.displayName.charAt(0).toUpperCase()}
+        </div>
+        <div class="mention-info">
+          <div class="mention-name">@${escapeHtml(user.displayName)}</div>
+          ${user.emailAddress ? `<div class="mention-email">${escapeHtml(user.emailAddress)}</div>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  suggestionsDiv.innerHTML = html;
+}
+
+// Definir menção selecionada (ao passar mouse)
+function setSelectedMention(ticketKey, index) {
+  selectedMentionIndex[ticketKey] = index;
+  const users = currentMentionUsers[ticketKey] || [];
+  if (users.length > 0) {
+    renderMentionSuggestions(ticketKey, users);
+  }
+}
+
+// Navegar pelas sugestões com teclado
+function handleMentionKeyboard(ticketKey, event) {
+  const suggestionsDiv = document.getElementById(`mention-suggestions-${ticketKey}`);
+  if (!suggestionsDiv || suggestionsDiv.style.display === 'none') return false;
+  
+  const users = currentMentionUsers[ticketKey] || [];
+  if (users.length === 0) return false;
+  
+  let currentIndex = selectedMentionIndex[ticketKey] || 0;
+  
+  switch(event.key) {
+    case 'ArrowDown':
+      event.preventDefault();
+      currentIndex = Math.min(currentIndex + 1, users.length - 1);
+      selectedMentionIndex[ticketKey] = currentIndex;
+      renderMentionSuggestions(ticketKey, users);
+      scrollToSelectedMention(ticketKey);
+      return true;
+      
+    case 'ArrowUp':
+      event.preventDefault();
+      currentIndex = Math.max(currentIndex - 1, 0);
+      selectedMentionIndex[ticketKey] = currentIndex;
+      renderMentionSuggestions(ticketKey, users);
+      scrollToSelectedMention(ticketKey);
+      return true;
+      
+    case 'Enter':
+    case 'Tab':
+      event.preventDefault();
+      const selectedUser = users[currentIndex];
+      if (selectedUser) {
+        insertMention(ticketKey, selectedUser.displayName, selectedUser.accountId);
+      }
+      return true;
+      
+    case 'Escape':
+      event.preventDefault();
+      suggestionsDiv.style.display = 'none';
+      selectedMentionIndex[ticketKey] = -1;
+      return true;
+  }
+  
+  return false;
+}
+
+// Scroll para a sugestão selecionada
+function scrollToSelectedMention(ticketKey) {
+  const suggestionsDiv = document.getElementById(`mention-suggestions-${ticketKey}`);
+  if (!suggestionsDiv) return;
+  
+  const selectedItem = suggestionsDiv.querySelector('.mention-item.selected');
+  if (selectedItem) {
+    selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
+// Escape HTML para prevenir XSS
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Inserir menção no texto
+function insertMention(ticketKey, displayName, accountId) {
+  const textarea = document.getElementById(`new-comment-textarea-${ticketKey}`);
+  if (!textarea) return;
+  
+  const text = textarea.value;
+  const atIndex = text.lastIndexOf('@');
+  
+  // Substituir @query por @displayName
+  const before = text.substring(0, atIndex);
+  const after = text.substring(atIndex).replace(/@[^\s]*/, `@${displayName} `);
+  textarea.value = before + after;
+  
+  // Guardar accountId para envio
+  if (!textarea.dataset.mentions) {
+    textarea.dataset.mentions = JSON.stringify({});
+  }
+  const mentions = JSON.parse(textarea.dataset.mentions);
+  mentions[displayName] = accountId;
+  textarea.dataset.mentions = JSON.stringify(mentions);
+  
+  // Esconder sugestões
+  const suggestionsDiv = document.getElementById(`mention-suggestions-${ticketKey}`);
+  if (suggestionsDiv) {
+    suggestionsDiv.style.display = 'none';
+  }
+  
+  // Focar no textarea
+  textarea.focus();
+}
+
+// Adicionar comentário
+async function addComment(ticketKey) {
+  const textarea = document.getElementById(`new-comment-textarea-${ticketKey}`);
+  const isInternal = document.getElementById(`internal-comment-checkbox-${ticketKey}`).checked;
+  const commentBody = textarea.value.trim();
+  
+  if (!commentBody) {
+    showToast('Erro', 'Comentário não pode estar vazio', 'error');
+    return;
+  }
+  
+  try {
+    showToast('Enviando', 'Enviando comentário...', 'info');
+    
+    // Extrair menções
+    const mentions = textarea.dataset.mentions ? JSON.parse(textarea.dataset.mentions) : {};
+    
+    const result = await ipcRenderer.invoke('add-comment', {
+      ticketKey,
+      commentBody,
+      isInternal,
+      mentions
+    });
+    
+    if (result.success) {
+      showToast('Sucesso', 'Comentário enviado!', 'success');
+      textarea.value = '';
+      textarea.dataset.mentions = '';
+      
+      // Rastrear comentário adicionado
+      const ticket = searchTickets.find(t => t.key === ticketKey);
+      const ticketSummary = ticket?.summary || ticket?.fields?.summary || ticketKey;
+      trackCommentAdded(ticketKey, ticketSummary);
+      
+      // Recarregar preview
+      setTimeout(() => openTicketPreview(ticketKey), 1000);
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('Erro ao enviar comentário:', error);
+    showToast('Erro', error.message || 'Falha ao enviar comentário', 'error');
+  }
+}
+
+// Upload de anexos
+async function selectAndUploadAttachments(ticketKey) {
+  try {
+    const result = await ipcRenderer.invoke('select-and-upload-attachments', ticketKey);
+    
+    if (result.success) {
+      showToast('Sucesso', `${result.count} anexo(s) enviado(s)!`, 'success');
+      // Recarregar preview
+      setTimeout(() => openTicketPreview(ticketKey), 1000);
+    } else if (!result.cancelled) {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('Erro ao enviar anexos:', error);
+    showToast('Erro', error.message || 'Falha ao enviar anexos', 'error');
+  }
+}
+
+function hideTicketPreview() {
+  document.getElementById('ticket-preview-modal').style.display = 'none';
+  currentPreviewTicket = null;
+}
+
+function openCurrentTicketInJira() {
+  if (!currentPreviewTicket) return;
+  const baseUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+  const url = `${baseUrl}/browse/${currentPreviewTicket.key}`;
+  ipcRenderer.invoke('open-url', url);
+}
+
+// Tornar campo editável inline
+async function makeFieldEditable(fieldName, ticketKey, currentValue) {
+  const displayElement = document.getElementById(`${fieldName}-display`);
+  if (!displayElement) {
+    console.error(`Elemento ${fieldName}-display não encontrado`);
+    return;
+  }
+  
+  const parent = displayElement.parentElement;
+  parent.onclick = null; // Remove o onclick temporariamente
+  
+  // Garantir que o valor não seja undefined ou null
+  const safeValue = currentValue || '';
+  
+  // Para STATUS, buscar transições disponíveis do Jira
+  if (fieldName === 'status') {
+    if (!currentPreviewTicket || !currentPreviewTicket.availableTransitions) {
+      showToast('Erro', 'Transições de status não disponíveis', 'error');
+      return;
+    }
+    
+    const transitions = currentPreviewTicket.availableTransitions;
+    
+    parent.innerHTML = `
+      <select class="inline-edit-select" id="${fieldName}-edit" onchange="saveField('${fieldName}', '${ticketKey}', this.value)" style="background: #e3f2fd; color: #1976d2; border: 2px solid #1976d2;">
+        <option value="">Status Atual: ${safeValue}</option>
+        ${transitions.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+      </select>
+    `;
+    return;
+  }
+  
+  // Para PRIORIDADE, buscar prioridades do Jira
+  if (fieldName === 'priority') {
+    // Mostrar loading
+    parent.innerHTML = '<span style="color: #666;">Carregando prioridades...</span>';
+    
+    try {
+      const result = await ipcRenderer.invoke('get-jira-priorities');
+      
+      if (!result.success || !result.data || result.data.length === 0) {
+        // Fallback com prioridades padrão do Jira
+        const priorities = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
+        parent.innerHTML = `
+          <select class="inline-edit-select" id="${fieldName}-edit" onchange="saveField('${fieldName}', '${ticketKey}', this.value)">
+            <option value="">Prioridade Atual: ${safeValue}</option>
+            ${priorities.map(p => `<option value="${p}">${p}</option>`).join('')}
+          </select>
+        `;
+      } else {
+        const priorities = result.data;
+        parent.innerHTML = `
+          <select class="inline-edit-select" id="${fieldName}-edit" onchange="saveField('${fieldName}', '${ticketKey}', this.value)">
+            <option value="">Prioridade Atual: ${safeValue}</option>
+            ${priorities.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+          </select>
+        `;
+      }
+    } catch (error) {
+      console.error('Erro ao buscar prioridades:', error);
+      parent.innerHTML = `<span style="color: #ff5252;">Erro ao carregar prioridades</span>`;
+      setTimeout(() => {
+        parent.innerHTML = `<span id="${fieldName}-display" onclick="makeFieldEditable('${fieldName}', '${ticketKey}', '${safeValue}')">${safeValue}</span>`;
+      }, 2000);
+    }
+    return;
+  }
+  
+  // Para Support Level, usar dropdown simples
+  if (fieldName === 'supportLevel') {
+    parent.innerHTML = `
+      <select class="inline-edit-select" id="${fieldName}-edit" onchange="saveField('${fieldName}', '${ticketKey}', this.value, this.value)">
+        <option value="L1" ${safeValue === 'L1' ? 'selected' : ''}>L1</option>
+        <option value="L2" ${safeValue === 'L2' ? 'selected' : ''}>L2</option>
+        <option value="L3" ${safeValue === 'L3' ? 'selected' : ''}>L3</option>
+      </select>
+    `;
+    return;
+  }
+  
+  // Para ITOps Team, buscar opções do Jira e usar dropdown
+  if (fieldName === 'team') {
+    const teamsResult = await ipcRenderer.invoke('get-itops-team-options');
+    if (teamsResult.success && teamsResult.data) {
+      const optionsHtml = teamsResult.data.map(team =>
+        `<option value="${team}" ${currentValue === team ? 'selected' : ''}>${team}</option>`
+      ).join('');
+      parent.innerHTML = `
+        <select class="inline-edit-select" id="${fieldName}-edit" onchange="saveField('${fieldName}', '${ticketKey}', this.value, this.value)">
+          ${optionsHtml}
+        </select>
+      `;
+    } else {
+      showToast('Erro', 'Não foi possível carregar times do Jira', 'error');
+      cancelEdit(fieldName, currentValue);
+    }
+    return;
+  }
+  
+  // Para Assignee e Reporter, usar input com autocomplete
+  if (fieldName === 'assignee' || fieldName === 'reporter') {
+    parent.innerHTML = `
+      <div class="autocomplete-container" style="flex: 1; position: relative;">
+        <input 
+          type="text" 
+          class="inline-edit-input" 
+          id="${fieldName}-edit" 
+          value="${safeValue}" 
+          placeholder="Digite para buscar..."
+          autocomplete="off"
+          oninput="searchUsers('${fieldName}', '${ticketKey}', this.value)"
+          style="flex: 1; width: 100%;"
+        >
+        <div class="autocomplete-suggestions" id="${fieldName}-suggestions" style="display: none;"></div>
+      </div>
+      <button 
+        class="inline-save-btn" 
+        onclick="event.stopPropagation(); saveFieldFromInput('${fieldName}', '${ticketKey}')"
+        title="Salvar">
+        💾
+      </button>
+      <button 
+        class="inline-cancel-btn" 
+        onclick="event.stopPropagation(); cancelEdit('${fieldName}', '${safeValue}')"
+        title="Cancelar">
+        ✕
+      </button>
+    `;
+    
+    // Focar no input
+    setTimeout(() => {
+      const input = document.getElementById(`${fieldName}-edit`);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 100);
+  }
+}
+
+// Buscar usuários enquanto digita
+let searchTimeout = null;
+let cachedUsers = {};
+
+async function searchUsers(fieldName, ticketKey, query) {
+  clearTimeout(searchTimeout);
+  
+  const suggestionsDiv = document.getElementById(`${fieldName}-suggestions`);
+  if (!suggestionsDiv) return;
+  
+  // Se query vazio, esconder sugestões
+  if (!query || query.trim().length < 2) {
+    suggestionsDiv.style.display = 'none';
+    return;
+  }
+  
+  // 🚀 OTIMIZAÇÃO: Debounce de 600ms (reduz chamadas à API)
+  searchTimeout = setTimeout(async () => {
+    try {
+      // Mostrar loading
+      suggestionsDiv.innerHTML = '<div class="autocomplete-loading">🔍 Buscando...</div>';
+      suggestionsDiv.style.display = 'block';
+      
+      // Buscar usuários
+      const projectKey = ticketKey.split('-')[0];
+      
+      // Cache de usuários por projeto
+      if (!cachedUsers[projectKey]) {
+        const result = await ipcRenderer.invoke('get-assignable-users', projectKey);
+        if (result.success && result.data) {
+          cachedUsers[projectKey] = result.data;
+        } else {
+          throw new Error('Falha ao buscar usuários');
+        }
+      }
+      
+      const users = cachedUsers[projectKey];
+      
+      // Filtrar usuários que contenham a query
+      const queryLower = query.toLowerCase();
+      const filtered = users.filter(user => 
+        user.displayName.toLowerCase().includes(queryLower) ||
+        (user.emailAddress && user.emailAddress.toLowerCase().includes(queryLower))
+      ).slice(0, 10); // Limitar a 10 resultados
+      
+      if (filtered.length === 0) {
+        suggestionsDiv.innerHTML = '<div class="autocomplete-no-results">❌ Nenhum usuário encontrado</div>';
+      } else {
+        let html = '';
+        filtered.forEach(user => {
+          html += `
+            <div class="autocomplete-item" onclick="selectUser('${fieldName}', '${user.accountId}', '${user.displayName.replace(/'/g, "\\'")}')">
+              <div class="autocomplete-name">${user.displayName}</div>
+              ${user.emailAddress ? `<div class="autocomplete-email">${user.emailAddress}</div>` : ''}
+            </div>
+          `;
+        });
+        suggestionsDiv.innerHTML = html;
+      }
+      
+      suggestionsDiv.style.display = 'block';
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      suggestionsDiv.innerHTML = '<div class="autocomplete-error">⚠️ Erro ao buscar</div>';
+    }
+  }, 600); // 600ms ao invés de 300ms
+}
+
+// Selecionar usuário da lista de sugestões
+function selectUser(fieldName, accountId, displayName) {
+  const input = document.getElementById(`${fieldName}-edit`);
+  if (input) {
+    input.value = displayName;
+    input.setAttribute('data-account-id', accountId);
+    input.setAttribute('data-display-name', displayName);
+  }
+  
+  const suggestionsDiv = document.getElementById(`${fieldName}-suggestions`);
+  if (suggestionsDiv) {
+    suggestionsDiv.style.display = 'none';
+  }
+}
+
+// Salvar campo a partir do input
+async function saveFieldFromInput(fieldName, ticketKey) {
+  const input = document.getElementById(`${fieldName}-edit`);
+  if (!input) return;
+  
+  const accountId = input.getAttribute('data-account-id');
+  const displayName = input.getAttribute('data-display-name') || input.value;
+  
+  if (!accountId) {
+    // Se não tem accountId, tentar buscar pelo texto digitado
+    await saveField(fieldName, ticketKey, input.value, displayName);
+  } else {
+    // Se tem accountId, usar ele
+    await saveField(fieldName, ticketKey, accountId, displayName);
+  }
+}
+
+// Salvar campo direto do input (para campos que não precisam de accountId)
+async function saveFieldFromInputDirect(fieldName, ticketKey) {
+  const input = document.getElementById(`${fieldName}-edit`);
+  if (!input) return;
+  
+  const value = input.value.trim();
+  if (!value) {
+    showToast('Erro', 'Digite um valor', 'error');
+    return;
+  }
+  
+  await saveField(fieldName, ticketKey, value);
+}
+
+// Buscar times enquanto digita
+let searchTeamTimeout = null;
+let cachedTeams = null;
+
+async function searchTeams(fieldName, query) {
+  clearTimeout(searchTeamTimeout);
+  
+  const suggestionsDiv = document.getElementById(`${fieldName}-suggestions`);
+  if (!suggestionsDiv) return;
+  
+  // Se query vazio, esconder sugestões
+  if (!query || query.trim().length < 1) {
+    suggestionsDiv.style.display = 'none';
+    return;
+  }
+  
+  // Debounce
+  searchTeamTimeout = setTimeout(async () => {
+    try {
+      // Buscar times do Jira (com cache)
+      if (!cachedTeams) {
+        suggestionsDiv.innerHTML = '<div class="autocomplete-loading">🔍 Carregando times do Jira...</div>';
+        suggestionsDiv.style.display = 'block';
+        
+        const result = await ipcRenderer.invoke('get-itops-team-options');
+        if (result.success && result.data) {
+          cachedTeams = result.data;
+          console.log('✅ Times carregados do Jira:', cachedTeams);
+        } else {
+          throw new Error('Falha ao carregar times');
+        }
+      }
+      
+      // Filtrar times que contenham a query
+      const queryLower = query.toLowerCase();
+      const filtered = cachedTeams.filter(team => 
+        team.toLowerCase().includes(queryLower)
+      );
+      
+      if (filtered.length === 0) {
+        suggestionsDiv.innerHTML = '<div class="autocomplete-no-results">❌ Nenhum time encontrado</div>';
+        suggestionsDiv.style.display = 'block';
+      } else {
+        let html = '';
+        filtered.forEach(team => {
+          html += `
+            <div class="autocomplete-item" onclick="selectTeam('${fieldName}', '${team}')">
+              <div class="autocomplete-name">${team}</div>
+            </div>
+          `;
+        });
+        suggestionsDiv.innerHTML = html;
+        suggestionsDiv.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('Erro ao buscar times:', error);
+      suggestionsDiv.innerHTML = '<div class="autocomplete-error">⚠️ Erro ao buscar times</div>';
+      suggestionsDiv.style.display = 'block';
+    }
+  }, 400); // 🚀 OTIMIZAÇÃO: 400ms ao invés de 200ms
+}
+
+// Selecionar time da lista de sugestões
+function selectTeam(fieldName, teamName) {
+  const input = document.getElementById(`${fieldName}-edit`);
+  if (input) {
+    input.value = teamName;
+  }
+  
+  const suggestionsDiv = document.getElementById(`${fieldName}-suggestions`);
+  if (suggestionsDiv) {
+    suggestionsDiv.style.display = 'none';
+  }
+}
+
+// Salvar campo editado
+async function saveField(fieldName, ticketKey, newValue, displayName = null) {
+  if (!newValue || newValue.trim() === '') {
+    showToast('Erro', 'Selecione uma opção', 'error');
+    return;
+  }
+  
+  console.log(`💾 Salvando ${fieldName}:`, newValue, displayName);
+  showToast('Salvando', 'Atualizando ticket...', 'info');
+  
+  try {
+    const result = await ipcRenderer.invoke('update-ticket-field', {
+      ticketKey,
+      fieldName,
+      value: newValue,
+      displayName
+    });
+    
+    if (result.success) {
+      showToast('Sucesso', 'Campo atualizado!', 'success');
+      // Recarregar preview após 800ms
+      setTimeout(() => openTicketPreview(ticketKey), 800);
+    } else {
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error('Erro ao salvar campo:', error);
+    showToast('Erro', error.message || 'Falha ao atualizar', 'error');
+  }
+}
+
+// Cancelar edição
+function cancelEdit(fieldName, originalValue) {
+  if (!currentPreviewTicket) return;
+  
+  // Encontrar o parent container
+  const containers = document.querySelectorAll('.ticket-info-value-editable');
+  let targetContainer = null;
+  
+  containers.forEach(container => {
+    if (container.innerHTML.includes(`${fieldName}-edit`)) {
+      targetContainer = container;
+    }
+  });
+  
+  if (targetContainer) {
+    // Restaurar o valor original
+    const displayValue = originalValue || (fieldName === 'team' ? 'TechCenter' : 'N/A');
+    targetContainer.innerHTML = `<span id="${fieldName}-display">${displayValue}</span>`;
+    targetContainer.onclick = () => makeFieldEditable(fieldName, currentPreviewTicket.key, originalValue);
+  }
+}
+
+function openCurrentTicketInWebview() {
+  if (!currentPreviewTicket) return;
+  const baseUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
+  const url = `${baseUrl}/browse/${currentPreviewTicket.key}`;
+  ipcRenderer.invoke('open-jira-webview', url, currentPreviewTicket.key);
+}
+
+// Drag and Drop
+function setupDragAndDropForContainer(container) {
+  const buttons = container.querySelectorAll('.draggable-btn');
+  
+  console.log(`🔧 Configurando drag-and-drop para ${buttons.length} botões em:`, container.id);
+  
+  buttons.forEach(button => {
+    const handle = button.querySelector('.drag-handle');
+    if (!handle) {
+      console.warn('⚠️ Botão sem drag-handle:', button);
+      return;
+    }
+    
+    handle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      button.draggable = true;
+      console.log('🖱️ Drag iniciado:', button.querySelector('.btn-text')?.textContent);
+    });
+    
+    button.addEventListener('dragstart', (e) => {
+      button.classList.add('dragging');
+      console.log('🎯 Dragstart:', button.querySelector('.btn-text')?.textContent);
+    });
+    
+    button.addEventListener('dragend', (e) => {
+      button.classList.remove('dragging');
+      button.draggable = false;
+      console.log('✅ Drag finalizado');
+      saveButtonsOrder(container);
+    });
+  });
+  
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const dragging = container.querySelector('.dragging');
+    if (!dragging) return;
+    
+    const afterElement = getDragAfterElement(container, e.clientY);
+    
+    if (afterElement == null) {
+      container.appendChild(dragging);
+    } else {
+      container.insertBefore(dragging, afterElement);
+    }
+  });
+}
+
+function getDragAfterElement(container, y) {
+  const elements = [...container.querySelectorAll('.draggable-btn:not(.dragging)')];
+  
+  return elements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function saveButtonsOrder(container) {
+  // Implementar salvamento da ordem se necessário
+  console.log('Ordem dos botões salva');
+}
+
+// Botões Editáveis
+function setupEditableButtons(container) {
+  const buttons = container.querySelectorAll('.draggable-btn');
+  
+  console.log(`✏️ Configurando edição para ${buttons.length} botões em:`, container.id);
+  
+  buttons.forEach(button => {
+    const editIcon = button.querySelector('.edit-icon');
+    const btnText = button.querySelector('.btn-text');
+    
+    if (!editIcon || !btnText) {
+      console.warn('⚠️ Botão sem edit-icon ou btn-text:', button);
+      return;
+    }
+    
+    // Remover event listeners anteriores (se houver)
+    const newEditIcon = editIcon.cloneNode(true);
+    editIcon.parentNode.replaceChild(newEditIcon, editIcon);
+    
+    newEditIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      console.log('✏️ Edição iniciada:', btnText.textContent);
+      startEditingButton(button, btnText);
+    });
+    
+    btnText.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      console.log('✏️ Duplo clique para editar:', btnText.textContent);
+      startEditingButton(button, btnText);
+    });
+    
+    button.addEventListener('click', (e) => {
+      // Não executar se estiver editando
+      if (btnText.contentEditable === 'true') return;
+      
+      const url = button.getAttribute('data-url');
+      if (url) {
+        console.log('🔗 Abrindo URL:', url);
+        ipcRenderer.invoke('open-url', url);
+      }
+    });
+  });
+}
+
+function startEditingButton(button, btnText) {
+  const currentText = btnText.textContent;
+  btnText.contentEditable = true;
+  btnText.focus();
+  
+  const range = document.createRange();
+  range.selectNodeContents(btnText);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  
+  const finishEditing = () => {
+    btnText.contentEditable = false;
+    const newText = btnText.textContent.trim();
+    if (!newText) {
+      btnText.textContent = currentText;
+    }
+    // Salvar alteração se necessário
+    console.log('Botão editado:', newText);
+  };
+  
+  btnText.addEventListener('blur', finishEditing, { once: true });
+  btnText.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      btnText.blur();
+    } else if (e.key === 'Escape') {
+      btnText.textContent = currentText;
+      btnText.blur();
+    }
+  }, { once: true });
+}
+
+// Loading
+function showLoading() {
+  document.getElementById('loading-indicator').style.display = 'flex';
+}
+
+function hideLoading() {
+  document.getElementById('loading-indicator').style.display = 'none';
+}
+
+function showError(message) {
+  showToast(`Erro: ${message}`, 'error');
+}
+
+// Toast
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
+// Auto Update
+function startAutoUpdate() {
+  if (updateInterval) {
+    clearInterval(updateInterval);
+  }
+  
+  const interval = (currentConfig.refreshInterval || 60) * 1000;
+  updateInterval = setInterval(() => {
+    fetchAndUpdateStats();
+    checkForMentions(); // Verificar menções junto com os stats
+  }, interval);
+  
+  // Verificar menções também na inicialização
+  checkForMentions();
+}
+
+// Resize Handle
+function setupResizeHandle() {
+  const handle = document.getElementById('resize-handle');
+  const container = document.querySelector('.app-container');
+  let isResizing = false;
+  let startX, startY, startWidth, startHeight;
+  
+  handle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startWidth = container.offsetWidth;
+    startHeight = container.offsetHeight;
+    
+    document.addEventListener('mousemove', resize);
+    document.addEventListener('mouseup', stopResize);
+  });
+  
+  function resize(e) {
+    if (!isResizing) return;
+    
+    const width = startWidth + (e.clientX - startX);
+    const height = startHeight + (e.clientY - startY);
+    
+    if (width >= 350 && height >= 500) {
+      const { remote } = require('electron');
+      const win = remote.getCurrentWindow();
+      win.setSize(Math.floor(width), Math.floor(height));
+    }
+  }
+  
+  function stopResize() {
+    isResizing = false;
+    document.removeEventListener('mousemove', resize);
+    document.removeEventListener('mouseup', stopResize);
+  }
+}
+
+// ========================================
+// MELHORIAS DE UX
+// ========================================
+
+// Atualizar Status de Conexão
+function updateConnectionStatus(status) {
+  connectionStatus = status;
+  const statusDot = document.getElementById('status-dot');
+  
+  statusDot.className = 'status-dot';
+  statusDot.classList.add(status);
+  
+  const statusText = {
+    online: 'Conectado',
+    offline: 'Desconectado',
+    loading: 'Carregando...'
+  };
+  
+  statusDot.parentElement.title = statusText[status] || 'Status desconhecido';
+}
+
+// Mostrar Banner de Erro
+function showErrorBanner(title, description) {
+  const banner = document.getElementById('error-banner');
+  const titleEl = document.getElementById('error-title');
+  const descEl = document.getElementById('error-description');
+  
+  titleEl.textContent = title;
+  descEl.textContent = description;
+  banner.style.display = 'block';
+  
+  updateConnectionStatus('offline');
+}
+
+// Esconder Banner de Erro
+function hideErrorBanner() {
+  const banner = document.getElementById('error-banner');
+  banner.style.display = 'none';
+  updateConnectionStatus('online');
+}
+
+// Toast Notification
+function showToast(title, message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      ${message ? `<div class="toast-message">${message}</div>` : ''}
+    </div>
+    <button class="toast-close">✕</button>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Auto-remover após 4 segundos
+  const timeout = setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+  
+  // Botão de fechar
+  toast.querySelector('.toast-close').addEventListener('click', () => {
+    clearTimeout(timeout);
+    toast.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => toast.remove(), 300);
+  });
+}
+
+// Adicionar animação de saída
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideOut {
+    to {
+      opacity: 0;
+      transform: translateX(100px);
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// Modal de Confirmação
+function showConfirmModal(title, message, confirmText = 'Confirmar', cancelText = 'Cancelar', isDanger = false) {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'confirm-modal';
+    modal.innerHTML = `
+      <div class="confirm-modal-content">
+        <div class="confirm-modal-title">${title}</div>
+        <div class="confirm-modal-message">${message}</div>
+        <div class="confirm-modal-actions">
+          <button class="confirm-btn confirm-btn-cancel">${cancelText}</button>
+          <button class="confirm-btn confirm-btn-confirm ${isDanger ? 'confirm-btn-danger' : ''}">${confirmText}</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const handleClose = (confirmed) => {
+      modal.style.animation = 'fadeOut 0.2s ease-out';
+      setTimeout(() => modal.remove(), 200);
+      resolve(confirmed);
+    };
+    
+    modal.querySelector('.confirm-btn-cancel').addEventListener('click', () => handleClose(false));
+    modal.querySelector('.confirm-btn-confirm').addEventListener('click', () => handleClose(true));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) handleClose(false);
+    });
+  });
+}
+
+const fadeOutStyle = document.createElement('style');
+fadeOutStyle.textContent = `
+  @keyframes fadeOut {
+    to {
+      opacity: 0;
+    }
+  }
+`;
+document.head.appendChild(fadeOutStyle);
+
+// Atualizar Tempo Real
+function updateLastUpdateTime() {
+  if (!lastUpdateTime) return;
+  
+  const now = new Date();
+  const diff = Math.floor((now - lastUpdateTime) / 1000); // em segundos
+  
+  let text = '';
+  if (diff < 60) {
+    text = `Atualizado há ${diff}s`;
+  } else if (diff < 3600) {
+    const minutes = Math.floor(diff / 60);
+    text = `Atualizado há ${minutes} min`;
+  } else {
+    const hours = Math.floor(diff / 3600);
+    text = `Atualizado há ${hours}h`;
+  }
+  
+  document.getElementById('last-update').textContent = text;
+}
+
+// 🚀 OTIMIZAÇÃO: Atualizar contador a cada 15s (reduz CPU)
+setInterval(updateLastUpdateTime, 15000); // A cada 15 segundos ao invés de 5s
+
+// Barra de Progresso
+function startProgressBar() {
+  const progressFill = document.getElementById('progress-fill');
+  const refreshInterval = (currentConfig.refreshInterval || 60) * 1000;
+  
+  progressFill.style.width = '0%';
+  progressFill.style.transition = 'none';
+  
+  setTimeout(() => {
+    progressFill.style.transition = `width ${refreshInterval}ms linear`;
+    progressFill.style.width = '100%';
+  }, 50);
+  
+  clearInterval(progressInterval);
+  progressInterval = setInterval(() => {
+    progressFill.style.width = '0%';
+    progressFill.style.transition = 'none';
+    setTimeout(() => {
+      progressFill.style.transition = `width ${refreshInterval}ms linear`;
+      progressFill.style.width = '100%';
+    }, 50);
+  }, refreshInterval);
+}
+
+// Animar Números ao Atualizar
+function animateNumber(elementId, newValue) {
+  const element = document.getElementById(elementId);
+  const oldValue = parseInt(element.textContent) || 0;
+  
+  if (oldValue !== newValue) {
+    element.classList.add('updating');
+    setTimeout(() => {
+      element.classList.remove('updating');
+    }, 500);
+  }
+  
+  element.textContent = newValue;
+}
+
+// Estado Vazio com Mensagem Motivacional
+function showEmptyState(container, type) {
+  const messages = {
+    total: {
+      icon: '🎉',
+      title: 'Nada por aqui!',
+      message: 'Você está sem tickets atribuídos no momento.'
+    },
+    support: {
+      icon: '✨',
+      title: 'Ótimo trabalho!',
+      message: 'Nenhum ticket aguardando suporte.'
+    },
+    customer: {
+      icon: '👏',
+      title: 'Tudo respondido!',
+      message: 'Nenhum ticket aguardando cliente.'
+    },
+    pending: {
+      icon: '🚀',
+      title: 'Parabéns!',
+      message: 'Nenhum ticket pendente.'
+    }
+  };
+  
+  const state = messages[type] || messages.total;
+  
+  container.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon">${state.icon}</div>
+      <div class="empty-state-title">${state.title}</div>
+      <div class="empty-state-message">${state.message}</div>
+    </div>
+  `;
+}
+
+// ========================================
+// 🚀 NOVAS FUNCIONALIDADES UX
+// ========================================
+
+// 🔍 BUSCA RÁPIDA DE TICKETS
+function showQuickSearch() {
+  document.getElementById('quick-search-modal').style.display = 'flex';
+  document.getElementById('quick-search-input').focus();
+  document.getElementById('quick-search-input').value = '';
+}
+
+function hideQuickSearch() {
+  document.getElementById('quick-search-modal').style.display = 'none';
+}
+
+function performQuickSearch(e) {
+  const query = e.target.value.toLowerCase().trim();
+  const resultsContainer = document.getElementById('quick-search-results');
+  
+  if (!query) {
+    resultsContainer.innerHTML = '<div class="quick-search-empty">Digite para buscar tickets...</div>';
+    return;
+  }
+  
+  const results = searchTickets.filter(ticket => {
+    const key = ticket.key.toLowerCase();
+    const summary = (ticket.summary || ticket.fields?.summary || '').toLowerCase();
+    const project = (ticket.fields?.project?.key || '').toLowerCase();
+    return key.includes(query) || summary.includes(query) || project.includes(query);
+  });
+  
+  if (results.length === 0) {
+    resultsContainer.innerHTML = '<div class="quick-search-empty">Nenhum ticket encontrado</div>';
+    return;
+  }
+  
+  resultsContainer.innerHTML = results.slice(0, 10).map((ticket, index) => `
+    <div class="quick-search-result-item" data-ticket-key="${ticket.key}" data-index="${index}">
+      <div class="quick-search-result-key">${ticket.key}</div>
+      <div class="quick-search-result-summary">${ticket.summary || ticket.fields?.summary || 'Sem título'}</div>
+      <div class="quick-search-result-meta">
+        ${ticket.fields?.status?.name || 'Status desconhecido'} • 
+        ${ticket.fields?.priority?.name || 'Prioridade desconhecida'}
+      </div>
+    </div>
+  `).join('');
+  
+  // Adicionar event listeners
+  resultsContainer.querySelectorAll('.quick-search-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const ticketKey = item.getAttribute('data-ticket-key');
+      openTicketPreview(ticketKey);
+      hideQuickSearch();
+    });
+  });
+}
+
+function handleQuickSearchKeydown(e) {
+  const results = document.querySelectorAll('.quick-search-result-item');
+  const current = document.querySelector('.quick-search-result-item.selected');
+  let index = current ? parseInt(current.getAttribute('data-index')) : -1;
+  
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    index = Math.min(index + 1, results.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    index = Math.max(index - 1, 0);
+  } else if (e.key === 'Enter' && index >= 0) {
+    e.preventDefault();
+    results[index].click();
+    return;
+  } else if (e.key === 'Escape') {
+    hideQuickSearch();
+    return;
+  } else {
+    return; // Deixar o input funcionar normalmente
+  }
+  
+  // Atualizar seleção
+  results.forEach(r => r.classList.remove('selected'));
+  if (results[index]) {
+    results[index].classList.add('selected');
+    results[index].scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function toggleSearch() {
+  showQuickSearch();
+}
+
+// 📊 HISTÓRICO DE ATIVIDADE DO DIA
+function updateDailyActivityUI() {
+  document.getElementById('daily-new-count').textContent = dailyActivity.new;
+  document.getElementById('daily-closed-count').textContent = dailyActivity.closed;
+  document.getElementById('daily-updated-count').textContent = dailyActivity.updated;
+  
+  // Mostrar widget se houver atividade
+  const widget = document.getElementById('daily-activity-widget');
+  if (dailyActivity.new > 0 || dailyActivity.closed > 0 || dailyActivity.updated > 0) {
+    widget.style.display = 'block';
+  }
+}
+
+function closeDailyActivityWidget() {
+  const widget = document.getElementById('daily-activity-widget');
+  widget.style.display = 'none';
+}
+
+// 🎯 MODO FOCUS
+function toggleFocusMode() {
+  isFocusMode = !isFocusMode;
+  const body = document.body;
+  
+  if (isFocusMode) {
+    body.classList.add('focus-mode');
+    showToast('Modo Focus', 'Ativado', 'success');
+  } else {
+    body.classList.remove('focus-mode');
+    showToast('Modo Focus', 'Desativado', 'info');
+  }
+  
+  // Salvar preferência
+  ipcRenderer.invoke('save-config', { focusMode: isFocusMode });
+}
+
+// 🪟 OPACIDADE AJUSTÁVEL
+function updateWindowOpacity(opacity) {
+  windowOpacity = Math.max(0.2, Math.min(1.0, opacity));
+  document.body.style.opacity = windowOpacity;
+  
+  // Atualizar UI
+  const opacityPercent = Math.round(windowOpacity * 100);
+  document.getElementById('opacity-value').textContent = `${opacityPercent}%`;
+  
+  // Atualizar slider se existir
+  const slider = document.getElementById('opacity-slider');
+  if (slider) {
+    slider.value = opacityPercent;
+  }
+  
+  // Salvar preferência
+  ipcRenderer.invoke('save-config', { windowOpacity });
+}
+
+// 🎨 TEMAS CUSTOMIZÁVEIS
+function setupThemeCustomizerListeners() {
+  console.log('🎨 Configurando listeners do customizador de tema');
+  
+  // Remover listeners antigos (se existirem) e adicionar novos
+  const swatches = document.querySelectorAll('.color-swatch');
+  console.log('📊 Encontrados', swatches.length, 'botões de cor');
+  
+  swatches.forEach(btn => {
+    // Clonar o elemento para remover todos os listeners antigos
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    newBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const color = newBtn.getAttribute('data-color');
+      console.log('🎨 Cor selecionada:', color);
+      applyAccentColor(color, true);
+      
+      // Atualizar visual de selecionado
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      newBtn.classList.add('active');
+    });
+  });
+  
+  // Theme presets
+  const presetBtns = document.querySelectorAll('.theme-preset-btn');
+  console.log('📊 Encontrados', presetBtns.length, 'temas pré-definidos');
+  
+  presetBtns.forEach(btn => {
+    // Clonar o elemento para remover todos os listeners antigos
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    newBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const theme = newBtn.getAttribute('data-theme');
+      console.log('🎨 Tema selecionado:', theme);
+      applyThemePreset(theme, true);
+      hideThemeCustomizer();
+    });
+  });
+  
+  console.log('✅ Listeners configurados!');
+}
+
+function showThemeCustomizer() {
+  console.log('🎨 Abrindo customizador de tema');
+  const modal = document.getElementById('theme-customizer-modal');
+  modal.style.display = 'flex';
+  
+  // Aguardar um momento para garantir que o modal está renderizado
+  setTimeout(() => {
+    setupThemeCustomizerListeners();
+  }, 100);
+  
+  // Fechar ao clicar fora
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      hideThemeCustomizer();
+    }
+  });
+}
+
+function hideThemeCustomizer() {
+  document.getElementById('theme-customizer-modal').style.display = 'none';
+}
+
+function applyAccentColor(color, showNotification = false) {
+  console.log('🎨 Aplicando cor de acento:', color);
+  
+  // Aplicar a cor
+  document.documentElement.style.setProperty('--accent-color', color);
+  console.log('✅ Variável CSS setada');
+  
+  // Salvar no config
+  ipcRenderer.invoke('save-config', { accentColor: color }).then(() => {
+    console.log('💾 Cor salva no config');
+  });
+  
+  if (showNotification) {
+    showToast('Tema', 'Cor de acento atualizada', 'success');
+  }
+}
+
+function applyThemePreset(theme, showNotification = false) {
+  console.log('🎨 Aplicando tema preset:', theme);
+  
+  const presets = {
+    default: {
+      accent: '#667eea',
+      bg: '#1a1d2e',
+      text: '#ffffff'
+    },
+    cyberpunk: {
+      accent: '#ff00ff',
+      bg: '#0a0e27',
+      text: '#00ffff'
+    },
+    nord: {
+      accent: '#88c0d0',
+      bg: '#2e3440',
+      text: '#eceff4'
+    },
+    dracula: {
+      accent: '#bd93f9',
+      bg: '#282a36',
+      text: '#f8f8f2'
+    }
+  };
+  
+  const preset = presets[theme];
+  if (preset) {
+    console.log('✅ Preset encontrado:', preset);
+    
+    // Aplicar as cores
+    document.documentElement.style.setProperty('--accent-color', preset.accent);
+    document.documentElement.style.setProperty('--bg-primary', preset.bg);
+    document.documentElement.style.setProperty('--text-primary', preset.text);
+    console.log('✅ Variáveis CSS setadas');
+    
+    // Salvar no config
+    ipcRenderer.invoke('save-config', { themePreset: theme }).then(() => {
+      console.log('💾 Tema salvo:', theme);
+    });
+    
+    if (showNotification) {
+      showToast('Tema', `Tema "${theme}" aplicado`, 'success');
+    }
+  } else {
+    console.warn('⚠️ Preset não encontrado:', theme);
+  }
+}
+
+// ⌨️ ATALHOS CUSTOMIZÁVEIS
+function hideShortcutsCustomModal() {
+  document.getElementById('shortcuts-custom-modal').style.display = 'none';
+}
+
+function resetShortcutsToDefault() {
+  ipcRenderer.invoke('save-config', { customShortcuts: null });
+  showToast('Atalhos', 'Restaurados para padrão', 'success');
+  hideShortcutsCustomModal();
+}
+
+// 📄 EXPORT DE RELATÓRIOS
+function showExportModal() {
+  document.getElementById('export-modal').style.display = 'flex';
+}
+
+function hideExportModal() {
+  document.getElementById('export-modal').style.display = 'none';
+}
+
+async function downloadReport() {
+  const period = document.getElementById('export-period').value;
+  const format = document.getElementById('export-format').value;
+  const includeStats = document.getElementById('export-stats').checked;
+  const includeTickets = document.getElementById('export-tickets').checked;
+  const includeTrend = document.getElementById('export-trend').checked;
+  
+  const reportData = {
+    period,
+    timestamp: new Date().toISOString(),
+    user: currentConfig.jiraEmail,
+    monitoredUser: currentConfig.monitorOtherUser ? currentConfig.otherUserEmail : 'self'
+  };
+  
+  if (includeStats && currentStats) {
+    reportData.stats = {
+      total: currentStats.total,
+      waitingForSupport: currentStats.waitingForSupport,
+      waitingForCustomer: currentStats.waitingForCustomer,
+      pending: currentStats.pending,
+      slaAlerts: currentStats.slaAlerts,
+      oldTickets: currentStats.oldTickets
+    };
+  }
+  
+  if (includeTickets && currentStats) {
+    reportData.tickets = currentStats.allTickets?.map(t => ({
+      key: t.key,
+      summary: t.summary || t.fields?.summary,
+      status: t.fields?.status?.name,
+      priority: t.fields?.priority?.name,
+      project: t.fields?.project?.key
+    }));
+  }
+  
+  if (includeTrend && currentStats) {
+    reportData.trend = currentStats.trend;
+  }
+  
+  // Gerar e baixar arquivo
+  if (format === 'json') {
+    downloadJSON(reportData, `jira-report-${period}.json`);
+  } else if (format === 'csv') {
+    downloadCSV(reportData, `jira-report-${period}.csv`);
+  } else if (format === 'pdf') {
+    showToast('PDF', 'Função em desenvolvimento', 'info');
+  }
+  
+  hideExportModal();
+  showToast('Export', 'Relatório baixado com sucesso', 'success');
+}
+
+function downloadJSON(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadCSV(data, filename) {
+  let csv = 'Key,Summary,Status,Priority,Project\n';
+  
+  if (data.tickets) {
+    data.tickets.forEach(ticket => {
+      csv += `"${ticket.key}","${ticket.summary}","${ticket.status}","${ticket.priority}","${ticket.project}"\n`;
+    });
+  }
+  
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// 👤 INDICADOR VISUAL DE USUÁRIO MONITORADO
+function updateMonitoredUserIndicator() {
+  const indicator = document.getElementById('monitored-user-indicator');
+  const label = document.getElementById('user-monitor-label');
+  
+  if (currentConfig.monitorOtherUser && currentConfig.otherUserEmail) {
+    const email = currentConfig.otherUserEmail;
+    const displayName = email.split('@')[0].split('.').map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1)
+    ).join(' ');
+    
+    indicator.textContent = `Monitorando: ${displayName}`;
+    indicator.style.display = 'inline-block';
+    label.textContent = displayName;
+    
+    // Aplicar cor única ao usuário
+    const userColor = getUserColor(email);
+    document.body.style.borderTop = `3px solid ${userColor}`;
+  } else {
+    indicator.style.display = 'none';
+    label.textContent = 'Você';
+    document.body.style.borderTop = 'none';
+  }
+  
+  updateUserListDropdown();
+}
+
+function getUserColor(email) {
+  // Gerar cor consistente baseada no email
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// 🔴 PRIORIDADE VISUAL NOS TICKETS
+function getPriorityBadge(priority) {
+  const priorities = {
+    'Highest': { color: '#dc2626', icon: '🔴', label: 'Crítico' },
+    'High': { color: '#ea580c', icon: '🟠', label: 'Alto' },
+    'Medium': { color: '#f59e0b', icon: '🟡', label: 'Médio' },
+    'Low': { color: '#3b82f6', icon: '🔵', label: 'Baixo' },
+    'Lowest': { color: '#6b7280', icon: '⚪', label: 'Mínimo' }
+  };
+  
+  const p = priorities[priority] || priorities['Medium'];
+  return `<span class="priority-badge" style="background: ${p.color}20; color: ${p.color}; border: 1px solid ${p.color};">${p.icon} ${p.label}</span>`;
+}
+
+// Expor funções globais
+window.openTicketInJira = openTicketInJira;
+window.openTicketPreview = openTicketPreview;
+window.hideTicketPreview = hideTicketPreview;
+window.openTrendDay = openTrendDay;
+window.downloadAttachment = downloadAttachment;
+window.showAttachmentPreview = async (attachmentId) => {
+  console.log('🖼️ showAttachmentPreview chamada com ID:', attachmentId);
+  console.log('🖼️ Tipo do attachmentId:', typeof attachmentId);
+  
+  // Criar modal de preview se não existir
+  let modal = document.getElementById('attachment-preview-modal');
+  console.log('🖼️ Modal existente?', !!modal);
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'attachment-preview-modal';
+    modal.className = 'attachment-preview-modal';
+    modal.innerHTML = `
+      <div class="attachment-preview-overlay" onclick="hideAttachmentPreview()"></div>
+      <div class="attachment-preview-content">
+        <button class="attachment-preview-close" onclick="hideAttachmentPreview()" title="Fechar (ESC)">✕</button>
+        <div class="attachment-preview-loader">
+          <div class="loader-spinner"></div>
+          <p>Carregando imagem...</p>
+        </div>
+        <img class="attachment-preview-image" alt="Preview" style="display: none;">
+        <div class="attachment-preview-error" style="display: none;">
+          <p>❌ Erro ao carregar imagem</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  
+  // Mostrar modal
+  modal.style.display = 'flex';
+  
+  // Reset do estado
+  const loader = modal.querySelector('.attachment-preview-loader');
+  const img = modal.querySelector('.attachment-preview-image');
+  const error = modal.querySelector('.attachment-preview-error');
+  
+  loader.style.display = 'block';
+  img.style.display = 'none';
+  error.style.display = 'none';
+  
+  try {
+    // Buscar URL da imagem
+    const result = await ipcRenderer.invoke('get-attachment-url', attachmentId);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Falha ao obter URL do anexo');
+    }
+    
+    // Fazer fetch da imagem com autenticação
+    const response = await fetch(result.url, {
+      headers: {
+        'Authorization': `Basic ${btoa(currentConfig.jiraEmail + ':' + currentConfig.jiraApiToken)}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Falha ao carregar imagem');
+    }
+    
+    const blob = await response.blob();
+    const imageUrl = URL.createObjectURL(blob);
+    
+    // Carregar imagem
+    img.src = imageUrl;
+    img.onload = () => {
+      loader.style.display = 'none';
+      img.style.display = 'block';
+    };
+    img.onerror = () => {
+      loader.style.display = 'none';
+      error.style.display = 'block';
+      URL.revokeObjectURL(imageUrl);
+    };
+    
+  } catch (err) {
+    console.error('Erro ao carregar preview:', err);
+    loader.style.display = 'none';
+    error.style.display = 'block';
+  }
+};
+
+window.hideAttachmentPreview = () => {
+  const modal = document.getElementById('attachment-preview-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    const img = modal.querySelector('.attachment-preview-image');
+    if (img && img.src) {
+      URL.revokeObjectURL(img.src);
+      img.src = '';
+    }
+  }
+};
+
+// Log para confirmar que as funções foram registradas
+console.log('✅ Funções de preview registradas:', {
+  showAttachmentPreview: typeof window.showAttachmentPreview,
+  hideAttachmentPreview: typeof window.hideAttachmentPreview
+});
+
+window.selectAndUploadAttachments = selectAndUploadAttachments;
+window.addComment = addComment;
+window.removeNotification = removeNotification;
+window.applyAccentColor = applyAccentColor;
+window.applyThemePreset = applyThemePreset;
+window.toggleActivityDetails = toggleActivityDetails;
+
+// ============================================
+// 📊 DASHBOARD DE PERFORMANCE - v1.5.0
+// ============================================
+
+let performanceMetricsCache = null;
+
+async function loadPerformanceDashboard(days = 30) {
+  console.log('📊 Carregando Dashboard de Performance...');
+  
+  // Atualizar badge de usuário monitorado
+  updateProMonitoredUserBadge();
+  
+  const refreshBtn = document.getElementById('performance-refresh-btn');
+  if (refreshBtn) {
+    refreshBtn.classList.add('loading');
+    refreshBtn.disabled = true;
+  }
+  
+  try {
+    const result = await ipcRenderer.invoke('get-performance-metrics', days);
+    
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Falha ao carregar métricas');
+    }
+    
+    const metrics = result.data;
+    performanceMetricsCache = metrics;
+    
+    // Atualizar resumo de métricas
+    document.getElementById('perf-avg-resolution').textContent = 
+      metrics.avgResolutionDays >= 1 
+        ? `${metrics.avgResolutionDays}d` 
+        : `${metrics.avgResolutionHours}h`;
+    
+    document.getElementById('perf-tickets-resolved').textContent = metrics.ticketsResolved;
+    document.getElementById('perf-rate-week').textContent = metrics.ticketsPerWeek.toFixed(1);
+    
+    // Gerar gráficos (se os detalhes estiverem expandidos)
+    const detailsContainer = document.getElementById('performance-details');
+    if (detailsContainer && detailsContainer.style.display !== 'none') {
+      generatePerformanceCharts(metrics);
+    }
+    
+    showToast('📊 Métricas atualizadas com sucesso!', 'success');
+    
+  } catch (error) {
+    console.error('Erro ao carregar dashboard:', error);
+    showToast('❌ Erro ao carregar métricas: ' + error.message, 'error');
+  } finally {
+    if (refreshBtn) {
+      refreshBtn.classList.remove('loading');
+      refreshBtn.disabled = false;
+    }
+  }
+}
+
+function generatePerformanceCharts(metrics) {
+  // Gráfico de pizza - Por Prioridade
+  generateSimplePieChart('chart-by-priority', metrics.byPriority, 'chart-legend-priority');
+  
+  // Gráfico de pizza - Por Projeto
+  generateSimplePieChart('chart-by-project', metrics.byProject, 'chart-legend-project');
+  
+  // Heatmap de atividade
+  generateHeatmap(metrics.activityByHour);
+  
+  // Lista de tickets resolvidos recentemente
+  displayRecentResolved(metrics.recentResolved);
+}
+
+function generateSimplePieChart(canvasId, data, legendId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const legend = document.getElementById(legendId);
+  
+  // Limpar
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (legend) legend.innerHTML = '';
+  
+  const entries = Object.entries(data);
+  if (entries.length === 0) {
+    ctx.fillStyle = '#999';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Sem dados', canvas.width / 2, canvas.height / 2);
+    return;
+  }
+  
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  const colors = ['#667eea', '#764ba2', '#2ecc71', '#f39c12', '#e74c3c', '#3498db', '#9b59b6', '#1abc9c'];
+  
+  let currentAngle = -Math.PI / 2;
+  
+  entries.forEach(([label, value], index) => {
+    const sliceAngle = (value / total) * 2 * Math.PI;
+    const color = colors[index % colors.length];
+    
+    // Desenhar fatia
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(100, 100);
+    ctx.arc(100, 100, 80, currentAngle, currentAngle + sliceAngle);
+    ctx.closePath();
+    ctx.fill();
+    
+    currentAngle += sliceAngle;
+    
+    // Adicionar à legenda
+    if (legend) {
+      const item = document.createElement('div');
+      item.className = 'chart-legend-item';
+      item.innerHTML = `
+        <div style="display: flex; align-items: center;">
+          <span class="chart-legend-color" style="background: ${color};"></span>
+          <span class="chart-legend-label">${label}</span>
+        </div>
+        <span class="chart-legend-value">${value}</span>
+      `;
+      legend.appendChild(item);
+    }
+  });
+}
+
+function generateHeatmap(activityByHour) {
+  const container = document.getElementById('heatmap-by-hour');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  const max = Math.max(...activityByHour, 1);
+  
+  activityByHour.forEach((count, hour) => {
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    
+    // Calcular intensidade (0-5)
+    const intensity = Math.min(5, Math.floor((count / max) * 5));
+    cell.classList.add(`intensity-${intensity}`);
+    
+    cell.title = `${hour}h: ${count} tickets`;
+    
+    container.appendChild(cell);
+  });
+}
+
+function displayRecentResolved(recentTickets) {
+  const container = document.getElementById('recent-resolved-list');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  if (recentTickets.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Nenhum ticket resolvido recentemente</p>';
+    return;
+  }
+  
+  recentTickets.forEach(ticket => {
+    const item = document.createElement('div');
+    item.className = 'recent-resolved-item';
+    item.onclick = () => openTicketPreview(ticket.key);
+    
+    const resolvedDate = new Date(ticket.resolved);
+    const timeAgo = getTimeAgo(resolvedDate);
+    
+    item.innerHTML = `
+      <div class="recent-resolved-info">
+        <div class="recent-resolved-key">${ticket.key}</div>
+        <div class="recent-resolved-summary">${ticket.summary}</div>
+      </div>
+      <div class="recent-resolved-meta">
+        <span>${ticket.priority || 'Normal'}</span>
+        <span>${timeAgo}</span>
+      </div>
+    `;
+    
+    container.appendChild(item);
+  });
+}
+
+// ============================================
+// 🔔 ALERTAS PROATIVOS - v1.5.0
+// ============================================
+
+let proactiveAlertsInterval = null;
+
+async function checkProactiveAlerts() {
+  console.log('🔔 Verificando alertas proativos...');
+  
+  // Atualizar badge de usuário monitorado
+  updateProMonitoredUserBadge();
+  
+  try {
+    // 1. Tickets sem resposta há 4 horas
+    const noResponseResult = await ipcRenderer.invoke('get-tickets-without-response', 4);
+    if (noResponseResult.success && noResponseResult.data.length > 0) {
+      displayNoResponseAlert(noResponseResult.data);
+    } else {
+      hideAlert('alert-no-response');
+    }
+    
+    // 2. Tickets com SLA crítico (15 minutos)
+    const criticalSlaResult = await ipcRenderer.invoke('get-tickets-critical-sla', 15);
+    if (criticalSlaResult.success && criticalSlaResult.data.length > 0) {
+      displayCriticalSlaAlert(criticalSlaResult.data);
+    } else {
+      hideAlert('alert-critical-sla');
+    }
+    
+    // 3. Menções não lidas
+    const mentionsResult = await ipcRenderer.invoke('fetch-mentions');
+    if (mentionsResult.success && mentionsResult.data.issues.length > 0) {
+      displayMentionsAlert(mentionsResult.data.issues);
+    } else {
+      hideAlert('alert-mentions');
+    }
+    
+    // Mostrar mensagem "tudo tranquilo" se não houver alertas
+    updateNoAlertsMessage();
+    
+  } catch (error) {
+    console.error('Erro ao verificar alertas:', error);
+  }
+}
+
+function displayNoResponseAlert(tickets) {
+  const alertCard = document.getElementById('alert-no-response');
+  const alertList = document.getElementById('alert-no-response-list');
+  const alertCount = document.getElementById('alert-no-response-count');
+  
+  if (!alertCard || !alertList || !alertCount) return;
+  
+  alertCard.style.display = 'block';
+  alertCount.textContent = tickets.length;
+  alertList.innerHTML = '';
+  
+  tickets.forEach(ticket => {
+    const item = document.createElement('div');
+    item.className = 'alert-ticket-item';
+    item.onclick = () => openTicketPreview(ticket.key);
+    
+    item.innerHTML = `
+      <span class="alert-ticket-key">${ticket.key}</span>
+      <span class="alert-ticket-summary">${ticket.summary}</span>
+      <span class="alert-ticket-time">${ticket.hoursSinceUpdate}h atrás</span>
+    `;
+    
+    alertList.appendChild(item);
+  });
+  
+  // Enviar notificação desktop (apenas uma vez a cada 2 horas)
+  const lastNotified = localStorage.getItem(`alert-no-response-${tickets[0].key}`);
+  const now = Date.now();
+  if (!lastNotified || now - parseInt(lastNotified) > 2 * 60 * 60 * 1000) {
+    sendDesktopNotification(
+      '⚠️ Tickets sem resposta',
+      `${tickets.length} ticket(s) aguardando resposta há mais de 4 horas`,
+      'warning'
+    );
+    localStorage.setItem(`alert-no-response-${tickets[0].key}`, now.toString());
+  }
+}
+
+function displayCriticalSlaAlert(tickets) {
+  const alertCard = document.getElementById('alert-critical-sla');
+  const alertList = document.getElementById('alert-critical-sla-list');
+  const alertCount = document.getElementById('alert-critical-sla-count');
+  
+  if (!alertCard || !alertList || !alertCount) return;
+  
+  alertCard.style.display = 'block';
+  alertCount.textContent = tickets.length;
+  alertList.innerHTML = '';
+  
+  tickets.forEach(ticket => {
+    const item = document.createElement('div');
+    item.className = 'alert-ticket-item';
+    item.onclick = () => openTicketPreview(ticket.key);
+    
+    item.innerHTML = `
+      <span class="alert-ticket-key">${ticket.key}</span>
+      <span class="alert-ticket-summary">${ticket.summary}</span>
+      <span class="alert-ticket-time">${ticket.minutesUntilDue}min restantes</span>
+    `;
+    
+    alertList.appendChild(item);
+  });
+  
+  // Enviar notificação desktop (crítica!)
+  const lastNotified = localStorage.getItem(`alert-critical-sla-${tickets[0].key}`);
+  const now = Date.now();
+  if (!lastNotified || now - parseInt(lastNotified) > 15 * 60 * 1000) { // A cada 15 min
+    sendDesktopNotification(
+      '🚨 SLA CRÍTICO!',
+      `${tickets.length} ticket(s) próximo do vencimento: ${tickets[0].key}`,
+      'urgent'
+    );
+    localStorage.setItem(`alert-critical-sla-${tickets[0].key}`, now.toString());
+    
+    // Tocar som de alerta
+    if (currentConfig.soundNotifications) {
+      ipcRenderer.invoke('play-sound', '/System/Library/Sounds/Basso.aiff');
+    }
+  }
+}
+
+function displayMentionsAlert(mentions) {
+  const alertCard = document.getElementById('alert-mentions');
+  const alertList = document.getElementById('alert-mentions-list');
+  const alertCount = document.getElementById('alert-mentions-count');
+  
+  if (!alertCard || !alertList || !alertCount) return;
+  
+  alertCard.style.display = 'block';
+  alertCount.textContent = mentions.length;
+  alertList.innerHTML = '';
+  
+  mentions.slice(0, 5).forEach(ticket => {
+    const item = document.createElement('div');
+    item.className = 'alert-ticket-item';
+    item.onclick = () => openTicketPreview(ticket.key);
+    
+    const mentionTime = ticket.mentionedAt ? new Date(ticket.mentionedAt) : null;
+    const timeAgo = mentionTime ? getTimeAgo(mentionTime) : 'recente';
+    
+    item.innerHTML = `
+      <span class="alert-ticket-key">${ticket.key}</span>
+      <span class="alert-ticket-summary">${ticket.fields.summary}</span>
+      <span class="alert-ticket-time">${timeAgo}</span>
+    `;
+    
+    alertList.appendChild(item);
+  });
+}
+
+function hideAlert(alertId) {
+  const alertCard = document.getElementById(alertId);
+  if (alertCard) {
+    alertCard.style.display = 'none';
+  }
+}
+
+function updateNoAlertsMessage() {
+  const noAlertsMsg = document.getElementById('no-alerts-message');
+  const hasAlerts = 
+    document.getElementById('alert-no-response').style.display !== 'none' ||
+    document.getElementById('alert-critical-sla').style.display !== 'none' ||
+    document.getElementById('alert-mentions').style.display !== 'none';
+  
+  if (noAlertsMsg) {
+    noAlertsMsg.style.display = hasAlerts ? 'none' : 'block';
+  }
+}
+
+// Iniciar verificação de alertas proativos (a cada 5 minutos)
+function startProactiveAlerts() {
+  if (proactiveAlertsInterval) {
+    clearInterval(proactiveAlertsInterval);
+  }
+  
+  checkProactiveAlerts(); // Verificar imediatamente
+  proactiveAlertsInterval = setInterval(checkProactiveAlerts, 5 * 60 * 1000); // A cada 5 min
+}
+
+// ============================================
+// ⏱️ TIMER / POMODORO - v1.5.0
+// ============================================
+
+let timerState = {
+  running: false,
+  paused: false,
+  mode: 'manual', // 'manual' or 'pomodoro'
+  seconds: 0,
+  ticketKey: null,
+  startTime: null,
+  interval: null,
+  pomodoroSession: 1,
+  pomodoroType: 'work', // 'work' or 'break'
+};
+
+const POMODORO_WORK_TIME = 25 * 60; // 25 minutos
+const POMODORO_SHORT_BREAK = 5 * 60; // 5 minutos
+const POMODORO_LONG_BREAK = 15 * 60; // 15 minutos
+
+function showTimerWidget(ticketKey = null) {
+  const widget = document.getElementById('timer-widget');
+  if (!widget) return;
+  
+  timerState.ticketKey = ticketKey;
+  document.getElementById('timer-ticket-key').textContent = ticketKey || 'Timer Livre';
+  
+  widget.style.display = 'block';
+  document.getElementById('timer-minimized').style.display = 'none';
+}
+
+function hideTimerWidget() {
+  const widget = document.getElementById('timer-widget');
+  if (widget) {
+    widget.style.display = 'none';
+  }
+  stopTimer();
+}
+
+function minimizeTimerWidget() {
+  document.getElementById('timer-widget').style.display = 'none';
+  document.getElementById('timer-minimized').style.display = 'flex';
+}
+
+function restoreTimerWidget() {
+  document.getElementById('timer-widget').style.display = 'block';
+  document.getElementById('timer-minimized').style.display = 'none';
+}
+
+function startTimer() {
+  if (timerState.running) return;
+  
+  timerState.running = true;
+  timerState.paused = false;
+  timerState.startTime = Date.now() - (timerState.seconds * 1000);
+  
+  // UI
+  document.getElementById('timer-start-btn').style.display = 'none';
+  document.getElementById('timer-pause-btn').style.display = 'flex';
+  
+  // Timer
+  timerState.interval = setInterval(() => {
+    timerState.seconds = Math.floor((Date.now() - timerState.startTime) / 1000);
+    updateTimerDisplay();
+    
+    // Verificar Pomodoro
+    if (timerState.mode === 'pomodoro') {
+      const target = timerState.pomodoroType === 'work' ? POMODORO_WORK_TIME : 
+                     (timerState.pomodoroSession % 4 === 0 ? POMODORO_LONG_BREAK : POMODORO_SHORT_BREAK);
+      
+      if (timerState.seconds >= target) {
+        completePomodoroSession();
+      }
+    }
+  }, 1000);
+  
+  console.log('⏱️ Timer iniciado');
+}
+
+function pauseTimer() {
+  if (!timerState.running) return;
+  
+  timerState.running = false;
+  timerState.paused = true;
+  clearInterval(timerState.interval);
+  
+  // UI
+  document.getElementById('timer-start-btn').style.display = 'flex';
+  document.getElementById('timer-pause-btn').style.display = 'none';
+  
+  console.log('⏸️ Timer pausado em:', formatTime(timerState.seconds));
+}
+
+function stopTimer() {
+  timerState.running = false;
+  timerState.paused = false;
+  clearInterval(timerState.interval);
+  
+  const totalSeconds = timerState.seconds;
+  timerState.seconds = 0;
+  timerState.startTime = null;
+  
+  updateTimerDisplay();
+  
+  // UI
+  document.getElementById('timer-start-btn').style.display = 'flex';
+  document.getElementById('timer-pause-btn').style.display = 'none';
+  
+  console.log('⏹️ Timer parado. Tempo total:', formatTime(totalSeconds));
+  
+  return totalSeconds;
+}
+
+function updateTimerDisplay() {
+  const formatted = formatTime(timerState.seconds);
+  document.getElementById('timer-display').textContent = formatted;
+  document.getElementById('timer-mini-display').textContent = formatted.substring(0, 5); // MM:SS
+}
+
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function switchTimerMode(mode) {
+  if (timerState.running) {
+    showToast('⚠️ Pare o timer antes de trocar de modo', 'warning');
+    return;
+  }
+  
+  timerState.mode = mode;
+  
+  // UI
+  document.querySelectorAll('.timer-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  
+  const pomodoroInfo = document.getElementById('timer-pomodoro-info');
+  if (mode === 'pomodoro') {
+    pomodoroInfo.style.display = 'grid';
+    updatePomodoroUI();
+  } else {
+    pomodoroInfo.style.display = 'none';
+  }
+}
+
+function updatePomodoroUI() {
+  document.getElementById('pomodoro-session').textContent = `${timerState.pomodoroSession}/4`;
+  
+  const nextType = timerState.pomodoroType === 'work' 
+    ? (timerState.pomodoroSession % 4 === 0 ? 'Pausa Longa (15min)' : 'Pausa (5min)')
+    : 'Trabalho (25min)';
+  
+  document.getElementById('pomodoro-next-type').textContent = nextType;
+}
+
+function completePomodoroSession() {
+  stopTimer();
+  
+  // Som de conclusão
+  if (currentConfig.soundNotifications) {
+    ipcRenderer.invoke('play-sound', '/System/Library/Sounds/Glass.aiff');
+  }
+  
+  if (timerState.pomodoroType === 'work') {
+    // Concluiu trabalho, iniciar pausa
+    showToast('✅ Pomodoro concluído! Hora da pausa.', 'success');
+    timerState.pomodoroType = 'break';
+    
+    // Salvar worklog automaticamente se configurado
+    const autoSave = document.getElementById('timer-auto-save');
+    if (autoSave && autoSave.checked && timerState.ticketKey) {
+      saveWorklog(POMODORO_WORK_TIME);
+    }
+  } else {
+    // Concluiu pausa, iniciar trabalho
+    showToast('✅ Pausa concluída! De volta ao trabalho.', 'success');
+    timerState.pomodoroType = 'work';
+    timerState.pomodoroSession++;
+    
+    if (timerState.pomodoroSession > 4) {
+      timerState.pomodoroSession = 1;
+    }
+  }
+  
+  updatePomodoroUI();
+}
+
+async function saveWorklog(timeSpentSeconds = null) {
+  const secondsToLog = timeSpentSeconds || timerState.seconds;
+  
+  if (!timerState.ticketKey) {
+    showToast('⚠️ Nenhum ticket selecionado para o timer', 'warning');
+    return;
+  }
+  
+  if (secondsToLog < 60) {
+    showToast('⚠️ Tempo muito curto para registrar (mínimo 1 minuto)', 'warning');
+    return;
+  }
+  
+  const comment = document.getElementById('timer-worklog-comment').value.trim();
+  
+  try {
+    showToast('💾 Salvando worklog...', 'info');
+    
+    const result = await ipcRenderer.invoke('add-worklog', 
+      timerState.ticketKey, 
+      secondsToLog, 
+      comment, 
+      timerState.startTime ? new Date(timerState.startTime).toISOString() : null
+    );
+    
+    if (result.success) {
+      showToast(`✅ Worklog salvo! Tempo: ${formatTime(secondsToLog)}`, 'success');
+      document.getElementById('timer-worklog-comment').value = '';
+    } else {
+      throw new Error(result.error || 'Falha ao salvar worklog');
+    }
+    
+  } catch (error) {
+    console.error('Erro ao salvar worklog:', error);
+    showToast('❌ Erro ao salvar worklog: ' + error.message, 'error');
+  }
+}
+
+// Exportar funções para uso global
+window.showTimerWidget = showTimerWidget;
+window.loadPerformanceDashboard = loadPerformanceDashboard;
+window.checkProactiveAlerts = checkProactiveAlerts;
+window.startProactiveAlerts = startProactiveAlerts;
+
+console.log('✅ Funcionalidades v1.5.0 carregadas: Dashboard, Alertas, Timer');
+
+// ============================================
+// ✨ UX ENHANCEMENTS v1.6.0
+// ============================================
+
+// 📋 TEMPLATES DE RESPOSTA RÁPIDA
+let responseTemplates = [];
+let currentEditingTemplateId = null;
+
+// Carregar templates salvos
+function loadResponseTemplates() {
+  const saved = localStorage.getItem('responseTemplates');
+  if (saved) {
+    responseTemplates = JSON.parse(saved);
+  } else {
+    // Templates padrão
+    responseTemplates = [
+      {
+        id: 'template-1',
+        name: 'Aguardando Cliente',
+        text: 'Obrigado pelo contato! Estamos aguardando as informações solicitadas para darmos continuidade ao atendimento.\n\nPor favor, nos retorne assim que possível.',
+        isInternal: false
+      },
+      {
+        id: 'template-2',
+        name: 'Resolvido',
+        text: 'Ticket resolvido com sucesso! ✅\n\nPor favor, confirme se está funcionando corretamente. Caso persista algum problema, fique à vontade para reabrir este ticket.',
+        isInternal: false
+      },
+      {
+        id: 'template-3',
+        name: 'Escalado para L2',
+        text: 'Este ticket foi escalado para o time de nível 2 para análise mais detalhada.\n\nPrevisão de retorno: até 4 horas úteis.',
+        isInternal: true
+      },
+      {
+        id: 'template-4',
+        name: 'Aguardando Aprovação',
+        text: 'Solicitação encaminhada para aprovação do gestor responsável.\n\nTicket: {{ticketKey}}\nData: {{date}}\n\nVocê será notificado assim que tivermos um retorno.',
+        isInternal: false
+      }
+    ];
+    saveResponseTemplates();
+  }
+}
+
+// Salvar templates
+function saveResponseTemplates() {
+  localStorage.setItem('responseTemplates', JSON.stringify(responseTemplates));
+}
+
+// Mostrar modal de templates
+function showTemplatesModal() {
+  const modal = document.getElementById('templates-modal');
+  if (!modal) return;
+  
+  loadResponseTemplates();
+  renderTemplatesList();
+  modal.style.display = 'flex';
+}
+
+// Ocultar modal de templates
+function hideTemplatesModal() {
+  const modal = document.getElementById('templates-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// Renderizar lista de templates
+function renderTemplatesList() {
+  const container = document.getElementById('templates-list');
+  if (!container) return;
+  
+  if (responseTemplates.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-title">Nenhum template criado</div>
+        <div class="empty-state-description">Crie seu primeiro template de resposta para economizar tempo!</div>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = responseTemplates.map(template => `
+    <div class="template-item" data-template-id="${template.id}" onclick="useTemplate('${template.id}')">
+      <div class="template-item-header">
+        <div class="template-item-name">
+          <span>${template.name}</span>
+          ${template.isInternal ? '<span class="template-badge-internal">Interno</span>' : ''}
+        </div>
+        <div class="template-item-actions">
+          <button class="template-action-btn" onclick="event.stopPropagation(); editTemplate('${template.id}')" title="Editar">
+            <svg viewBox="0 0 24 24">
+              <path fill="currentColor" d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/>
+            </svg>
+          </button>
+          <button class="template-action-btn" onclick="event.stopPropagation(); deleteTemplate('${template.id}')" title="Excluir">
+            <svg viewBox="0 0 24 24">
+              <path fill="currentColor" d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="template-item-text">${template.text}</div>
+    </div>
+  `).join('');
+}
+
+// Usar template
+function useTemplate(templateId) {
+  const template = responseTemplates.find(t => t.id === templateId);
+  if (!template) return;
+  
+  // Substituir variáveis
+  let text = template.text;
+  text = text.replace(/{{ticketKey}}/g, currentTicketKey || '');
+  text = text.replace(/{{userName}}/g, currentConfig.jiraEmail?.split('@')[0] || 'Usuário');
+  text = text.replace(/{{date}}/g, new Date().toLocaleDateString('pt-BR'));
+  text = text.replace(/{{time}}/g, new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+  
+  // Colocar texto no campo de comentário do preview
+  const commentField = document.querySelector('.preview-comment-textarea');
+  if (commentField) {
+    commentField.value = text;
+    
+    // Definir se é interno
+    const internalCheckbox = document.querySelector('#preview-comment-internal');
+    if (internalCheckbox) {
+      internalCheckbox.checked = template.isInternal;
+    }
+    
+    showToast(`📋 Template "${template.name}" aplicado!`, 'success');
+  } else {
+    // Se não estiver no preview, copiar para clipboard
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`📋 Template "${template.name}" copiado!`, 'success');
+    });
+  }
+  
+  hideTemplatesModal();
+}
+
+// Editar template
+function editTemplate(templateId) {
+  const template = responseTemplates.find(t => t.id === templateId);
+  if (!template) return;
+  
+  currentEditingTemplateId = templateId;
+  
+  document.getElementById('template-name').value = template.name;
+  document.getElementById('template-text').value = template.text;
+  document.getElementById('template-internal').checked = template.isInternal;
+  
+  document.getElementById('edit-template-modal').style.display = 'flex';
+}
+
+// Criar novo template
+function createNewTemplate() {
+  currentEditingTemplateId = null;
+  
+  document.getElementById('template-name').value = '';
+  document.getElementById('template-text').value = '';
+  document.getElementById('template-internal').checked = false;
+  
+  document.getElementById('edit-template-modal').style.display = 'flex';
+}
+
+// Salvar template
+function saveTemplate() {
+  const name = document.getElementById('template-name').value.trim();
+  const text = document.getElementById('template-text').value.trim();
+  const isInternal = document.getElementById('template-internal').checked;
+  
+  if (!name || !text) {
+    showToast('❌ Nome e texto são obrigatórios!', 'error');
+    return;
+  }
+  
+  if (currentEditingTemplateId) {
+    // Editar existente
+    const template = responseTemplates.find(t => t.id === currentEditingTemplateId);
+    if (template) {
+      template.name = name;
+      template.text = text;
+      template.isInternal = isInternal;
+    }
+  } else {
+    // Criar novo
+    responseTemplates.push({
+      id: `template-${Date.now()}`,
+      name,
+      text,
+      isInternal
+    });
+  }
+  
+  saveResponseTemplates();
+  hideEditTemplateModal();
+  renderTemplatesList();
+  showToast(`✅ Template "${name}" salvo!`, 'success');
+}
+
+// Deletar template
+function deleteTemplate(templateId) {
+  const template = responseTemplates.find(t => t.id === templateId);
+  if (!template) return;
+  
+  if (confirm(`Tem certeza que deseja excluir o template "${template.name}"?`)) {
+    responseTemplates = responseTemplates.filter(t => t.id !== templateId);
+    saveResponseTemplates();
+    renderTemplatesList();
+    showToast(`🗑️ Template excluído!`, 'info');
+  }
+}
+
+// Ocultar modal de edição
+function hideEditTemplateModal() {
+  document.getElementById('edit-template-modal').style.display = 'none';
+  currentEditingTemplateId = null;
+}
+
+// 🎉 CONFETTI CELEBRATIONS
+function celebrateTicketResolved(ticketKey) {
+  console.log('🎉 Celebrando ticket resolvido:', ticketKey);
+  
+  // Confetti animation
+  if (window.confetti) {
+    window.confetti.basic();
+  }
+  
+  // Toast com confetti emoji
+  showToast(`🎉 Ticket ${ticketKey} resolvido! Parabéns!`, 'success');
+  
+  // Som de sucesso (se ativado)
+  if (currentConfig.soundNotifications) {
+    ipcRenderer.invoke('play-sound', '/System/Library/Sounds/Glass.aiff');
+  }
+  
+  // Atualizar contador de daily activity
+  dailyActivity.resolved++;
+  dailyActivity.resolvedTickets.push({
+    key: ticketKey,
+    time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  });
+  saveDailyActivity();
+  updateDailyActivityDisplay();
+}
+
+// 🌈 APLICAR CORES POR PRIORIDADE
+function applyPriorityColors(ticketElement, priority) {
+  if (!ticketElement || !priority) return;
+  
+  // Remover classes existentes
+  ticketElement.removeAttribute('data-priority');
+  
+  // Adicionar nova prioridade
+  ticketElement.setAttribute('data-priority', priority);
+  
+  // Adicionar badge de prioridade se não existir
+  if (!ticketElement.querySelector('.priority-badge')) {
+    const badge = document.createElement('span');
+    badge.className = `priority-badge ${priority.toLowerCase()}`;
+    badge.textContent = priority;
+    
+    const keyElement = ticketElement.querySelector('.alert-ticket-key, .recent-resolved-key');
+    if (keyElement) {
+      keyElement.parentNode.insertBefore(badge, keyElement.nextSibling);
+    }
+  }
+}
+
+// 🔍 FUZZY SEARCH (busca aproximada)
+function fuzzySearch(pattern, text) {
+  pattern = pattern.toLowerCase();
+  text = text.toLowerCase();
+  
+  let patternIdx = 0;
+  let textIdx = 0;
+  let score = 0;
+  
+  while (patternIdx < pattern.length && textIdx < text.length) {
+    if (pattern[patternIdx] === text[textIdx]) {
+      score++;
+      patternIdx++;
+    }
+    textIdx++;
+  }
+  
+  return patternIdx === pattern.length ? score / pattern.length : 0;
+}
+
+// Melhorar busca rápida com fuzzy
+function enhancedQuickSearch(query) {
+  if (!query || query.length < 2) return [];
+  
+  const results = [];
+  
+  // Buscar em tickets recentes e cache
+  if (currentStats && currentStats.allTickets) {
+    currentStats.allTickets.forEach(ticket => {
+      const keyMatch = ticket.key.toLowerCase().includes(query.toLowerCase());
+      const summaryScore = fuzzySearch(query, ticket.fields.summary);
+      
+      if (keyMatch || summaryScore > 0.5) {
+        results.push({
+          ticket,
+          score: keyMatch ? 1 : summaryScore
+        });
+      }
+    });
+  }
+  
+  // Ordenar por score
+  results.sort((a, b) => b.score - a.score);
+  
+  return results.slice(0, 10).map(r => r.ticket);
+}
+
+// Event Listeners para Templates
+document.addEventListener('DOMContentLoaded', () => {
+  // Botão de abrir templates
+  const addTemplateBtn = document.getElementById('add-template-btn');
+  if (addTemplateBtn) {
+    addTemplateBtn.addEventListener('click', createNewTemplate);
+  }
+  
+  // Fechar modais
+  document.getElementById('close-templates')?.addEventListener('click', hideTemplatesModal);
+  document.getElementById('close-edit-template')?.addEventListener('click', hideEditTemplateModal);
+  
+  // Salvar template
+  document.getElementById('save-template-btn')?.addEventListener('click', saveTemplate);
+  document.getElementById('cancel-template-btn')?.addEventListener('click', hideEditTemplateModal);
+  
+  // Fechar modais ao clicar fora
+  document.getElementById('templates-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'templates-modal') hideTemplatesModal();
+  });
+  
+  document.getElementById('edit-template-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'edit-template-modal') hideEditTemplateModal();
+  });
+  
+  console.log('✅ UX Enhancements v1.6.0 carregados');
+});
+
+// Adicionar atalho Cmd+Shift+T para templates
+document.addEventListener('keydown', (e) => {
+  const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+  
+  if (isCmdOrCtrl && e.shiftKey && e.key === 'T') {
+    e.preventDefault();
+    showTemplatesModal();
+  }
+});
+
+// Exportar funções
+window.showTemplatesModal = showTemplatesModal;
+window.useTemplate = useTemplate;
+window.editTemplate = editTemplate;
+window.deleteTemplate = deleteTemplate;
+window.celebrateTicketResolved = celebrateTicketResolved;
+window.applyPriorityColors = applyPriorityColors;
+
+console.log('🎨 UX Enhancements v1.6.0: Templates, Confetti, Priority Colors');
+

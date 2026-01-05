@@ -1,0 +1,87 @@
+{
+  "name": "jira-monitor",
+  "version": "1.6.1",
+  "description": "Monitor de tickets do Jira Service Desk com Dashboard, Timers, Templates e UX Melhorado",
+  "main": "main.js",
+  "scripts": {
+    "start": "./start.sh",
+    "dev": "./start.sh --dev",
+    "build": "electron-builder --mac",
+    "install:fresh": "rm -rf node_modules package-lock.json && npm install",
+    "clean": "rm -rf dist build"
+  },
+  "keywords": [
+    "jira",
+    "monitor",
+    "electron",
+    "service-desk"
+  ],
+  "author": "Nubank",
+  "license": "MIT",
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "form-data": "^4.0.0",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "electron": "^25.9.8",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.nubank.jiramonitor",
+    "productName": "Jira Monitor",
+    "files": [
+      "**/*",
+      "!**/*.md",
+      "!dist/**/*",
+      "!build/**/*",
+      "!.git/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "Jira Monitor ${version}",
+      "icon": "assets/icon.icns",
+      "background": null,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "internetEnabled": false
+    }
+  }
+}

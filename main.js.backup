@@ -1,0 +1,1052 @@
+const electron = require('electron');
+
+// Debug: verificar o que é electron
+console.log('🔍 Debug - tipo de electron:', typeof electron);
+console.log('🔍 Debug - é array?:', Array.isArray(electron));
+console.log('🔍 Debug - electron:', electron);
+console.log('🔍 Debug - electron.app:', typeof electron.app);
+console.log('🔍 Debug - electron.ipcMain:', typeof electron.ipcMain);
+
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, shell, screen } = electron;
+const ipcMain = electron.ipcMain;
+
+console.log('🔍 Debug - ipcMain após destructuring:', typeof ipcMain);
+
+const path = require('path');
+const Store = require('electron-store');
+const fs = require('fs');
+
+const store = new Store();
+let mainWindow;
+let tray;
+
+// Criar janela principal
+function createWindow() {
+  // Restaurar posição e tamanho salvos ou usar padrão
+  const defaultBounds = { width: 420, height: 700, x: undefined, y: undefined };
+  const savedBounds = store.get('windowBounds', defaultBounds);
+  
+  // console.log('📍 Posição carregada:', savedBounds);
+  
+  const { screen } = require('electron');
+  const displays = screen.getAllDisplays();
+  const primaryDisplay = screen.getPrimaryDisplay();
+  
+  let { x, y, width, height } = savedBounds;
+  
+  // Validar largura e altura mínimas
+  width = Math.max(350, width || 420);
+  height = Math.max(500, height || 700);
+  
+  // Verificar se a posição está em algum display conectado
+  let isPositionValid = false;
+  if (x !== undefined && y !== undefined) {
+    // Verificar se a janela está visível em algum monitor
+    for (const display of displays) {
+      const { x: dx, y: dy, width: dw, height: dh } = display.bounds;
+      // Verificar se pelo menos parte da janela está visível neste display
+      if (x + width > dx && x < dx + dw && y + height > dy && y < dy + dh) {
+        isPositionValid = true;
+        // console.log('✅ Posição válida no display:', display.id);
+        break;
+      }
+    }
+  }
+  
+  // Se a posição não for válida (monitor desconectado), usar posição padrão
+  if (!isPositionValid) {
+    console.log('⚠️ Posição inválida, usando padrão na tela primária');
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+    x = screenWidth - width - 20;
+    y = 20;
+  }
+  
+  // Configurar ícone customizado
+  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const windowIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined;
+  
+  mainWindow = new BrowserWindow({
+    width,
+    height,
+    x,
+    y,
+    title: 'Jira Monitor',
+    icon: windowIcon,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      enableRemoteModule: true
+    },
+    show: false
+  });
+
+  mainWindow.loadFile('index.html');
+
+  // Mostrar janela quando estiver pronta
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  // Salvar posição e tamanho quando a janela for movida ou redimensionada
+  let saveTimeout;
+  const saveBounds = () => {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        const bounds = mainWindow.getBounds();
+        store.set('windowBounds', bounds);
+        // console.log('💾 Posição salva:', bounds);
+      }
+    }, 300); // Debounce de 300ms (reduzido para salvar mais rápido)
+  };
+
+  mainWindow.on('move', saveBounds);
+  mainWindow.on('resize', saveBounds);
+  
+  // Salvar também quando a janela perde o foco (blur)
+  mainWindow.on('blur', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const bounds = mainWindow.getBounds();
+      store.set('windowBounds', bounds);
+    }
+  });
+
+  // Salvar posição ao fechar
+  mainWindow.on('close', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const bounds = mainWindow.getBounds();
+      store.set('windowBounds', bounds);
+    }
+  });
+
+  // Menu de contexto (botão direito)
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: '⬅️ Voltar',
+        enabled: mainWindow.webContents.canGoBack(),
+        click: () => mainWindow.webContents.goBack()
+      },
+      {
+        label: '➡️ Avançar',
+        enabled: mainWindow.webContents.canGoForward(),
+        click: () => mainWindow.webContents.goForward()
+      },
+      {
+        label: '🔄 Recarregar',
+        click: () => mainWindow.webContents.reload()
+      },
+      { type: 'separator' },
+      {
+        label: '✂️ Recortar',
+        role: 'cut',
+        enabled: params.editFlags.canCut
+      },
+      {
+        label: '📋 Copiar',
+        role: 'copy',
+        enabled: params.editFlags.canCopy
+      },
+      {
+        label: '📄 Colar',
+        role: 'paste',
+        enabled: params.editFlags.canPaste
+      },
+      {
+        label: '🗑️ Deletar',
+        role: 'delete',
+        enabled: params.editFlags.canDelete
+      },
+      { type: 'separator' },
+      {
+        label: '🔍 Selecionar Tudo',
+        role: 'selectAll'
+      },
+      { type: 'separator' },
+      {
+        label: '🔗 Copiar Link',
+        visible: params.linkURL.length > 0,
+        click: () => {
+          const { clipboard } = require('electron');
+          clipboard.writeText(params.linkURL);
+        }
+      },
+      {
+        label: '🖼️ Copiar Imagem',
+        visible: params.hasImageContents,
+        click: () => mainWindow.webContents.copyImageAt(params.x, params.y)
+      },
+      {
+        label: '🌐 Abrir Link em Navegador Externo',
+        visible: params.linkURL.length > 0,
+        click: () => shell.openExternal(params.linkURL)
+      },
+      { type: 'separator' },
+      {
+        label: '🔧 Inspecionar Elemento',
+        click: () => {
+          mainWindow.webContents.inspectElement(params.x, params.y);
+          if (mainWindow.webContents.isDevToolsOpened()) {
+            mainWindow.webContents.devToolsWebContents.focus();
+          }
+        }
+      }
+    ]);
+    
+    contextMenu.popup(mainWindow);
+  });
+
+  // Abrir DevTools em modo desenvolvimento
+  if (process.argv.includes('--dev')) {
+    mainWindow.webContents.openDevTools();
+  }
+}
+
+// Criar ícone na bandeja do sistema
+function createTray() {
+  // Criar ícone simples para o tray (você pode substituir por um ícone real)
+  const trayIcon = nativeImage.createFromDataURL(
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKcSURBVFhH7ZfPaxNBFMe/u5vdJLttmqYxadMfQVGLVRS0Xrx4ELx68OJF/wLxD/DiSfDgQRAv3kREUEQQxIOgIh5ERPBg8aAeVLDVNjZNm83u7szszvjebkqbtDG7iQdB/MDHZmfevPd9M2/e7AYALrjgggv+b2ia9kZRlJdarVZX13Xd0HV9QNf1QU3TBur1+n1FUd5qmvZGAIA8APzer7Caruu5SqXydXR09MH6+vq9ZrP5tNls3lxfX7+7urp6f2xs7F6pVPqq6/pAu90e0HU9D0BeAIBCoZAtl8ufJiYmnmxsbNxtNBqfAXwHUG8CawCW2u3289nZ2ffFYjELAHkBAFKp1MhsNvthamrqRaPR+Nxut+sANLs9tRbAEoBPy8vLd6empj7kcrmRdDo9IgBAJpN5PTU19aJWq33pdDoNwzBMAEZ3bZlGo/FpYWHh9dTU1NuRkZHXAgB4vd7xYrH4fnl5+U6r1foeQA6A74B/4u5/Xn755/Ly8u1isfje7/ePCwCQTqffzc3NvavVahV7LvSzVqvN2ft/l06n3wkA4Ha7R4vF4vvl5eVbaZpmV/8LmqY53O73QqHgEgAgkUi8mp+ff1WtVr8xxuxOj+E4jrPPv0wkEq8EAIhGo28XFxffVCqVH4wxv/8R9t5SqfQmGo2+FQAgGo2+XVhYeF0ul38ahlGxvyXHcQr7HrH33r8DAABYXFx8U6lUvhmGsQZABrDk8Xjm3G73nDOXy+WKxWKvBABIJBKv5ufnn1er1R+GYawCKHs8njmv1zvXL5fLFY/HXwkAEI/HX87Pzz+vVqs/DcNYBVByu93zXq933ilnv4/H4y8FAIhEIm/m5uae1mq1z4ZhrABYcrlcc16vd84pl8sVi8VeCADg9/uf2Oe1Wu2zYRgrAJZcLtec1+ud+5uyH/4PAAAAAElFTkSuQmCC'
+  );
+  
+  tray = new Tray(trayIcon);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Abrir Jira Monitor',
+      click: () => {
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+          }
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    {
+      label: 'Atualizar',
+      click: () => {
+        mainWindow.webContents.send('manual-refresh');
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Sair',
+      click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.destroy();
+        }
+        app.quit();
+      }
+    }
+  ]);
+  
+  tray.setToolTip('Jira Monitor');
+  tray.setContextMenu(contextMenu);
+  
+  // Mostrar janela ao clicar no ícone
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+// Criar janela de webview para o Jira
+function createJiraWebviewWindow(url, ticketKey) {
+  let webviewWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    title: `Jira - ${ticketKey}`,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webviewTag: true
+    },
+    backgroundColor: '#ffffff',
+    show: false
+  });
+  
+  // Criar HTML com webview
+  const webviewHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Jira - ${ticketKey}</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            overflow: hidden;
+            background: #ffffff;
+          }
+          webview {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+          }
+          .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="loading">Carregando Jira...</div>
+        <webview 
+          id="jira-webview" 
+          src="${url}"
+          partition="persist:jira"
+        ></webview>
+        <script>
+          const webview = document.getElementById('jira-webview');
+          const loading = document.querySelector('.loading');
+          
+          webview.addEventListener('did-start-loading', () => {
+            loading.style.display = 'block';
+          });
+          
+          webview.addEventListener('did-stop-loading', () => {
+            loading.style.display = 'none';
+          });
+          
+          // Abrir links externos no navegador padrão
+          webview.addEventListener('new-window', (e) => {
+            const { shell } = require('electron');
+            shell.openExternal(e.url);
+          });
+        </script>
+      </body>
+    </html>
+  `;
+  
+  webviewWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(webviewHTML)}`);
+  
+  // Capturar a webview quando ela for anexada
+  webviewWindow.webContents.on('did-attach-webview', (event, webContents) => {
+    // Menu de contexto para o conteúdo dentro da webview
+    webContents.on('context-menu', (event, params) => {
+      const contextMenu = Menu.buildFromTemplate([
+        {
+          label: '⬅️ Voltar',
+          enabled: webContents.canGoBack(),
+          click: () => webContents.goBack()
+        },
+        {
+          label: '➡️ Avançar',
+          enabled: webContents.canGoForward(),
+          click: () => webContents.goForward()
+        },
+        {
+          label: '🔄 Recarregar',
+          click: () => webContents.reload()
+        },
+        { type: 'separator' },
+        {
+          label: '✂️ Recortar',
+          role: 'cut',
+          enabled: params.editFlags.canCut
+        },
+        {
+          label: '📋 Copiar',
+          role: 'copy',
+          enabled: params.editFlags.canCopy
+        },
+        {
+          label: '📄 Colar',
+          role: 'paste',
+          enabled: params.editFlags.canPaste
+        },
+        {
+          label: '🗑️ Deletar',
+          role: 'delete',
+          enabled: params.editFlags.canDelete
+        },
+        { type: 'separator' },
+        {
+          label: '🔍 Selecionar Tudo',
+          role: 'selectAll'
+        },
+        { type: 'separator' },
+        {
+          label: '🔗 Copiar Link',
+          visible: params.linkURL && params.linkURL.length > 0,
+          click: () => {
+            const { clipboard } = require('electron');
+            clipboard.writeText(params.linkURL);
+          }
+        },
+        {
+          label: '🖼️ Copiar Imagem',
+          visible: params.hasImageContents,
+          click: () => webContents.copyImageAt(params.x, params.y)
+        },
+        {
+          label: '🌐 Abrir Link em Navegador Externo',
+          visible: params.linkURL && params.linkURL.length > 0,
+          click: () => shell.openExternal(params.linkURL)
+        },
+        { type: 'separator' },
+        {
+          label: '🏠 Abrir Jira Home',
+          click: () => {
+            const config = store.store;
+            const jiraUrl = config.jiraUrl || 'https://nubank.atlassian.net';
+            webContents.loadURL(jiraUrl);
+          }
+        },
+        {
+          label: '🔧 Inspecionar Elemento',
+          click: () => {
+            webContents.inspectElement(params.x, params.y);
+            if (webContents.isDevToolsOpened()) {
+              webContents.devToolsWebContents.focus();
+            }
+          }
+        }
+      ]);
+      
+      contextMenu.popup(webviewWindow);
+    });
+  });
+  
+  // Menu de contexto para a janela container (área de loading)
+  webviewWindow.webContents.on('context-menu', (event, params) => {
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: '🔄 Recarregar Página',
+        click: () => webviewWindow.webContents.reload()
+      },
+      {
+        label: '🔧 DevTools',
+        click: () => webviewWindow.webContents.openDevTools()
+      }
+    ]);
+    
+    contextMenu.popup(webviewWindow);
+  });
+  
+  webviewWindow.once('ready-to-show', () => {
+    webviewWindow.show();
+  });
+  
+  // Limpar referência quando a janela é fechada
+  webviewWindow.on('closed', () => {
+    webviewWindow = null;
+  });
+}
+
+// IPC Handlers
+ipcMain.handle('get-config', () => {
+  const config = store.store;
+  console.log('📂 ========================================');
+  console.log('📂 CONFIG LIDA DO DISCO (electron-store)');
+  console.log('📂 Modo Pro lido:', config.proMode);
+  console.log('📂 Localização:', store.path);
+  console.log('📂 ========================================');
+  return config;
+});
+
+ipcMain.handle('save-config', (event, config) => {
+  Object.keys(config).forEach(key => {
+    store.set(key, config[key]);
+  });
+  return { success: true };
+});
+
+// Save config síncrono (para beforeunload)
+ipcMain.on('save-config-sync', (event, config) => {
+  Object.keys(config).forEach(key => {
+    store.set(key, config[key]);
+  });
+  console.log('💾 ========================================');
+  console.log('💾 CONFIG SALVA NO DISCO (electron-store)');
+  console.log('💾 Modo Pro salvo:', config.proMode);
+  console.log('💾 Localização:', store.path);
+  console.log('💾 ========================================');
+});
+
+// Abrir nova janela para monitorar outro usuário
+ipcMain.handle('open-user-window', (event, userEmail) => {
+  createUserMonitorWindow(userEmail);
+  return { success: true };
+});
+
+ipcMain.handle('minimize-window', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.minimize();
+  }
+});
+
+ipcMain.handle('toggle-devtools', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.webContents.isDevToolsOpened()) {
+      mainWindow.webContents.closeDevTools();
+    } else {
+      mainWindow.webContents.openDevTools();
+    }
+  }
+});
+
+ipcMain.handle('close-window', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();
+  }
+  app.quit();
+});
+
+ipcMain.handle('open-url', (event, url) => {
+  shell.openExternal(url);
+});
+
+// Abrir Jira em webview (janela interna)
+ipcMain.handle('open-jira-webview', (event, url, ticketKey) => {
+  createJiraWebviewWindow(url, ticketKey);
+});
+
+ipcMain.handle('play-sound', (event, soundPath) => {
+  const { exec } = require('child_process');
+  exec(`afplay "${soundPath}"`, (error) => {
+    if (error) {
+      console.error('Erro ao tocar som:', error);
+    }
+  });
+});
+
+// IPC Handlers para tickets
+const JiraService = require('./jira-service');
+let jiraService = null;
+
+function getJiraService() {
+  if (!jiraService) {
+    const config = store.store;
+    jiraService = new JiraService(config);
+  }
+  return jiraService;
+}
+
+ipcMain.handle('fetch-jira-stats', async (event, config) => {
+  try {
+    jiraService = new JiraService(config);
+    const stats = await jiraService.fetchStats();
+    return { success: true, data: stats };
+  } catch (error) {
+    console.error('Erro ao buscar stats do Jira:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('search-jira-tickets', async (event, jql, maxResults = 50) => {
+  try {
+    const service = getJiraService();
+    const fields = ['status', 'summary', 'key', 'priority', 'updated', 'assignee', 'reporter'];
+    const result = await service._searchJql(jql, fields);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Erro ao buscar tickets:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('fetch-mentions', async (event) => {
+  try {
+    const service = getJiraService();
+    const mentions = await service.fetchMentions();
+    return { success: true, data: mentions };
+  } catch (error) {
+    console.error('Erro ao buscar menções:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-ticket-details', async (event, ticketKey) => {
+  try {
+    const service = getJiraService();
+    const details = await service.getTicketDetails(ticketKey);
+    return { success: true, data: details };
+  } catch (error) {
+    console.error('Erro ao buscar detalhes do ticket:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Atualizar campo do ticket
+ipcMain.handle('update-ticket-field', async (event, { ticketKey, fieldName, value }) => {
+  try {
+    const service = getJiraService();
+    await service.updateTicketField(ticketKey, fieldName, value);
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao atualizar campo do ticket:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Buscar usuários assignáveis
+ipcMain.handle('get-assignable-users', async (event, projectKey) => {
+  try {
+    const service = getJiraService();
+    const users = await service.getAssignableUsers(projectKey);
+    return { success: true, data: users };
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Buscar opções de ITOps Team
+ipcMain.handle('get-itops-team-options', async (event) => {
+  try {
+    const service = getJiraService();
+    const teams = await service.getITOpsTeamOptions();
+    return { success: true, data: teams };
+  } catch (error) {
+    console.error('Erro ao buscar times:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Buscar metadados do ticket
+ipcMain.handle('get-ticket-edit-metadata', async (event, ticketKey) => {
+  try {
+    const service = getJiraService();
+    const metadata = await service.getTicketEditMetadata(ticketKey);
+    return { success: true, data: metadata };
+  } catch (error) {
+    console.error('Erro ao buscar metadados:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Adicionar comentário
+ipcMain.handle('add-comment', async (event, { ticketKey, commentBody, isInternal, mentions }) => {
+  try {
+    const service = getJiraService();
+    await service.addComment(ticketKey, commentBody, isInternal, mentions);
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao adicionar comentário:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Upload de anexos
+ipcMain.handle('select-and-upload-attachments', async (event, ticketKey) => {
+  try {
+    const { dialog } = require('electron');
+    const fs = require('fs');
+    
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile', 'multiSelections'],
+      title: 'Selecionar arquivos para anexar'
+    });
+    
+    if (result.canceled) {
+      return { success: false, cancelled: true };
+    }
+    
+    const service = getJiraService();
+    let count = 0;
+    
+    for (const filePath of result.filePaths) {
+      await service.uploadAttachment(ticketKey, filePath);
+      count++;
+    }
+    
+    return { success: true, count };
+  } catch (error) {
+    console.error('Erro ao fazer upload de anexos:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Download de anexo
+ipcMain.handle('download-attachment', async (event, attachmentId, filename) => {
+  try {
+    const { dialog } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+    
+    const result = await dialog.showSaveDialog({
+      title: 'Salvar anexo',
+      defaultPath: filename
+    });
+    
+    if (result.canceled) {
+      return { success: false, cancelled: true };
+    }
+    
+    const service = getJiraService();
+    const content = await service.downloadAttachment(attachmentId);
+    
+    fs.writeFileSync(result.filePath, content);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao baixar anexo:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Buscar notificações
+ipcMain.handle('get-notifications', async (event, config) => {
+  try {
+    const service = getJiraService();
+    const notifications = await service.getRecentNotifications(15);
+    return { success: true, notifications };
+  } catch (error) {
+    console.error('Erro ao buscar notificações:', error);
+    return { success: false, notifications: [], error: error.message };
+  }
+});
+
+// Handler 'add-comment' já definido acima (linha 578), removendo duplicata
+
+ipcMain.handle('update-comment', async (event, ticketKey, commentId, commentBody, isInternal) => {
+  try {
+    const service = getJiraService();
+    const result = await service.updateComment(ticketKey, commentId, commentBody, isInternal);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Erro ao atualizar comentário:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-comment', async (event, ticketKey, commentId) => {
+  try {
+    const service = getJiraService();
+    const result = await service.deleteComment(ticketKey, commentId);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Erro ao excluir comentário:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('add-attachment', async (event, ticketKey, filePaths) => {
+  try {
+    const service = getJiraService();
+    const results = [];
+    
+    for (const filePath of filePaths) {
+      const result = await service.addAttachment(ticketKey, filePath);
+      results.push(result);
+    }
+    
+    return { success: true, data: results };
+  } catch (error) {
+    console.error('Erro ao adicionar anexo:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('select-attachment-files', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile', 'multiSelections'],
+      title: 'Selecionar Arquivos'
+    });
+    
+    if (result.canceled) {
+      return { success: false, cancelled: true };
+    }
+    
+    return { success: true, filePaths: result.filePaths };
+  } catch (error) {
+    console.error('Erro ao selecionar arquivos:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handler 'download-attachment' já definido acima (linha 620), removendo duplicata
+
+ipcMain.handle('get-attachment-url', async (event, attachmentId) => {
+  try {
+    const service = getJiraService();
+    const url = service.getAttachmentUrl(attachmentId);
+    const config = store.store;
+    
+    return {
+      success: true,
+      url: url,
+      auth: {
+        email: config.jiraEmail,
+        apiToken: config.jiraApiToken
+      }
+    };
+  } catch (error) {
+    console.error('Erro ao obter URL do anexo:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('search-users', async (event, query, maxResults) => {
+  try {
+    const service = getJiraService();
+    const users = await service.searchUsers(query, maxResults);
+    return { success: true, data: users };
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-current-user-account-id', async () => {
+  try {
+    const service = getJiraService();
+    const accountId = await service.getCurrentUserAccountId();
+    return { success: true, accountId };
+  } catch (error) {
+    console.error('Erro ao obter accountId do usuário:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('update-ticket-fields', async (event, ticketKey, fields) => {
+  try {
+    const service = getJiraService();
+    const result = await service.updateTicketFields(ticketKey, fields);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Erro ao atualizar campos do ticket:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-custom-field-options', async (event, ticketKey, fieldId) => {
+  try {
+    const service = getJiraService();
+    const options = await service.getCustomFieldOptions(ticketKey, fieldId);
+    return { success: true, data: options };
+  } catch (error) {
+    console.error('Erro ao obter opções do campo customizado:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-recent-notifications', async (event, maxResults) => {
+  try {
+    // Sempre usar o config atual para garantir o usuário correto
+    const config = store.store;
+    const service = new JiraService(config);
+    const notifications = await service.getRecentNotifications(maxResults);
+    return { success: true, data: notifications };
+  } catch (error) {
+    console.error('Erro ao buscar notificações:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Criar janela para monitorar outro usuário
+function createUserMonitorWindow(userEmail) {
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  
+  // Dimensões da nova janela
+  const width = 420;
+  const height = 700;
+  
+  // Posição: ao lado da janela principal ou centralizada
+  let x, y;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const mainBounds = mainWindow.getBounds();
+    x = mainBounds.x - width - 20; // À esquerda da janela principal
+    y = mainBounds.y;
+    
+    // Se a posição ficar fora da tela, coloca à direita
+    if (x < 0) {
+      x = mainBounds.x + mainBounds.width + 20;
+    }
+  } else {
+    // Centralizada
+    x = Math.floor((screenWidth - width) / 2);
+    y = Math.floor((screenHeight - height) / 2);
+  }
+  
+  // Usar o mesmo ícone customizado
+  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const windowIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined;
+  
+  const userWindow = new BrowserWindow({
+    width,
+    height,
+    x,
+    y,
+    title: `Jira Monitor - ${userEmail}`,
+    icon: windowIcon,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      enableRemoteModule: true
+    },
+    show: false
+  });
+  
+  userWindow.loadFile('index.html');
+  
+  // Quando a janela carregar, configurar para monitorar o usuário
+  userWindow.webContents.on('did-finish-load', () => {
+    userWindow.webContents.send('set-monitored-user', userEmail);
+  });
+  
+  userWindow.once('ready-to-show', () => {
+    userWindow.show();
+  });
+  
+  // Menu de contexto (botão direito) para janela secundária
+  userWindow.webContents.on('context-menu', (event, params) => {
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: '⬅️ Voltar',
+        enabled: userWindow.webContents.canGoBack(),
+        click: () => userWindow.webContents.goBack()
+      },
+      {
+        label: '➡️ Avançar',
+        enabled: userWindow.webContents.canGoForward(),
+        click: () => userWindow.webContents.goForward()
+      },
+      {
+        label: '🔄 Recarregar',
+        click: () => userWindow.webContents.reload()
+      },
+      { type: 'separator' },
+      {
+        label: '✂️ Recortar',
+        role: 'cut',
+        enabled: params.editFlags.canCut
+      },
+      {
+        label: '📋 Copiar',
+        role: 'copy',
+        enabled: params.editFlags.canCopy
+      },
+      {
+        label: '📄 Colar',
+        role: 'paste',
+        enabled: params.editFlags.canPaste
+      },
+      {
+        label: '🗑️ Deletar',
+        role: 'delete',
+        enabled: params.editFlags.canDelete
+      },
+      { type: 'separator' },
+      {
+        label: '🔍 Selecionar Tudo',
+        role: 'selectAll'
+      },
+      { type: 'separator' },
+      {
+        label: '🔗 Copiar Link',
+        visible: params.linkURL.length > 0,
+        click: () => {
+          const { clipboard } = require('electron');
+          clipboard.writeText(params.linkURL);
+        }
+      },
+      {
+        label: '🖼️ Copiar Imagem',
+        visible: params.hasImageContents,
+        click: () => userWindow.webContents.copyImageAt(params.x, params.y)
+      },
+      {
+        label: '🌐 Abrir Link em Navegador Externo',
+        visible: params.linkURL.length > 0,
+        click: () => shell.openExternal(params.linkURL)
+      },
+      { type: 'separator' },
+      {
+        label: '🔧 Inspecionar Elemento',
+        click: () => {
+          userWindow.webContents.inspectElement(params.x, params.y);
+          if (userWindow.webContents.isDevToolsOpened()) {
+            userWindow.webContents.devToolsWebContents.focus();
+          }
+        }
+      }
+    ]);
+    
+    contextMenu.popup(userWindow);
+  });
+  
+  // IPC handlers específicos para esta janela
+  const windowId = userWindow.id;
+  
+  ipcMain.on(`minimize-window-${windowId}`, () => {
+    if (userWindow && !userWindow.isDestroyed()) {
+      userWindow.minimize();
+    }
+  });
+  
+  ipcMain.on(`close-window-${windowId}`, () => {
+    if (userWindow && !userWindow.isDestroyed()) {
+      userWindow.destroy();
+    }
+  });
+  
+  // Limpar listeners ao fechar
+  userWindow.on('closed', () => {
+    ipcMain.removeAllListeners(`minimize-window-${windowId}`);
+    ipcMain.removeAllListeners(`close-window-${windowId}`);
+  });
+  
+  return userWindow;
+}
+
+// Inicializar app
+app.whenReady().then(() => {
+  // Definir nome do app (força o nome no macOS)
+  app.setName('Jira Monitor');
+  
+  createWindow();
+  createTray();
+});
+
+// Sair quando todas as janelas forem fechadas
+// Salvar posição antes de fechar o app (garante salvamento em Ctrl+C)
+app.on('before-quit', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const bounds = mainWindow.getBounds();
+    store.set('windowBounds', bounds);
+    console.log('💾 Posição salva antes de fechar:', bounds);
+  }
+});
+
+app.on('window-all-closed', () => {
+  // Fechar completamente o app
+  app.quit();
+});
+
+// Recriar janela no macOS quando o ícone do tray for clicado
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+

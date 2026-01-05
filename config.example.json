@@ -1,0 +1,21 @@
+{
+  "jiraUrl": "https://nubank.atlassian.net",
+  "jiraEmail": "seu.email@empresa.com",
+  "jiraApiToken": "SEU_API_TOKEN_AQUI",
+  "queueId": "1104",
+  "refreshInterval": 60,
+  "oldTicketsDays": 7,
+  "alertSla": true,
+  "alertOldTickets": true,
+  "soundNotifications": true,
+  "proMode": false,
+  "monitorOtherUser": false,
+  "otherUserEmail": "",
+  "windowBounds": {
+    "x": 100,
+    "y": 100,
+    "width": 420,
+    "height": 700
+  }
+}
+
