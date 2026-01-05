@@ -2977,11 +2977,20 @@ function setupCardListeners() {
 
 function openCardInJira(cardId) {
   const baseUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
-  let jql = '';
+  let url = '';
   
   const assignee = currentConfig.monitorOtherUser && currentConfig.otherUserEmail 
     ? `"${currentConfig.otherUserEmail}"` 
     : 'currentUser()';
+  
+  // Para o card pending, usar sempre o link específico
+  if (cardId === 'pending') {
+    url = 'https://nubank.atlassian.net/issues?jql=resolution%20%3D%20Unresolved%20AND%20status%20IN%20%28%22Pending%22%2C%20%22Pendente%22%29%20AND%20assignee%20%3D%20currentUser%28%29';
+    ipcRenderer.invoke('open-url', url);
+    return;
+  }
+  
+  let jql = '';
   
   switch (cardId) {
     case 'total':
@@ -2993,16 +3002,9 @@ function openCardInJira(cardId) {
     case 'customer':
       jql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Waiting for Customer", "Aguardando Cliente")`;
       break;
-    case 'pending':
-      if (currentConfig.monitorOtherUser && currentConfig.otherUserEmail) {
-        jql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Pending", "Pendente", "Pendência")`;
-      } else {
-        jql = `queue = ${currentConfig.queueId || '1104'} AND resolution = Unresolved AND status in ("Pending", "Pendente", "Pendência")`;
-      }
-      break;
   }
   
-  const url = `${baseUrl}/issues/?jql=${encodeURIComponent(jql)}`;
+  url = `${baseUrl}/issues/?jql=${encodeURIComponent(jql)}`;
   ipcRenderer.invoke('open-url', url);
 }
 
