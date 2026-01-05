@@ -406,7 +406,11 @@ class JiraService {
     const pendingJql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Pending", "Pendente") AND project = IT`;
     
     // Query adicional para tickets criados hoje (inclusive os já fechados, para atividade diária)
-    const todayCreatedJql = `assignee = ${assignee} AND created >= startOfDay() ORDER BY created DESC`;
+    // Usar data específica ao invés de startOfDay() para garantir fuso horário correto
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const todayCreatedJql = `assignee = ${assignee} AND created >= "${todayStr}" ORDER BY created DESC`;
     
     // 🔥 Query para agrupar TODOS os projetos (não apenas IT)
     const allProjectsJql = `assignee = ${assignee} AND resolution = Unresolved AND status NOT IN ("Cancelled", "Canceled", "Cancelado", "Closed") ORDER BY updated DESC`;
@@ -487,7 +491,9 @@ class JiraService {
       
       console.log('📊 Atividade diária calculada:', {
         recebidos: todayReceived.length,
-        fechados: todayResolved.length
+        fechados: todayResolved.length,
+        ticketsRecebidos: todayReceived.map(t => ({ key: t.key, created: t.fields.created })),
+        ticketsFechados: todayResolved.map(t => ({ key: t.key, resolved: t.fields.resolutiondate }))
       });
 
       // Dados de tendência (implementaremos histórico real)
@@ -780,7 +786,10 @@ class JiraService {
       const userEmail = this.monitorOtherUser && this.otherUserEmail ? this.otherUserEmail : this.email;
       
       // Buscar tickets atualizados hoje onde o usuário é assignee
-      const jql = `assignee = ${assignee} AND updated >= startOfDay() ORDER BY updated DESC`;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const jql = `assignee = ${assignee} AND updated >= "${todayStr}" ORDER BY updated DESC`;
       
       const data = await this._searchJql(jql, ['key', 'summary', 'comment', 'project', 'customfield_10123', 'customfield_10124']);
       
@@ -812,7 +821,10 @@ class JiraService {
         });
       }
       
-      console.log(`💬 Comentários feitos hoje: ${commentsToday.length}`);
+      console.log(`💬 Comentários feitos hoje: ${commentsToday.length}`, {
+        ticketsVerificados: data.issues?.length || 0,
+        comentariosEncontrados: commentsToday.map(c => ({ ticket: c.ticketKey, data: c.commentCreated }))
+      });
       
       return commentsToday;
     } catch (error) {
