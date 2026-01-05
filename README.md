@@ -53,10 +53,31 @@
 
 ### Pré-requisitos
 - **macOS** 10.13 ou superior
-- **Node.js** 18+ ([Download aqui](https://nodejs.org/))
+- **Node.js** 18-20 (**recomendado via nvm**)
 - **Git** (para clonar o repositório)
 
-### Passos
+### Instalação do Node.js (Recomendado via nvm)
+
+```bash
+# 1. Instalar nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# 2. Configurar (adicionar ao ~/.zshrc)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# 3. Fechar e reabrir o terminal
+
+# 4. Instalar Node 20
+nvm install 20
+nvm use 20
+nvm alias default 20
+
+# 5. Verificar
+node --version  # Deve mostrar v20.x.x
+```
+
+### Passos de Instalação
 
 ```bash
 # 1. Clonar o repositório
@@ -185,6 +206,78 @@ npm run build
 - **Jira REST API** v3
 - **electron-store** (persistência)
 - **axios** (HTTP)
+
+---
+
+## 🔧 Troubleshooting
+
+### Erro: `Library not loaded: libsimdjson.28.dylib`
+
+**Sintoma:**
+```bash
+dyld[14840]: Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.28.dylib
+zsh: abort   npm install
+```
+
+**Causa:** Node.js instalado via Homebrew com dependências quebradas ou versão incompatível (Node 24+)
+
+**Solução:**
+
+```bash
+# 1. Instalar nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# 2. Configurar nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# 3. Fechar e reabrir o terminal
+
+# 4. Instalar Node 20
+nvm install 20
+nvm use 20
+nvm alias default 20
+
+# 5. Verificar
+node --version  # Deve mostrar v20.x.x
+
+# 6. Tentar novamente
+npm install
+npm start
+```
+
+### Erro: `npm install` falha
+
+**Solução:**
+```bash
+# Limpar cache
+npm cache clean --force
+
+# Remover node_modules
+rm -rf node_modules package-lock.json
+
+# Reinstalar
+npm install
+```
+
+### App não inicia
+
+**Solução:**
+```bash
+# Verificar Node.js
+node --version  # Deve ser 18-20
+
+# Verificar se Electron está instalado
+ls node_modules/.bin/electron
+
+# Se não existir, reinstalar
+npm install
+```
+
+### Mais problemas?
+
+- 📚 Consulte: [DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md#-troubleshooting)
+- 📧 Entre em contato: gabriel.silva.digisystem@nubank.com.br
 
 ---
 
