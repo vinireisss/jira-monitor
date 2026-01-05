@@ -927,19 +927,40 @@ body {
   }
 }
 
-/* Grid de Estatísticas */
+/* ========================================
+   🎨 GRID DE ESTATÍSTICAS - AUTO-ORGANIZAÇÃO INTELIGENTE
+   ========================================
+   
+   Sistema de layout responsivo que reorganiza os cards
+   automaticamente conforme eles expandem ou retraem.
+   
+   Características:
+   - Auto-fit: Colunas se ajustam ao espaço disponível
+   - Dense: Preenche espaços vazios automaticamente  
+   - Cards expandidos ocupam mais espaço (span 2 colunas)
+   - Reorganização suave com transições CSS
+   - Responsivo para diferentes tamanhos de tela
+   ======================================== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* Auto-fit cria colunas que se ajustam ao espaço disponível */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
   margin-bottom: 16px;
+  /* Grid auto-flow dense preenche buracos automaticamente */
+  grid-auto-flow: dense;
+  /* Linhas se ajustam ao conteúdo */
+  grid-auto-rows: auto;
   /* Garantir que o grid não bloqueie o scroll do pai */
   min-height: 0;
   max-width: 100%;
+  /* Transição suave ao reorganizar */
+  transition: all 0.3s ease;
 }
 
 /* Grid Inteligente - Card Total Maior */
 .stat-card-total {
+  /* Card total ocupa toda a largura quando possível */
   grid-column: 1 / -1;
 }
 
@@ -950,6 +971,66 @@ body {
 .stat-card-total .stat-card-icon {
   width: 48px;
   height: 48px;
+}
+
+/* Cards expandidos ocupam mais espaço (span 2 colunas se houver espaço) */
+.stat-card.expanded {
+  /* Tenta ocupar 2 colunas quando expandido */
+  grid-column: span 2;
+  /* Se não houver espaço, ocupa apenas 1 */
+  min-width: 0;
+}
+
+/* Em telas menores, cards expandidos ocupam toda a largura */
+@media (max-width: 768px) {
+  .stat-card.expanded {
+    grid-column: 1 / -1;
+  }
+  
+  .stats-grid {
+    /* Em telas pequenas, sempre 1 coluna */
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cards com lista visível têm altura automática */
+.stat-card:has(.tickets-list:not([style*="display: none"])) {
+  grid-row: span 2;
+  align-self: start;
+}
+
+/* Fallback para navegadores que não suportam :has() */
+.stat-card.has-visible-list {
+  grid-row: span 2;
+  align-self: start;
+}
+
+/* Melhorias visuais para cards expandidos */
+.stat-card.expanded {
+  /* Destaque visual sutil */
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  border-left-width: 6px;
+}
+
+/* Ajuste fino para telas médias */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .stats-grid {
+    /* Em telas médias, permite 2 colunas flexíveis */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  
+  .stat-card.expanded {
+    /* Em telas médias, card expandido pode ocupar 1 ou 2 colunas */
+    grid-column: span 1;
+  }
+}
+
+/* Ajuste para telas grandes */
+@media (min-width: 1201px) {
+  .stats-grid {
+    /* Em telas grandes, permite até 3 colunas */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
 }
 
 /* Mini Stats Dashboard */
@@ -992,10 +1073,15 @@ body {
   border-radius: 12px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Transição suave incluindo transformações do grid */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              grid-column 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              grid-row 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   border-left: 4px solid transparent;
+  /* Habilitar transições suaves de layout */
+  will-change: grid-column, grid-row, transform;
 }
 
 .stat-card::before {
@@ -1298,6 +1384,22 @@ body {
   border-top: 1px solid #e0e0e0;
   max-height: 300px;
   overflow-y: auto;
+  /* Animação suave ao aparecer */
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Animação para lista de tickets */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 300px;
+  }
 }
 
 .ticket-item {
@@ -2923,6 +3025,8 @@ body {
 
 .app-container.density-compact .stats-grid {
   gap: 10px;
+  /* Manter auto-organização no modo compacto */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .app-container.density-compact .stat-card {
@@ -3000,6 +3104,8 @@ body {
 
 .app-container.density-comfortable .stats-grid {
   gap: 20px;
+  /* Manter auto-organização no modo confortável */
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
 .app-container.density-comfortable .stat-card {
@@ -3083,9 +3189,12 @@ body {
 }
 
 .app-container.horizontal-layout .stats-grid {
-  grid-template-columns: repeat(4, 1fr);
+  /* No modo horizontal, permite ajuste automático mas mantém 4 colunas mínimas */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 8px;
   margin-bottom: 0;
+  /* No modo horizontal, preferir linhas automáticas */
+  grid-auto-flow: row dense;
 }
 
 .app-container.horizontal-layout .stat-card {

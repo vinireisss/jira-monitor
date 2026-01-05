@@ -3013,13 +3013,54 @@ function toggleCardExpansion(cardId) {
   
   if (ticketsList.style.display === 'none') {
     expandBtn.classList.add('expanded');
+    card.classList.add('expanded'); // 🎨 Adiciona classe ao card para reorganização automática
+    card.classList.add('has-visible-list'); // 🎨 Fallback para navegadores sem :has()
     ticketsList.style.display = 'block';
+    
+    // 🎯 Forçar reorganização suave do grid após expansão
+    optimizeGridLayout();
+    
     loadTicketsList(cardId);
   } else {
     expandBtn.classList.remove('expanded');
+    card.classList.remove('expanded'); // 🎨 Remove classe para reorganização automática
+    card.classList.remove('has-visible-list'); // 🎨 Remove fallback
     ticketsList.style.display = 'none';
+    
+    // 🎯 Reorganizar grid após colapsar
+    optimizeGridLayout();
   }
 }
+
+// 🎨 Função auxiliar para otimizar o layout do grid
+function optimizeGridLayout() {
+  requestAnimationFrame(() => {
+    const statsGrid = document.getElementById('stats-grid');
+    if (!statsGrid) return;
+    
+    // Forçar recalculação do layout
+    statsGrid.style.gridAutoFlow = 'dense';
+    
+    // Aplicar transição suave aos cards
+    const cards = statsGrid.querySelectorAll('.stat-card');
+    cards.forEach(card => {
+      // Adicionar efeito visual de reorganização
+      card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    });
+    
+    // Log para debug (pode ser removido em produção)
+    console.log('🎨 Grid reorganizado automaticamente');
+  });
+}
+
+// 🎨 Reorganizar grid automaticamente ao redimensionar janela
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    optimizeGridLayout();
+  }, 150); // Debounce de 150ms
+});
 
 // 🔔 Função para verificar mudança de status de SLA e notificar
 function checkSlaStatusChange(ticketKey, newStatus, summary, minutesRemaining) {
