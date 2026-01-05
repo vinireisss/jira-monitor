@@ -51,10 +51,108 @@ let dailyActivity = {
   commentedTickets: []  // Lista de tickets com comentários
 }; // Atividade do dia
 let lastMentionsCheck = {}; // Rastrear últimas menções verificadas
+let currentLanguage = 'pt-BR'; // Idioma atual
+
+// ========================================
+// 🌍 FUNÇÕES DE INTERNACIONALIZAÇÃO
+// ========================================
+
+/**
+ * Aplica as traduções em toda a interface
+ */
+function applyLanguage(lang = 'pt-BR') {
+  console.log(`🌍 Aplicando idioma: ${lang}`);
+  
+  currentLanguage = lang;
+  
+  // Atualizar atributo lang do HTML
+  document.documentElement.lang = lang;
+  
+  // Traduzir todos os elementos com data-i18n
+  const elements = document.querySelectorAll('[data-i18n]');
+  elements.forEach(element => {
+    const key = element.getAttribute('data-i18n');
+    const translation = getTranslation(key, lang);
+    
+    // Verificar se deve traduzir o placeholder
+    if (element.hasAttribute('data-i18n-placeholder')) {
+      element.placeholder = translation;
+    }
+    // Verificar se deve traduzir o title
+    else if (element.hasAttribute('data-i18n-title')) {
+      element.title = translation;
+    }
+    // Caso padrão: traduzir o textContent
+    else {
+      element.textContent = translation;
+    }
+  });
+  
+  // Salvar preferência de idioma
+  localStorage.setItem('language', lang);
+  
+  console.log(`✅ Idioma ${lang} aplicado com sucesso`);
+}
+
+/**
+ * Adiciona atributos data-i18n aos elementos do HTML dinamicamente
+ * (para elementos que não foram marcados no HTML)
+ */
+function addI18nAttributes() {
+  // Menu items - remover emojis do texto original antes de marcar
+  const menuMapping = {
+    'menu-pro': 'menu.proMode',
+    'menu-refresh': 'menu.refresh',
+    'menu-settings': 'menu.settings',
+    'menu-okta': 'menu.okta',
+    'menu-jamf': 'menu.jamf',
+    'menu-search': 'menu.search',
+    'menu-shortcuts': 'menu.shortcuts',
+    'menu-templates': 'menu.templates',
+    'menu-focus-mode': 'menu.focusMode',
+    'menu-themes': 'menu.themes',
+    'menu-export': 'menu.export'
+  };
+  
+  Object.entries(menuMapping).forEach(([id, key]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const span = element.querySelector('span');
+      if (span && !span.hasAttribute('data-i18n')) {
+        span.setAttribute('data-i18n', key);
+        // Forçar tradução inicial
+        span.textContent = getTranslation(key, currentLanguage);
+      }
+    }
+  });
+  
+  // Stats cards
+  const statsMapping = {
+    'card-total': 'stats.total',
+    'card-support': 'stats.support',
+    'card-customer': 'stats.customer',
+    'card-pending': 'stats.pending'
+  };
+  
+  Object.entries(statsMapping).forEach(([id, key]) => {
+    const card = document.getElementById(id);
+    if (card) {
+      const title = card.querySelector('h3');
+      if (title && !title.hasAttribute('data-i18n')) {
+        title.setAttribute('data-i18n', key);
+      }
+    }
+  });
+}
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
   await loadConfig();
+  
+  // Aplicar idioma salvo ou padrão
+  const savedLanguage = localStorage.getItem('language') || currentConfig.language || 'pt-BR';
+  applyLanguage(savedLanguage);
+  
   setupEventListeners();
   setupKeyboardShortcuts();
   
@@ -192,13 +290,13 @@ async function loadConfig() {
       notificationTypesGroup.style.display = config.desktopNotifications !== false ? 'block' : 'none';
     }
     
-    // Aplicar tema
+    // Aplicar tema (gerenciado pelo modal de temas no menu)
     const theme = config.theme || 'default';
-    const themeSelect = document.getElementById('theme-select');
-    if (themeSelect) {
-      themeSelect.value = theme;
-    }
     applyTheme(theme);
+    
+    // Aplicar idioma (gerenciado pelo modal de idioma no menu)
+    const language = config.language || localStorage.getItem('language') || 'pt-BR';
+    currentLanguage = language;
     
     // Mostrar/ocultar campo de outro usuário
     const otherUserGroup = document.getElementById('other-user-email-group');
@@ -255,7 +353,8 @@ async function saveConfig() {
       queueId: document.getElementById('queue-id').value,
       refreshInterval: parseInt(document.getElementById('refresh-interval').value),
       oldTicketsDays: parseInt(document.getElementById('old-tickets-days').value),
-      theme: document.getElementById('theme-select').value,
+      theme: currentConfig.theme || 'default', // Mantém o tema atual
+      language: currentConfig.language || currentLanguage || 'pt-BR', // Mantém o idioma atual
       alertSla: document.getElementById('alert-sla').checked,
       alertOldTickets: document.getElementById('alert-old-tickets').checked,
       desktopNotifications: document.getElementById('desktop-notifications').checked,
@@ -284,6 +383,9 @@ async function saveConfig() {
     
     // Aplicar tema
     applyTheme(config.theme);
+    
+    // Aplicar idioma
+    applyLanguage(config.language);
     
     // Aplicar Modo Pro
     isProMode = config.proMode;
@@ -680,6 +782,10 @@ function setupEventListeners() {
     showThemeCustomizer();
     hideMenu();
   });
+  document.getElementById('menu-language').addEventListener('click', () => {
+    showLanguageModal();
+    hideMenu();
+  });
   document.getElementById('menu-export').addEventListener('click', () => {
     showExportModal();
     hideMenu();
@@ -692,15 +798,16 @@ function setupEventListeners() {
   document.getElementById('toggle-password-btn').addEventListener('click', togglePasswordVisibility);
   document.getElementById('test-notification-btn').addEventListener('click', testDesktopNotification);
   
+  // Link para criar API token
+  document.getElementById('create-api-token-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    ipcRenderer.invoke('open-url', 'https://id.atlassian.com/manage-profile/security/api-tokens');
+  });
+  
   // Mostrar/ocultar opções de tipos de notificações
   document.getElementById('desktop-notifications').addEventListener('change', (e) => {
     const notificationTypesGroup = document.getElementById('notification-types-group');
     notificationTypesGroup.style.display = e.target.checked ? 'block' : 'none';
-  });
-  
-  // Theme selector - aplicar tema em tempo real
-  document.getElementById('theme-select').addEventListener('change', (e) => {
-    applyTheme(e.target.value);
   });
   
   // Refresh button
@@ -4957,6 +5064,41 @@ function showThemeCustomizer() {
   const modal = document.getElementById('theme-customizer-modal');
   modal.style.display = 'flex';
   
+  // Marcar o tema atual como ativo
+  const currentTheme = currentConfig.theme || 'default';
+  document.querySelectorAll('.theme-mode-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-theme-mode') === currentTheme) {
+      btn.classList.add('active');
+    }
+  });
+  
+  // Configurar botões de modo de tema
+  document.querySelectorAll('.theme-mode-btn').forEach(btn => {
+    // Remover listeners antigos
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    newBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const themeMode = newBtn.getAttribute('data-theme-mode');
+      
+      // Atualizar visual
+      document.querySelectorAll('.theme-mode-btn').forEach(b => b.classList.remove('active'));
+      newBtn.classList.add('active');
+      
+      // Aplicar tema
+      applyTheme(themeMode);
+      
+      // Salvar no config
+      ipcRenderer.invoke('save-config', { theme: themeMode }).then(() => {
+        currentConfig.theme = themeMode;
+        const themeName = themeMode === 'default' ? 'Padrão' : themeMode === 'dark' ? 'Escuro' : 'Claro';
+        showToast('Tema', `Tema ${themeName} aplicado`, 'success');
+      });
+    });
+  });
+  
   // Aguardar um momento para garantir que o modal está renderizado
   setTimeout(() => {
     setupThemeCustomizerListeners();
@@ -4972,6 +5114,71 @@ function showThemeCustomizer() {
 
 function hideThemeCustomizer() {
   document.getElementById('theme-customizer-modal').style.display = 'none';
+}
+
+// ============================================
+// 🌍 MODAL DE IDIOMA
+// ============================================
+
+function showLanguageModal() {
+  console.log('🌍 Abrindo modal de idioma');
+  const modal = document.getElementById('language-modal');
+  modal.style.display = 'flex';
+  
+  // Marcar o idioma atual como ativo
+  const currentLang = currentLanguage || 'pt-BR';
+  document.querySelectorAll('.language-option-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-language') === currentLang) {
+      btn.classList.add('active');
+    }
+  });
+  
+  // Configurar botões de idioma
+  document.querySelectorAll('.language-option-btn').forEach(btn => {
+    // Remover listeners antigos
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    newBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const lang = newBtn.getAttribute('data-language');
+      
+      // Atualizar visual
+      document.querySelectorAll('.language-option-btn').forEach(b => b.classList.remove('active'));
+      newBtn.classList.add('active');
+      
+      // Aplicar idioma
+      applyLanguage(lang);
+      currentLanguage = lang;
+      
+      // Salvar no config
+      ipcRenderer.invoke('save-config', { language: lang }).then(() => {
+        currentConfig.language = lang;
+        const langName = lang === 'pt-BR' ? 'Português' : lang === 'en' ? 'English' : 'Español';
+        showToast('Idioma', `${langName} aplicado`, 'success');
+        
+        // Fechar modal após 1 segundo
+        setTimeout(() => {
+          hideLanguageModal();
+        }, 1000);
+      });
+    });
+  });
+  
+  // Botão de fechar
+  document.getElementById('close-language-modal').onclick = hideLanguageModal;
+  
+  // Fechar ao clicar fora
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      hideLanguageModal();
+    }
+  });
+}
+
+function hideLanguageModal() {
+  document.getElementById('language-modal').style.display = 'none';
 }
 
 function applyAccentColor(color, showNotification = false) {

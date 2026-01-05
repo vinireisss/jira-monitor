@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="ux-enhancements.css">
   <link rel="stylesheet" href="performance-optimizations.css">
   <script src="confetti.js"></script>
+  <script src="i18n.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -25,7 +26,7 @@
       
       <div class="header-right">
         <!-- Menu Hambúrguer -->
-        <button class="header-btn menu-btn" id="menu-btn" title="Menu">
+        <button class="header-btn menu-btn" id="menu-btn" title="Menu" data-i18n="header.menu" data-i18n-title>
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
           </svg>
@@ -33,62 +34,84 @@
         
         <!-- Dropdown do Menu -->
         <div class="menu-dropdown" id="menu-dropdown" style="display: none;">
+          <!-- PRINCIPAIS -->
           <div class="menu-item" id="menu-pro" title="Ativar recursos avançados">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 18c-4.41 0-8-3.59-8-8V9l8-4.5L20 9v3c0 4.41-3.59 8-8 8z"/>
             </svg>
-            <span>⭐ Modo Pro</span>
+            <span data-i18n="menu.proMode">Modo Pro</span>
           </div>
           <div class="menu-item" id="menu-refresh" title="Atualizar dados manualmente (Cmd+R)">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
             </svg>
-            <span>🔄 Atualizar</span>
+            <span data-i18n="menu.refresh">Atualizar</span>
           </div>
           <div class="menu-item" id="menu-settings" title="Abrir configurações (Cmd+,)">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
             </svg>
-            <span>⚙️ Configurações</span>
+            <span data-i18n="menu.settings">Configurações</span>
           </div>
+          
           <div class="menu-divider"></div>
+          
+          <!-- LINKS EXTERNOS -->
           <div class="menu-item" id="menu-okta" title="Abrir Nubank OKTA">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
             </svg>
-            <span>🔐 OKTA</span>
+            <span data-i18n="menu.okta">OKTA</span>
           </div>
           <div class="menu-item" id="menu-jamf" title="Abrir JAMF Cloud">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>
             </svg>
-            <span>🍎 JAMF</span>
+            <span data-i18n="menu.jamf">JAMF</span>
           </div>
+          
           <div class="menu-divider"></div>
+          
+          <!-- FERRAMENTAS -->
           <div class="menu-item" id="menu-search" title="Busca rápida de tickets (Cmd+K)">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
             </svg>
-            <span>🔍 Busca Rápida</span>
+            <span data-i18n="menu.search">Busca Rápida</span>
           </div>
           <div class="menu-item" id="menu-shortcuts" title="Ver todos os atalhos de teclado">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
             </svg>
-            <span>⌨️ Atalhos</span>
+            <span data-i18n="menu.shortcuts">Atalhos</span>
           </div>
           <div class="menu-item" id="menu-templates" title="Templates de resposta rápida (Cmd+Shift+T)">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
             </svg>
-            <span>📋 Templates</span>
+            <span data-i18n="menu.templates">Templates</span>
           </div>
+          
           <div class="menu-divider"></div>
+          
+          <!-- PERSONALIZAÇÃO -->
+          <div class="menu-item" id="menu-themes" title="Personalizar tema">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+            </svg>
+            <span data-i18n="menu.themes">Temas</span>
+          </div>
+          <div class="menu-item" id="menu-language" title="Idioma / Language / Idioma">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+            </svg>
+            <span data-i18n="menu.language">🌍 Idioma</span>
+          </div>
           <div class="menu-item" id="menu-focus-mode" title="Ativar modo focus (Cmd+Shift+F)">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-            <span>🎯 Modo Focus</span>
+            <span data-i18n="menu.focusMode">Modo Focus</span>
           </div>
           <div class="menu-item-slider" id="menu-opacity-container" title="Ajustar transparência da janela">
             <div class="menu-item-slider-header">
@@ -99,17 +122,15 @@
             </div>
             <input type="range" id="opacity-slider" min="20" max="100" value="100" step="5" class="opacity-slider">
           </div>
-          <div class="menu-item" id="menu-themes" title="Personalizar tema">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-            </svg>
-            <span>🎨 Temas</span>
-          </div>
+          
+          <div class="menu-divider"></div>
+          
+          <!-- EXPORTAR -->
           <div class="menu-item" id="menu-export" title="Exportar relatório">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/>
             </svg>
-            <span>📄 Exportar</span>
+            <span data-i18n="menu.export">Exportar</span>
           </div>
         </div>
         
@@ -150,7 +171,7 @@
         </div>
         
         <!-- Botão de Notificações -->
-        <button class="header-btn notifications-btn" id="notifications-btn" title="Notificações">
+        <button class="header-btn notifications-btn" id="notifications-btn" title="Notificações" data-i18n="header.notifications" data-i18n-title>
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
           </svg>
@@ -174,7 +195,7 @@
         </div>
         
         <!-- Botão de Documentação -->
-        <button class="header-btn" id="docs-btn" title="Documentação">
+        <button class="header-btn" id="docs-btn" title="Documentação" data-i18n="header.docs" data-i18n-title>
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
           </svg>
@@ -214,13 +235,13 @@
           </svg>
         </button>
         
-        <button class="header-btn" id="minimize-btn" title="Minimizar (Esc)">
+        <button class="header-btn" id="minimize-btn" title="Minimizar (Esc)" data-i18n="header.minimize" data-i18n-title>
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M19 13H5v-2h14v2z"/>
           </svg>
         </button>
         
-        <button class="header-btn close-btn" id="close-btn" title="Fechar">
+        <button class="header-btn close-btn" id="close-btn" title="Fechar" data-i18n="header.close" data-i18n-title>
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
           </svg>
@@ -236,6 +257,8 @@
         id="search-input" 
         placeholder="Buscar ticket (ex: IT-1234) ou palavras-chave... (Cmd+K)"
         autocomplete="off"
+        data-i18n="search.placeholder"
+        data-i18n-placeholder
       >
       <div class="search-results" id="search-results"></div>
     </div>
@@ -249,10 +272,10 @@
             <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
           </svg>
           <div class="error-message">
-            <strong id="error-title">Erro de Conexão</strong>
-            <span id="error-description">Não foi possível conectar ao Jira</span>
+            <strong id="error-title" data-i18n="error.connection">Erro de Conexão</strong>
+            <span id="error-description" data-i18n="error.noConnection">Não foi possível conectar ao Jira</span>
           </div>
-          <button class="error-retry-btn" id="error-retry-btn">Tentar Novamente</button>
+          <button class="error-retry-btn" id="error-retry-btn" data-i18n="error.retry">Tentar Novamente</button>
           <button class="error-close-btn" id="error-close-btn">✕</button>
         </div>
       </div>
@@ -399,8 +422,8 @@
         <!-- Atividade de Hoje -->
         <div class="pro-section" id="daily-activity-section">
           <div class="pro-section-header">
-            <h3 class="pro-section-title">📅 Atividade de Hoje</h3>
-            <button class="expand-btn-inline" id="expand-daily-activity" title="Expandir">
+            <h3 class="pro-section-title" data-i18n="pro.dailyActivity">📅 Atividade de Hoje</h3>
+            <button class="expand-btn-inline" id="expand-daily-activity" title="Expandir" data-i18n="stats.expand" data-i18n-title>
               <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
                 <path fill="currentColor" d="M7 10l5 5 5-5z"/>
               </svg>
@@ -411,45 +434,45 @@
             <div class="activity-card activity-card-received" onclick="toggleActivityDetails('received')">
               <div class="activity-card-icon">🆕</div>
               <div class="activity-card-value" id="activity-received">0</div>
-              <div class="activity-card-label">Recebidos</div>
-              <div class="activity-card-sublabel">hoje</div>
+              <div class="activity-card-label" data-i18n="pro.received">Recebidos</div>
+              <div class="activity-card-sublabel" data-i18n="pro.today">hoje</div>
             </div>
             
             <div class="activity-card activity-card-resolved" onclick="toggleActivityDetails('resolved')">
               <div class="activity-card-icon">✅</div>
               <div class="activity-card-value" id="activity-resolved">0</div>
-              <div class="activity-card-label">Fechados</div>
-              <div class="activity-card-sublabel">hoje</div>
+              <div class="activity-card-label" data-i18n="pro.resolved">Fechados</div>
+              <div class="activity-card-sublabel" data-i18n="pro.today">hoje</div>
             </div>
             
             <div class="activity-card activity-card-activity" onclick="toggleActivityDetails('commented')">
               <div class="activity-card-icon">💬</div>
               <div class="activity-card-value" id="activity-commented">0</div>
-              <div class="activity-card-label">Atividade</div>
-              <div class="activity-card-sublabel">comentários</div>
+              <div class="activity-card-label" data-i18n="pro.commented">Atividade</div>
+              <div class="activity-card-sublabel" data-i18n="pro.comments">comentários</div>
             </div>
           </div>
           
           <!-- Lista de detalhes expansível -->
           <div class="daily-activity-details" id="daily-activity-details" style="display: none;">
             <div class="activity-detail-section">
-              <h4 class="activity-detail-title">🆕 Tickets Recebidos Hoje</h4>
+              <h4 class="activity-detail-title" data-i18n="daily.receivedTitle">🆕 Tickets Recebidos Hoje</h4>
               <div class="activity-detail-list" id="activity-received-list">
-                <p class="no-activity-msg">Nenhum ticket recebido hoje</p>
+                <p class="no-activity-msg" data-i18n="daily.noReceived">Nenhum ticket recebido hoje</p>
               </div>
             </div>
             
             <div class="activity-detail-section">
-              <h4 class="activity-detail-title">✅ Tickets Fechados Hoje</h4>
+              <h4 class="activity-detail-title" data-i18n="daily.resolvedTitle">✅ Tickets Fechados Hoje</h4>
               <div class="activity-detail-list" id="activity-resolved-list">
-                <p class="no-activity-msg">Nenhum ticket fechado hoje</p>
+                <p class="no-activity-msg" data-i18n="daily.noResolved">Nenhum ticket fechado hoje</p>
               </div>
             </div>
             
             <div class="activity-detail-section">
-              <h4 class="activity-detail-title">💬 Comentários de Hoje</h4>
+              <h4 class="activity-detail-title" data-i18n="daily.commentsTitle">💬 Comentários de Hoje</h4>
               <div class="activity-detail-list" id="activity-commented-list">
-                <p class="no-activity-msg">Nenhum comentário hoje</p>
+                <p class="no-activity-msg" data-i18n="daily.noComments">Nenhum comentário hoje</p>
               </div>
             </div>
           </div>
@@ -457,10 +480,10 @@
 
         <!-- Tickets de Telefonia SIM cards -->
         <div class="pro-section" id="sim-cards-section">
-          <h3 class="pro-section-title">📱 Telefonia</h3>
+          <h3 class="pro-section-title" data-i18n="pro.telefonia">📱 Telefonia</h3>
           <div class="sim-cards-main">
             <button class="custom-btn sim-cards-count-btn" id="sim-cards-count-btn">
-              <span class="btn-text">Tickets SIM Cards</span>
+              <span class="btn-text" data-i18n="pro.simCards">Tickets SIM Cards</span>
               <span class="stat-number-inline" id="sim-cards-count">0</span>
             </button>
             <button class="expand-btn-inline" id="expand-sim-cards" title="Expandir">
@@ -488,10 +511,10 @@
 
         <!-- Tickets Avaliados -->
         <div class="pro-section" id="evaluated-tickets-section">
-          <h3 class="pro-section-title">✅ Tickets Avaliados</h3>
+          <h3 class="pro-section-title" data-i18n="pro.evaluated">✅ Tickets Avaliados</h3>
           <div class="sim-cards-main">
             <button class="custom-btn evaluated-tickets-count-btn" id="evaluated-tickets-count-btn">
-              <span class="btn-text">Últimos Avaliados</span>
+              <span class="btn-text" data-i18n="pro.lastEvaluated">Últimos Avaliados</span>
               <span class="stat-number-inline" id="evaluated-tickets-count">0</span>
             </button>
             <button class="expand-btn-inline" id="expand-evaluated-tickets" title="Expandir">
@@ -507,7 +530,7 @@
 
         <!-- Estatísticas por Projeto -->
         <div class="pro-section" id="project-stats-section">
-          <h3 class="pro-section-title">📊 Por Projeto</h3>
+          <h3 class="pro-section-title" data-i18n="pro.byProject">📊 Por Projeto</h3>
           <div class="custom-buttons-container" id="project-stats">
             <!-- Botões de projeto serão inseridos dinamicamente -->
           </div>
@@ -515,7 +538,7 @@
 
         <!-- Tickets Recentes -->
         <div class="pro-section" id="recent-tickets-section">
-          <h3 class="pro-section-title">🕐 Tickets Recentes</h3>
+          <h3 class="pro-section-title" data-i18n="pro.recentTickets">🕐 Tickets Recentes</h3>
           <div class="recent-tickets-list" id="recent-tickets-list">
             <!-- Lista de tickets recentes será inserida aqui -->
           </div>
@@ -523,7 +546,7 @@
 
         <!-- Gráfico de Tendência -->
         <div class="pro-section" id="trend-section">
-          <h3 class="pro-section-title">📈 Tendência (7 dias)</h3>
+          <h3 class="pro-section-title" data-i18n="pro.trend">📈 Tendência (7 dias)</h3>
           <div class="trend-chart" id="trend-chart">
             <!-- Gráfico será inserido aqui -->
           </div>
@@ -532,9 +555,9 @@
         <!-- 📊 DASHBOARD DE PERFORMANCE -->
         <div class="pro-section" id="performance-dashboard-section">
           <div class="pro-section-header">
-            <h3 class="pro-section-title">📊 Dashboard de Performance</h3>
+            <h3 class="pro-section-title" data-i18n="perf.title">📊 Dashboard de Performance</h3>
             <span class="pro-monitored-user-badge" id="dashboard-monitored-user" style="display: none;"></span>
-            <button class="expand-btn-inline" id="expand-performance-dashboard" title="Expandir">
+            <button class="expand-btn-inline" id="expand-performance-dashboard" title="Expandir" data-i18n="stats.expand" data-i18n-title>
               <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
                 <path fill="currentColor" d="M7 10l5 5 5-5z"/>
               </svg>
@@ -546,22 +569,22 @@
             <div class="perf-metric perf-metric-primary">
               <div class="perf-metric-icon">⏱️</div>
               <div class="perf-metric-value" id="perf-avg-resolution">--</div>
-              <div class="perf-metric-label">Tempo Médio</div>
-              <div class="perf-metric-sublabel">de resolução</div>
+              <div class="perf-metric-label" data-i18n="perf.avgTime">Tempo Médio</div>
+              <div class="perf-metric-sublabel" data-i18n="perf.resolution">de resolução</div>
             </div>
             
             <div class="perf-metric perf-metric-success">
               <div class="perf-metric-icon">✅</div>
               <div class="perf-metric-value" id="perf-tickets-resolved">0</div>
-              <div class="perf-metric-label">Resolvidos</div>
-              <div class="perf-metric-sublabel">últimos 30 dias</div>
+              <div class="perf-metric-label" data-i18n="perf.resolved">Resolvidos</div>
+              <div class="perf-metric-sublabel" data-i18n="perf.last30days">últimos 30 dias</div>
             </div>
             
             <div class="perf-metric perf-metric-info">
               <div class="perf-metric-icon">📈</div>
               <div class="perf-metric-value" id="perf-rate-week">0</div>
-              <div class="perf-metric-label">Por Semana</div>
-              <div class="perf-metric-sublabel">taxa fechamento</div>
+              <div class="perf-metric-label" data-i18n="perf.perWeek">Por Semana</div>
+              <div class="perf-metric-sublabel" data-i18n="perf.closeRate">taxa fechamento</div>
             </div>
           </div>
           
@@ -570,13 +593,13 @@
             <!-- Gráficos de pizza -->
             <div class="performance-charts">
               <div class="perf-chart-container">
-                <h4 class="perf-chart-title">🏷️ Por Prioridade</h4>
+                <h4 class="perf-chart-title" data-i18n="perf.byPriority">🏷️ Por Prioridade</h4>
                 <canvas id="chart-by-priority" width="200" height="200"></canvas>
                 <div id="chart-legend-priority" class="chart-legend"></div>
               </div>
               
               <div class="perf-chart-container">
-                <h4 class="perf-chart-title">📦 Por Projeto</h4>
+                <h4 class="perf-chart-title" data-i18n="perf.byProject">📦 Por Projeto</h4>
                 <canvas id="chart-by-project" width="200" height="200"></canvas>
                 <div id="chart-legend-project" class="chart-legend"></div>
               </div>
@@ -584,8 +607,8 @@
             
             <!-- Heatmap de atividade -->
             <div class="perf-heatmap-container">
-              <h4 class="perf-chart-title">🔥 Heatmap de Atividade</h4>
-              <div class="heatmap-subtitle">Horários mais produtivos (últimos 30 dias)</div>
+              <h4 class="perf-chart-title" data-i18n="perf.heatmap">🔥 Heatmap de Atividade</h4>
+              <div class="heatmap-subtitle" data-i18n="perf.productive">Horários mais produtivos (últimos 30 dias)</div>
               <div class="heatmap-grid" id="heatmap-by-hour">
                 <!-- Grid de 24 horas será gerado dinamicamente -->
               </div>
@@ -596,7 +619,7 @@
             
             <!-- Tickets recentes resolvidos -->
             <div class="perf-recent-resolved">
-              <h4 class="perf-chart-title">📋 Últimos 10 Resolvidos</h4>
+              <h4 class="perf-chart-title" data-i18n="perf.last10">📋 Últimos 10 Resolvidos</h4>
               <div class="recent-resolved-list" id="recent-resolved-list">
                 <!-- Lista será gerada dinamicamente -->
               </div>
@@ -607,16 +630,16 @@
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
             </svg>
-            <span>Atualizar Métricas</span>
+            <span data-i18n="perf.updateMetrics">Atualizar Métricas</span>
           </button>
         </div>
 
         <!-- 🔔 ALERTAS PROATIVOS -->
         <div class="pro-section" id="proactive-alerts-section">
           <div class="pro-section-header">
-            <h3 class="pro-section-title">🔔 Alertas Proativos</h3>
+            <h3 class="pro-section-title" data-i18n="alerts.title">🔔 Alertas Proativos</h3>
             <span class="pro-monitored-user-badge" id="alerts-monitored-user" style="display: none;"></span>
-            <button class="expand-btn-inline expanded" id="expand-proactive-alerts" title="Colapsar">
+            <button class="expand-btn-inline expanded" id="expand-proactive-alerts" title="Colapsar" data-i18n="stats.expand" data-i18n-title>
               <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
                 <path fill="currentColor" d="M7 10l5 5 5-5z"/>
               </svg>
@@ -628,7 +651,7 @@
             <div class="alert-card alert-warning" id="alert-no-response" style="display: none;">
               <div class="alert-header">
                 <div class="alert-icon">⚠️</div>
-                <div class="alert-title">Tickets sem resposta</div>
+                <div class="alert-title" data-i18n="alerts.noResponse">Tickets sem resposta</div>
                 <div class="alert-count" id="alert-no-response-count">0</div>
               </div>
               <div class="alert-body" id="alert-no-response-list">
@@ -640,7 +663,7 @@
             <div class="alert-card alert-danger" id="alert-critical-sla" style="display: none;">
               <div class="alert-header">
                 <div class="alert-icon">🚨</div>
-                <div class="alert-title">SLA Crítico</div>
+                <div class="alert-title" data-i18n="alerts.criticalSla">SLA Crítico</div>
                 <div class="alert-count" id="alert-critical-sla-count">0</div>
               </div>
               <div class="alert-body" id="alert-critical-sla-list">
@@ -652,7 +675,7 @@
             <div class="alert-card alert-info" id="alert-mentions" style="display: none;">
               <div class="alert-header">
                 <div class="alert-icon">💬</div>
-                <div class="alert-title">Menções em comentários</div>
+                <div class="alert-title" data-i18n="alerts.mentions">Menções em comentários</div>
                 <div class="alert-count" id="alert-mentions-count">0</div>
               </div>
               <div class="alert-body" id="alert-mentions-list">
@@ -662,7 +685,7 @@
             
             <div class="no-alerts-message" id="no-alerts-message">
               <div class="no-alerts-icon">✨</div>
-              <div class="no-alerts-text">Tudo tranquilo! Nenhum alerta no momento.</div>
+              <div class="no-alerts-text" data-i18n="alerts.allClear">Tudo tranquilo! Nenhum alerta no momento.</div>
             </div>
           </div>
         </div>
@@ -871,6 +894,41 @@
       </div>
     </div>
 
+    <!-- Modal de Idioma -->
+    <div class="language-modal" id="language-modal" style="display: none;">
+      <div class="language-container">
+        <div class="language-header">
+          <h3>🌍 Escolher Idioma / Choose Language / Elegir Idioma</h3>
+          <button class="close-preview-btn" id="close-language-modal">✕</button>
+        </div>
+        <div class="language-body">
+          <div class="language-options">
+            <button class="language-option-btn active" data-language="pt-BR" id="lang-pt-BR">
+              <span class="language-flag">🇧🇷</span>
+              <div class="language-info">
+                <span class="language-name">Português</span>
+                <span class="language-region">Brasil</span>
+              </div>
+            </button>
+            <button class="language-option-btn" data-language="en" id="lang-en">
+              <span class="language-flag">🇺🇸</span>
+              <div class="language-info">
+                <span class="language-name">English</span>
+                <span class="language-region">United States</span>
+              </div>
+            </button>
+            <button class="language-option-btn" data-language="es" id="lang-es">
+              <span class="language-flag">🇪🇸</span>
+              <div class="language-info">
+                <span class="language-name">Español</span>
+                <span class="language-region">España</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal de Temas Customizáveis -->
     <div class="theme-customizer-modal" id="theme-customizer-modal" style="display: none;">
       <div class="theme-customizer-container">
@@ -879,6 +937,27 @@
           <button class="close-preview-btn" id="close-theme-customizer">✕</button>
         </div>
         <div class="theme-customizer-body">
+          <div class="theme-option">
+            <label>Modo de Tema:</label>
+            <div class="theme-mode-buttons">
+              <button class="theme-mode-btn active" data-theme-mode="default" id="theme-mode-default">
+                <span class="theme-mode-icon">🎨</span>
+                <span class="theme-mode-label">Padrão</span>
+                <span class="theme-mode-desc">Gradiente Roxo</span>
+              </button>
+              <button class="theme-mode-btn" data-theme-mode="dark" id="theme-mode-dark">
+                <span class="theme-mode-icon">🌙</span>
+                <span class="theme-mode-label">Escuro</span>
+                <span class="theme-mode-desc">Dark Mode</span>
+              </button>
+              <button class="theme-mode-btn" data-theme-mode="light" id="theme-mode-light">
+                <span class="theme-mode-icon">☀️</span>
+                <span class="theme-mode-label">Claro</span>
+                <span class="theme-mode-desc">Light Mode</span>
+              </button>
+            </div>
+          </div>
+          <div class="theme-divider"></div>
           <div class="theme-option">
             <label>Cor de Acento:</label>
             <div class="color-picker-grid">
@@ -893,9 +972,8 @@
             </div>
           </div>
           <div class="theme-option">
-            <label>Temas Pré-definidos:</label>
+            <label>Temas Especiais:</label>
             <div class="theme-presets">
-              <button class="theme-preset-btn" data-theme="default" onclick="window.applyThemePreset('default', true)">Padrão</button>
               <button class="theme-preset-btn" data-theme="cyberpunk" onclick="window.applyThemePreset('cyberpunk', true)">Cyberpunk</button>
               <button class="theme-preset-btn" data-theme="nord" onclick="window.applyThemePreset('nord', true)">Nord</button>
               <button class="theme-preset-btn" data-theme="dracula" onclick="window.applyThemePreset('dracula', true)">Dracula</button>
@@ -977,12 +1055,12 @@
     <!-- Footer -->
     <div class="footer">
       <div class="footer-content">
-        <span id="last-update">Carregando...</span>
+        <span id="last-update" data-i18n="footer.loading">Carregando...</span>
         <div class="loading-indicator" id="loading-indicator" style="display: none;">
           <div class="spinner"></div>
         </div>
       </div>
-      <button class="refresh-btn" id="refresh-btn" title="Atualizar (Cmd+R)">
+      <button class="refresh-btn" id="refresh-btn" title="Atualizar (Cmd+R)" data-i18n="footer.refresh" data-i18n-title>
         <svg viewBox="0 0 24 24" width="16" height="16" class="refresh-icon">
           <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
         </svg>
@@ -1002,17 +1080,17 @@
       
       <div class="config-content">
         <div class="config-group">
-          <label for="jira-url">URL do Jira</label>
+          <label for="jira-url" data-i18n="settings.jiraUrl">URL do Jira</label>
           <input type="text" id="jira-url" placeholder="https://nubank.atlassian.net" value="https://nubank.atlassian.net">
         </div>
 
         <div class="config-group">
-          <label for="jira-email">Email</label>
+          <label for="jira-email" data-i18n="settings.email">Email</label>
           <input type="email" id="jira-email" placeholder="seu.email@empresa.com">
         </div>
 
         <div class="config-group">
-          <label for="jira-api-token">API Token</label>
+          <label for="jira-api-token" data-i18n="settings.apiToken">API Token</label>
           <div class="password-input-group">
             <input type="password" id="jira-api-token" placeholder="Seu API token do Jira">
             <button class="toggle-password-btn" id="toggle-password-btn" type="button">
@@ -1021,6 +1099,9 @@
               </svg>
             </button>
           </div>
+          <a href="#" class="api-token-link" id="create-api-token-link" data-i18n="settings.createApiToken">
+            🔗 Crie seu API token do Jira aqui
+          </a>
         </div>
 
         <div class="config-group">
@@ -1101,18 +1182,9 @@
           </label>
         </div>
 
-        <div class="config-group">
-          <label for="theme-select">🎨 Tema da Aplicação</label>
-          <select id="theme-select" class="theme-select">
-            <option value="default">🎨 Padrão (Gradiente Roxo)</option>
-            <option value="dark">🌙 Escuro (Dark Mode)</option>
-            <option value="light">☀️ Claro (Light Mode)</option>
-          </select>
-        </div>
-
         <div class="config-actions">
-          <button class="btn-primary" id="save-config-btn">Salvar</button>
-          <button class="btn-secondary" id="cancel-config-btn">Cancelar</button>
+          <button class="btn-primary" id="save-config-btn" data-i18n="settings.save">Salvar</button>
+          <button class="btn-secondary" id="cancel-config-btn" data-i18n="settings.cancel">Cancelar</button>
         </div>
       </div>
     </div>
