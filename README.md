@@ -51,12 +51,35 @@
 
 ## 🚀 Instalação
 
-### Pré-requisitos
+### ⚡ Instalação Automática (Recomendado)
+
+Execute um único comando para instalar tudo automaticamente:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gabinubank/jira-monitor/main/install-auto.sh | bash
+```
+
+**🎯 O que o script faz:**
+- ✅ Cria automaticamente a estrutura `~/dev/nu/jira-monitor`
+- ✅ Clona o repositório no caminho correto
+- ✅ Verifica e instala Node.js v20 (via nvm, se necessário)
+- ✅ Instala todas as dependências npm
+- ✅ Oferece iniciar o app imediatamente
+
+> 📖 **Detalhes do Script**: Veja [INSTALL-AUTO-README.md](./INSTALL-AUTO-README.md) para entender tudo que o script faz
+
+---
+
+### 🔧 Instalação Manual
+
+> 📖 **Guia Completo**: Para instruções detalhadas, consulte [INSTALACAO-GIT.md](./INSTALACAO-GIT.md)
+
+#### Pré-requisitos
 - **macOS** 10.13 ou superior
 - **Node.js** 18-20 (**recomendado via nvm**)
 - **Git** (para clonar o repositório)
 
-### Instalação do Node.js (Recomendado via nvm)
+#### Instalação do Node.js (Recomendado via nvm)
 
 ```bash
 # 1. Instalar nvm
@@ -77,17 +100,21 @@ nvm alias default 20
 node --version  # Deve mostrar v20.x.x
 ```
 
-### Passos de Instalação
+#### Passos de Instalação
 
 ```bash
-# 1. Clonar o repositório
+# 1. Criar diretório (se não existir)
+mkdir -p ~/dev/nu
+cd ~/dev/nu
+
+# 2. Clonar o repositório
 git clone git@github.com:gabinubank/jira-monitor.git
 cd jira-monitor
 
-# 2. Instalar dependências
+# 3. Instalar dependências
 npm install
 
-# 3. Iniciar o app
+# 4. Iniciar o app
 npm start
 ```
 

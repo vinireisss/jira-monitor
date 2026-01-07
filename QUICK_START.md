@@ -1,10 +1,28 @@
 # 🚀 Guia Rápido - Jira Monitor
 
-## Instalação em 3 Passos
+## ⚡ Instalação Ultra-Rápida (1 comando)
 
-### 1️⃣ Instalar Dependências
 ```bash
-cd "/Users/gabriel.silva.digisystem/jira monitor"
+curl -fsSL https://raw.githubusercontent.com/gabinubank/jira-monitor/main/install-auto.sh | bash
+```
+
+**Pronto!** O script instala tudo automaticamente. ✅
+
+---
+
+## 🔧 Instalação Manual (3 Passos)
+
+### 1️⃣ Clonar o Projeto
+```bash
+# Criar diretório (se não existir)
+mkdir -p ~/dev/nu
+cd ~/dev/nu
+
+# Clonar o repositório
+git clone git@github.com:gabinubank/jira-monitor.git
+cd jira-monitor
+
+# Instalar dependências
 npm install
 ```
 

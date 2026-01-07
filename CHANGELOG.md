@@ -7,6 +7,46 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.6.2] - 2026-01-07
+
+### ✨ Novo - Script de Instalação Automática
+
+**🚀 Instalação com 1 Comando:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gabinubank/jira-monitor/main/install-auto.sh | bash
+```
+
+**Recursos do Script:**
+- ✅ Cria automaticamente a estrutura de diretórios `~/dev/nu/jira-monitor`
+- ✅ Clona o repositório no caminho padrão correto
+- ✅ Detecta e instala Node.js v20 via nvm (se necessário)
+- ✅ Instala todas as dependências npm
+- ✅ Opção de iniciar o app imediatamente
+- ✅ Modo interativo com escolhas (SSH/HTTPS, atualizar/reinstalar, etc.)
+- ✅ Validações de segurança e feedback colorido
+
+**Decisões Inteligentes:**
+- 🔍 Detecta se o projeto já existe e oferece atualizar
+- 🔍 Verifica versão do Node.js e recomenda v20
+- 🔍 Detecta node_modules existente e oferece reinstalar
+- 🔍 Permite escolher entre clonagem SSH ou HTTPS
+
+### 📚 Documentação Nova
+- `install-auto.sh` - Script principal de instalação automática
+- `INSTALL-AUTO-README.md` - Documentação completa do script
+- `INSTALACAO-GIT.md` - Guia de instalação via Git (manual e automática)
+
+### 📝 Documentação Atualizada
+- `README.md` - Adicionada seção de instalação automática no topo
+- `QUICK_START.md` - Instalação ultra-rápida com one-liner
+- `INSTALACAO-GIT.md` - Reorganizada com instalação automática primeiro
+
+### 🎯 Motivação
+Facilitar a instalação para novos usuários, garantindo que o projeto seja sempre clonado no caminho correto (`~/dev/nu/jira-monitor`) e com todas as dependências configuradas automaticamente.
+
+---
+
 ## [1.6.1] - 2025-12-31
 
 ### 🐛 Correções - Modo PRO com Usuário Monitorado
