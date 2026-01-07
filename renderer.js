@@ -2764,22 +2764,30 @@ async function loadProjectTickets(projectKey, container) {
         // 🎨 Calcular status do SLA para tickets IT
         let slaStatus = '';
         const project = issue.fields.project?.key || '';
-        const slaDate = getSlaDate(issue);
         
-        if (project === 'IT' && slaDate) {
-          const now = new Date();
-          const dueDate = new Date(slaDate);
-          const timeDiff = dueDate - now;
-          const diffMinutes = Math.floor(timeDiff / 60000);
-          
-          if (diffMinutes < 0) {
-            slaStatus = 'overdue'; // 🔴 Estourado
-          } else if (diffMinutes <= 60) {
-            slaStatus = 'critical'; // 🔴 Crítico (< 1h)
-          } else if (diffMinutes <= 180) {
-            slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+        if (project === 'IT') {
+          // 🎯 PRIORIDADE: Verificar campo breached do JSM
+          if (isSlaBreached(issue)) {
+            slaStatus = 'overdue'; // 🔴 Estourado (campo breached = true)
           } else {
-            slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+            const slaDate = getSlaDate(issue);
+            
+            if (slaDate) {
+              const now = new Date();
+              const dueDate = new Date(slaDate);
+              const timeDiff = dueDate - now;
+              const diffMinutes = Math.floor(timeDiff / 60000);
+              
+              if (diffMinutes < 0) {
+                slaStatus = 'overdue'; // 🔴 Estourado
+              } else if (diffMinutes <= 60) {
+                slaStatus = 'critical'; // 🔴 Crítico (< 1h)
+              } else if (diffMinutes <= 180) {
+                slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+              } else {
+                slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+              }
+            }
           }
         }
         
@@ -3181,6 +3189,47 @@ function getSlaDate(ticket) {
   return null;
 }
 
+// 🎯 Verificar se o SLA foi estourado (campo breached do JSM)
+function isSlaBreached(ticket) {
+  if (!ticket || !ticket.fields) return false;
+  
+  // Verificar customfield_10123 (Time to resolution)
+  const timeToResolution = ticket.fields.customfield_10123;
+  if (timeToResolution) {
+    // Verificar ongoingCycle.breached
+    if (timeToResolution.ongoingCycle && timeToResolution.ongoingCycle.breached === true) {
+      console.log(`🔴 SLA BREACHED detectado em customfield_10123 para ${ticket.key}`);
+      return true;
+    }
+    // Verificar completedCycles
+    if (timeToResolution.completedCycles && timeToResolution.completedCycles.length > 0) {
+      const lastCycle = timeToResolution.completedCycles[timeToResolution.completedCycles.length - 1];
+      if (lastCycle.breached === true) {
+        console.log(`🔴 SLA BREACHED detectado em completedCycles (customfield_10123) para ${ticket.key}`);
+        return true;
+      }
+    }
+  }
+  
+  // Verificar customfield_10124 (Time to first response)
+  const timeToFirstResponse = ticket.fields.customfield_10124;
+  if (timeToFirstResponse) {
+    if (timeToFirstResponse.ongoingCycle && timeToFirstResponse.ongoingCycle.breached === true) {
+      console.log(`🔴 SLA BREACHED detectado em customfield_10124 para ${ticket.key}`);
+      return true;
+    }
+    if (timeToFirstResponse.completedCycles && timeToFirstResponse.completedCycles.length > 0) {
+      const lastCycle = timeToFirstResponse.completedCycles[timeToFirstResponse.completedCycles.length - 1];
+      if (lastCycle.breached === true) {
+        console.log(`🔴 SLA BREACHED detectado em completedCycles (customfield_10124) para ${ticket.key}`);
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
 function loadTicketsList(cardId) {
   if (!currentStats) return;
   
@@ -3222,26 +3271,31 @@ function loadTicketsList(cardId) {
     const project = ticket.fields?.project?.key || '';
     
     if (project === 'IT') {
-      const slaDate = getSlaDate(ticket);
-      
-      if (slaDate) {
-        const now = new Date();
-        const dueDate = new Date(slaDate);
-        const timeDiff = dueDate - now;
-        const diffMinutes = Math.floor(timeDiff / 60000);
+      // 🎯 PRIORIDADE: Verificar campo breached do JSM
+      if (isSlaBreached(ticket)) {
+        slaStatus = 'overdue'; // 🔴 Estourado (campo breached = true)
+      } else {
+        const slaDate = getSlaDate(ticket);
         
-        if (diffMinutes < 0) {
-          slaStatus = 'overdue'; // 🔴 Estourado
-        } else if (diffMinutes <= 60) {
-          slaStatus = 'critical'; // 🔴 Crítico (< 1h)
-        } else if (diffMinutes <= 180) {
-          slaStatus = 'warning'; // 🟡 Atenção (1-3h)
-        } else {
-          slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+        if (slaDate) {
+          const now = new Date();
+          const dueDate = new Date(slaDate);
+          const timeDiff = dueDate - now;
+          const diffMinutes = Math.floor(timeDiff / 60000);
+          
+          if (diffMinutes < 0) {
+            slaStatus = 'overdue'; // 🔴 Estourado
+          } else if (diffMinutes <= 60) {
+            slaStatus = 'critical'; // 🔴 Crítico (< 1h)
+          } else if (diffMinutes <= 180) {
+            slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+          } else {
+            slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+          }
+          
+          // 🔔 Verificar se houve mudança de status e notificar
+          checkSlaStatusChange(key, slaStatus, summary, diffMinutes);
         }
-        
-        // 🔔 Verificar se houve mudança de status e notificar
-        checkSlaStatusChange(key, slaStatus, summary, diffMinutes);
       }
     }
     
@@ -3343,22 +3397,28 @@ function loadSimCardsTicketsList() {
   ticketsList.innerHTML = tickets.map(ticket => {
     // 🎨 Calcular status do SLA para tickets IT (SIM Cards são do projeto IT)
     let slaStatus = '';
-    const slaDate = ticket.duedate || getSlaDate(ticket);
     
-    if (slaDate) {
-      const now = new Date();
-      const dueDate = new Date(slaDate);
-      const timeDiff = dueDate - now;
-      const diffMinutes = Math.floor(timeDiff / 60000);
+    // 🎯 PRIORIDADE: Verificar campo breached do JSM
+    if (isSlaBreached(ticket)) {
+      slaStatus = 'overdue'; // 🔴 Estourado (campo breached = true)
+    } else {
+      const slaDate = ticket.duedate || getSlaDate(ticket);
       
-      if (diffMinutes < 0) {
-        slaStatus = 'overdue'; // 🔴 Estourado
-      } else if (diffMinutes <= 60) {
-        slaStatus = 'critical'; // 🔴 Crítico (< 1h)
-      } else if (diffMinutes <= 180) {
-        slaStatus = 'warning'; // 🟡 Atenção (1-3h)
-      } else {
-        slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+      if (slaDate) {
+        const now = new Date();
+        const dueDate = new Date(slaDate);
+        const timeDiff = dueDate - now;
+        const diffMinutes = Math.floor(timeDiff / 60000);
+        
+        if (diffMinutes < 0) {
+          slaStatus = 'overdue'; // 🔴 Estourado
+        } else if (diffMinutes <= 60) {
+          slaStatus = 'critical'; // 🔴 Crítico (< 1h)
+        } else if (diffMinutes <= 180) {
+          slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+        } else {
+          slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+        }
       }
     }
     

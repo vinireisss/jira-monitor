@@ -497,16 +497,24 @@ class JiraService {
       });
 
       // Dados de tendência (implementaremos histórico real)
+      console.log('📈 1. Buscando trend data...');
       const trend = await this._getTrendData();
+      console.log('✅ 1. Trend data OK');
 
       // Tickets de Telefonia SIM cards (Modo Pro)
+      console.log('📱 2. Buscando SIM cards...');
       const simCardsTickets = await this._getSimCardsTickets();
+      console.log('✅ 2. SIM cards OK:', simCardsTickets?.count || 0);
 
       // Tickets Avaliados (Modo Pro)
+      console.log('⭐ 3. Buscando tickets avaliados...');
       const evaluatedTickets = await this._getEvaluatedTickets();
+      console.log('✅ 3. Tickets avaliados OK:', evaluatedTickets?.count || 0);
 
       // Contar comentários feitos hoje pelo usuário
+      console.log('💬 4. INDO BUSCAR COMENTÁRIOS...');
       const todayComments = await this._getTodayUserComments();
+      console.log('✅ 4. COMENTÁRIOS RETORNADOS:', todayComments?.length || 0);
 
       return {
         total,
@@ -547,7 +555,9 @@ class JiraService {
         todayComments: todayComments
       };
     } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
+      console.error('❌❌❌ ERRO AO BUSCAR ESTATÍSTICAS:', error);
+      console.error('Mensagem:', error.message);
+      console.error('Stack:', error.stack);
       throw error;
     }
   }
@@ -608,7 +618,7 @@ class JiraService {
       const slaDueDate = this._getSlaDueDate(issue);
       return {
         ...issue,
-        slaStatus: this._getSlaStatus(slaDueDate)
+        slaStatus: this._getSlaStatus(slaDueDate, issue) // 🎯 Passar o issue completo
       };
     });
   }
@@ -653,9 +663,47 @@ class JiraService {
     return null;
   }
 
-  _getSlaStatus(duedate) {
+  _getSlaStatus(duedate, issue = null) {
     if (!duedate) return 'unknown';
     
+    // 🎯 PRIORIDADE: Verificar campo 'breached' do Jira Service Management
+    if (issue && issue.fields) {
+      // Verificar customfield_10123 (Time to resolution)
+      const timeToResolution = issue.fields.customfield_10123;
+      if (timeToResolution) {
+        // Verificar ongoingCycle.breached
+        if (timeToResolution.ongoingCycle && timeToResolution.ongoingCycle.breached === true) {
+          console.log(`🔴 SLA BREACHED detectado em customfield_10123 para ${issue.key}`);
+          return 'overdue'; // 🔴 Estourado (campo breached = true)
+        }
+        // Verificar completedCycles (quando o SLA já foi completado)
+        if (timeToResolution.completedCycles && timeToResolution.completedCycles.length > 0) {
+          const lastCycle = timeToResolution.completedCycles[timeToResolution.completedCycles.length - 1];
+          if (lastCycle.breached === true) {
+            console.log(`🔴 SLA BREACHED detectado em completedCycles (customfield_10123) para ${issue.key}`);
+            return 'overdue'; // 🔴 Estourado
+          }
+        }
+      }
+      
+      // Verificar customfield_10124 (Time to first response)
+      const timeToFirstResponse = issue.fields.customfield_10124;
+      if (timeToFirstResponse) {
+        if (timeToFirstResponse.ongoingCycle && timeToFirstResponse.ongoingCycle.breached === true) {
+          console.log(`🔴 SLA BREACHED detectado em customfield_10124 para ${issue.key}`);
+          return 'overdue'; // 🔴 Estourado
+        }
+        if (timeToFirstResponse.completedCycles && timeToFirstResponse.completedCycles.length > 0) {
+          const lastCycle = timeToFirstResponse.completedCycles[timeToFirstResponse.completedCycles.length - 1];
+          if (lastCycle.breached === true) {
+            console.log(`🔴 SLA BREACHED detectado em completedCycles (customfield_10124) para ${issue.key}`);
+            return 'overdue'; // 🔴 Estourado
+          }
+        }
+      }
+    }
+    
+    // Se não tem campo breached, calcular baseado no tempo
     const now = new Date();
     const dueDate = new Date(duedate);
     const timeDiff = dueDate - now;
@@ -781,33 +829,72 @@ class JiraService {
   }
 
   async _getTodayUserComments() {
+    console.log('🚀🚀🚀 === FUNÇÃO _getTodayUserComments INICIADA ===');
     try {
       const assignee = this._getAssignee();
       const userEmail = this.monitorOtherUser && this.otherUserEmail ? this.otherUserEmail : this.email;
+      console.log('👤 Email:', userEmail, '| Assignee:', assignee);
       
-      // Buscar tickets atualizados hoje onde o usuário é assignee
+      // Buscar TODOS os tickets comentados hoje (não apenas onde é assignee)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
-      const jql = `assignee = ${assignee} AND updated >= "${todayStr}" ORDER BY updated DESC`;
       
-      const data = await this._searchJql(jql, ['key', 'summary', 'comment', 'project', 'customfield_10123', 'customfield_10124']);
+      // Query 1: Tickets onde é assignee E foram atualizados hoje
+      const jql1 = `assignee = ${assignee} AND updated >= "${todayStr}" ORDER BY updated DESC`;
+      
+      console.log(`🔍 Buscando comentários de hoje para: ${userEmail}`);
+      console.log(`📅 Data de referência: ${todayStr}`);
+      
+      // Buscar apenas tickets do assignee atualizados hoje
+      const data1 = await this._searchJql(jql1, ['key', 'summary', 'comment', 'project']);
+      
+      console.log(`📦 Tickets encontrados: ${data1.issues?.length || 0}`);
+      
+      const allIssues = data1.issues || [];
       
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
       
       const commentsToday = [];
       
+      console.log(`📋 Total de tickets a verificar: ${allIssues.length}`);
+      
       // Verificar comentários em cada ticket
-      for (const issue of (data.issues || [])) {
+      for (const issue of allIssues) {
         const comments = issue.fields.comment?.comments || [];
+        
+        console.log(`🎫 ${issue.key}: ${comments.length} comentários totais`);
+        
+        // Debug: mostrar estrutura dos comentários
+        if (comments.length > 0) {
+          console.log(`   📝 Primeiro comentário exemplo:`, {
+            created: comments[0].created,
+            author: comments[0].author?.emailAddress || comments[0].author?.name,
+            displayName: comments[0].author?.displayName
+          });
+        }
         
         // Filtrar comentários feitos pelo usuário hoje
         const userCommentsToday = comments.filter(comment => {
           const commentDate = new Date(comment.created);
-          const authorEmail = comment.author.emailAddress || comment.author.name;
+          const authorEmail = comment.author?.emailAddress || comment.author?.name || '';
+          const authorDisplayName = comment.author?.displayName || '';
           
-          return commentDate >= startOfDay && authorEmail === userEmail;
+          const isToday = commentDate >= startOfDay;
+          const isUserComment = authorEmail === userEmail || 
+                               authorEmail.toLowerCase() === userEmail.toLowerCase() ||
+                               authorDisplayName.includes(userEmail.split('@')[0]);
+          
+          console.log(`   🔍 Verificando comentário de ${commentDate.toISOString().split('T')[0]} por ${authorEmail}`);
+          console.log(`      isToday: ${isToday}, isUserComment: ${isUserComment}`);
+          console.log(`      startOfDay: ${startOfDay.toISOString()}, userEmail: ${userEmail}`);
+          
+          if (isToday && isUserComment) {
+            console.log(`   ✅ Comentário encontrado: ${commentDate.toISOString()} por ${authorEmail}`);
+          }
+          
+          return isToday && isUserComment;
         });
         
         // Adicionar à lista
@@ -822,13 +909,14 @@ class JiraService {
       }
       
       console.log(`💬 Comentários feitos hoje: ${commentsToday.length}`, {
-        ticketsVerificados: data.issues?.length || 0,
+        ticketsVerificados: allIssues.length,
         comentariosEncontrados: commentsToday.map(c => ({ ticket: c.ticketKey, data: c.commentCreated }))
       });
       
       return commentsToday;
     } catch (error) {
-      console.error('❌ Erro ao buscar comentários de hoje:', error);
+      console.error('❌❌❌ ERRO AO BUSCAR COMENTÁRIOS DE HOJE:', error);
+      console.error('Stack trace:', error.stack);
       return [];
     }
   }
@@ -1248,16 +1336,16 @@ class JiraService {
         return `<ol>${orderedItems}</ol>`;
         
       case 'listItem':
-        const listContent = node.content.map(n => this._convertNodeToHTML(n)).join('');
+        const listContent = node.content ? node.content.map(n => this._convertNodeToHTML(n)).join('') : '';
         return `<li>${listContent}</li>`;
         
       case 'heading':
         const level = node.attrs?.level || 1;
-        const headingContent = node.content.map(n => this._convertNodeToHTML(n)).join('');
+        const headingContent = node.content ? node.content.map(n => this._convertNodeToHTML(n)).join('') : '';
         return `<h${level}>${headingContent}</h${level}>`;
         
       case 'codeBlock':
-        const code = node.content.map(n => n.text).join('');
+        const code = node.content ? node.content.map(n => n.text || '').join('') : '';
         return `<pre><code>${code}</code></pre>`;
         
       case 'inlineCard':
