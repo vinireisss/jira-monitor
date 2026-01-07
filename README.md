@@ -403,7 +403,8 @@ Este é um projeto **interno** em fase de testes.
 
 ## 👥 Autores
 
-- **Gabriel Silva** - [@gabinubank](https://github.com/gabinubank)
+- **Gabriel Silva - @GABS SILVA** - [@gabinubank](https://github.com/gabinubank)
+- **Yanka Dantas -  @ya** - [@yankadantas1](https://github.com/yankadantas1)
 
 ---
 
