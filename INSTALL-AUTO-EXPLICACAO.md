@@ -261,4 +261,5 @@ E digitar 's' quando perguntar se quer iniciar. Pronto! 🎉
 ---
 
 **Última atualização:** 8 de Janeiro de 2026  
-**Versão:** Pós-fix Node.js v20+ compatibility
+**Versão:** Pós-fix Node.js v20+ compatibility  
+**Autores:** Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)

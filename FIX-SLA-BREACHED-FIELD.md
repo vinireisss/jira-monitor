@@ -299,6 +299,6 @@ Ticket IT-1082350:
 
 **Ticket de Referência:** IT-1082350
 
-**Autor:** Jira Monitor Team  
+**Autores:** Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya) - Jira Monitor Team  
 **Data:** 07/01/2026
 

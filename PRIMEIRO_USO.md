@@ -285,6 +285,8 @@ Se ainda tiver problemas:
 
 Desenvolvido com ❤️ para equipes de suporte de alta performance.
 
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)
+
 ---
 
 **Versão:** 1.4.0  

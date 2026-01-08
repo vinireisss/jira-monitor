@@ -1261,8 +1261,8 @@ function ft(pk){return axios.get('/api/search?project='+pk)}
 
 ### Canais de Suporte
 
-- 📧 **Email**: gabriel.silva.digisystem@nubank.com.br
-- 💬 **Slack**: #jira-monitor (interno Nubank)
+- 📧 **Email**: gabriel.silva.digisystem@nubank.com.br | yanka.araujo.digisystem@nubank.com.br
+- 💬 **Slack**: #jira-monitor (interno Nubank) | @GABS SILVA | @ya (Yanka Dantas)
 - 🐛 **Issues**: https://github.com/gabinubank/jira-monitor/issues
 
 ### FAQ
@@ -1302,7 +1302,7 @@ Uso restrito a colaboradores autorizados.
 
 **Última atualização**: 02/01/2026  
 **Versão**: 1.6.1  
-**Autor**: Gabriel Silva (@gabinubank)
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)
 
 ---
 

@@ -338,7 +338,8 @@ npm install
 ### Mais problemas?
 
 - 📚 Consulte: [DOCUMENTACAO-COMPLETA.md](./DOCUMENTACAO-COMPLETA.md#-troubleshooting)
-- 📧 Entre em contato: gabriel.silva.digisystem@nubank.com.br
+- 📧 Entre em contato: gabriel.silva.digisystem@nubank.com.br | yanka.araujo.digisystem@nubank.com.br
+- 💬 **Slack**: @GABS SILVA | @ya (Yanka Dantas)
 
 ---
 
@@ -415,7 +416,7 @@ Este é um projeto **interno** em fase de testes.
 ## 👥 Autores
 
 - **Gabriel Silva - @GABS SILVA** - [@gabinubank](https://github.com/gabinubank)
-- **Yanka Dantas -  @ya** - [@yankadantas1](https://github.com/yankadantas1)
+- **Yanka Dantas - @ya** - [@yankadantas1](https://github.com/yankadantas1)
 
 ---
 

@@ -159,9 +159,13 @@ Possíveis melhorias:
 
 Se encontrar algum texto não traduzido ou tradução incorreta, por favor reporte para que possamos corrigir!
 
+**Contato:**
+- 💬 **Slack**: @GABS SILVA | @ya (Yanka Dantas)
+
 ---
 
 **Versão**: 1.7.0  
 **Data**: Janeiro 2026  
-**Desenvolvido com ❤️ para a comunidade Nubank**
+**Desenvolvido com ❤️ para a comunidade Nubank**  
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)
 

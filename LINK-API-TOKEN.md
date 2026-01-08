@@ -140,5 +140,6 @@ O link para criar API token foi implementado com sucesso e está totalmente inte
 ---
 
 **Desenvolvido com ❤️ para facilitar a vida dos usuários**  
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)  
 **Data**: Janeiro 2026
 

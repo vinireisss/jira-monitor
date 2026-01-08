@@ -270,5 +270,5 @@ ticketsFechados: [
 
 **Status Final:** ✅ PRONTO PARA TESTE
 
-**Autor:** Jira Monitor Team  
+**Autores:** Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya) - Jira Monitor Team  
 **Data:** 08/01/2026

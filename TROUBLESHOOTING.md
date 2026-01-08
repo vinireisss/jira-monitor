@@ -390,8 +390,8 @@ Se nenhuma solução funcionou, reporte o bug com as seguintes informações:
 ## 📞 Suporte
 
 - **Issues**: Abra uma issue no repositório
-- **Email**: [seu-email@empresa.com]
-- **Slack**: #jira-monitor
+- **Email**: gabriel.silva.digisystem@nubank.com.br | yanka.araujo.digisystem@nubank.com.br
+- **Slack**: #jira-monitor | @GABS SILVA | @ya (Yanka Dantas)
 
 ---
 

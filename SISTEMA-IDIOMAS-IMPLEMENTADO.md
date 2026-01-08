@@ -286,6 +286,7 @@ Agora o Jira Monitor é um aplicativo **verdadeiramente internacional**, podendo
 ---
 
 **Desenvolvido com ❤️ para a comunidade Nubank**  
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)  
 **Versão**: 1.7.0  
 **Data**: Janeiro 2026
 

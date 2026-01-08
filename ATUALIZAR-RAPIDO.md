@@ -84,7 +84,10 @@ ls -la ~/dev/nu/jira-monitor
 
 ## 📱 **Contato:**
 
-Problemas? Fale com o Gabriel! 💬
+Problemas? Fale com a gente! 💬
+
+- **Slack**: @GABS SILVA | @ya
+- Estamos desenvolvendo isso juntos!
 
 ---
 

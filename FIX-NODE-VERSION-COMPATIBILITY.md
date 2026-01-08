@@ -213,7 +213,8 @@ npm start
 Se ainda tiver problemas:
 1. Verifique o [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 2. Abra uma issue no GitHub
-3. Entre em contato com a equipe
+3. Entre em contato com a equipe:
+   - **Slack**: @GABS SILVA | @ya (Yanka Dantas)
 
 ---
 

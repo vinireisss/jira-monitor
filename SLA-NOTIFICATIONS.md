@@ -114,5 +114,5 @@ Não requer configuração adicional. O sistema:
 
 **Versão**: 1.0  
 **Data**: 02/01/2026  
-**Autor**: Gabriel Silva (com IA)
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)
 

@@ -115,6 +115,9 @@ Para problemas ou sugestões, consulte:
 - [README.md](README.md)
 - [CHANGELOG.md](CHANGELOG.md)
 
+**Contato:**
+- 💬 **Slack**: @GABS SILVA | @ya (Yanka Dantas)
+
 ---
 
 **Versão**: 1.4.0  

@@ -267,3 +267,5 @@ A v1.6.1 garante que **todas as funcionalidades PRO** agora respeitam corretamen
 
 
 
+
+

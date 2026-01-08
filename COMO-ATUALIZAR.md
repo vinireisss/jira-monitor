@@ -436,6 +436,9 @@ Se algo não funcionar:
    tail -f ~/Library/Logs/Jira\ Monitor/main.log
    ```
 
+**Precisa de ajuda?**
+- 💬 **Slack**: @GABS SILVA | @ya (Yanka Dantas)
+
 ---
 
 ✅ **Pronto! Agora você tem uma versão instalável profissional do Jira Monitor!** 🎉

@@ -318,5 +318,6 @@ Planejado para v1.6.0:
 
 **Versão**: 1.5.0  
 **Data**: 31 de Dezembro de 2025  
-**Desenvolvido com ❤️ para a equipe de suporte**
+**Desenvolvido com ❤️ para a equipe de suporte**  
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)
 
