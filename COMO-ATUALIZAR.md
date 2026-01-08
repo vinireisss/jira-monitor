@@ -9,10 +9,12 @@ Se você já tem o Jira Monitor instalado via Git e quer pegar as últimas atual
 ### ⚡ **Comando Rápido:**
 
 ```bash
-cd "/Users/SEU_USUARIO/jira monitor"
+cd ~/dev/nu/jira-monitor
 git pull origin main
 npm install  # Apenas se houve mudanças no package.json
 ```
+
+**Nota:** O projeto deve estar instalado em `~/dev/nu/jira-monitor` (padrão da instalação Git).
 
 ### 📋 **Passo a Passo Detalhado:**
 
@@ -24,7 +26,7 @@ killall "Electron" 2>/dev/null
 
 #### 2️⃣ **Navegar até a pasta do projeto**
 ```bash
-cd "/Users/SEU_USUARIO/jira monitor"
+cd ~/dev/nu/jira-monitor
 ```
 
 #### 3️⃣ **Atualizar o código**
@@ -63,6 +65,17 @@ npm start
 - ✅ Corrigido textos ilegíveis nos modos Padrão e Claro
 - ✅ Mais de 100 elementos com melhor contraste
 - ✅ Temas agora 100% legíveis em todos os modos
+
+---
+
+### 📍 **Localização do Projeto:**
+
+O projeto deve estar instalado em:
+```bash
+~/dev/nu/jira-monitor
+```
+
+Se estiver em outro lugar, ajuste o caminho no comando `cd`.
 
 ---
 

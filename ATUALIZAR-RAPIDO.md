@@ -7,7 +7,7 @@ Para pegar as últimas atualizações do time:
 ## 🚀 **3 Comandos - 30 Segundos**
 
 ```bash
-cd "/Users/SEU_USUARIO/jira monitor"
+cd ~/dev/nu/jira-monitor
 git pull origin main
 npm start
 ```
@@ -18,8 +18,8 @@ npm start
 
 ## 📝 **O que cada comando faz:**
 
-1. **`cd "/Users/SEU_USUARIO/jira monitor"`**  
-   → Vai para a pasta do projeto
+1. **`cd ~/dev/nu/jira-monitor`**  
+   → Vai para a pasta do projeto (padrão: `/Users/seu-usuario/dev/nu/jira-monitor`)
 
 2. **`git pull origin main`**  
    → Baixa as últimas alterações do GitHub
@@ -59,6 +59,25 @@ npm install
 npm run clean
 npm install
 npm start
+```
+
+---
+
+## 📍 **Onde está instalado?**
+
+O projeto está na pasta padrão:
+```
+~/dev/nu/jira-monitor
+```
+
+Ou seja:
+```
+/Users/seu-usuario/dev/nu/jira-monitor
+```
+
+Para verificar:
+```bash
+ls -la ~/dev/nu/jira-monitor
 ```
 
 ---
