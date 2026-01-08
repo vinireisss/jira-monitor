@@ -751,6 +751,10 @@ function setupEventListeners() {
     ipcRenderer.invoke('open-url', 'https://nubank.jamfcloud.com/');
     hideMenu();
   });
+  document.getElementById('menu-jira-portal').addEventListener('click', () => {
+    ipcRenderer.invoke('open-url', 'https://nubank.atlassian.net/servicedesk/customer/portals');
+    hideMenu();
+  });
   document.getElementById('menu-search').addEventListener('click', () => {
     toggleSearch();
     hideMenu();
