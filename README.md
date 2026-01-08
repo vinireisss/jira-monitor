@@ -3,7 +3,7 @@
 > **Monitor em tempo real de tickets Jira com alertas de SLA e cores inteligentes**
 
 ![Electron](https://img.shields.io/badge/Electron-25+-blue)
-![Node](https://img.shields.io/badge/Node.js-18+-green)
+![Node](https://img.shields.io/badge/Node.js-20+-green)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
 
 ---
@@ -62,9 +62,10 @@ curl -fsSL https://raw.githubusercontent.com/gabinubank/jira-monitor/main/instal
 **🎯 O que o script faz:**
 - ✅ Cria automaticamente a estrutura `~/dev/nu/jira-monitor`
 - ✅ Clona o repositório no caminho correto
-- ✅ Verifica e instala Node.js v20 (via nvm, se necessário)
+- ✅ Verifica e aceita Node.js v20+ (v20, v22, v25, etc.)
 - ✅ Instala todas as dependências npm
 - ✅ Oferece iniciar o app imediatamente
+- ✅ Funciona com Node.js via Homebrew ou nvm
 
 > 📖 **Detalhes do Script**: Veja [INSTALL-AUTO-README.md](./INSTALL-AUTO-README.md) para entender tudo que o script faz
 
@@ -76,11 +77,17 @@ curl -fsSL https://raw.githubusercontent.com/gabinubank/jira-monitor/main/instal
 
 #### Pré-requisitos
 - **macOS** 10.13 ou superior
-- **Node.js** 18-20 (**recomendado via nvm**)
+- **Node.js** 20+ (v20, v22, v25, etc. - **via nvm ou Homebrew**)
 - **Git** (para clonar o repositório)
 
-#### Instalação do Node.js (Recomendado via nvm)
+#### Instalação do Node.js
 
+**Opção 1: Via Homebrew (Mais Simples)**
+```bash
+brew install node
+```
+
+**Opção 2: Via nvm (Mais Flexível)**
 ```bash
 # 1. Instalar nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
@@ -229,7 +236,7 @@ npm run build
 
 ### Tecnologias Utilizadas
 - **Electron** 25+
-- **Node.js** 18+
+- **Node.js** 20+ (compatível com v20, v22, v25, v26+)
 - **Jira REST API** v3
 - **electron-store** (persistência)
 - **axios** (HTTP)
@@ -240,16 +247,19 @@ npm run build
 
 ### Erro: `Node.js v20 não está ativo!`
 
-**Sintoma:**
+**✅ PROBLEMA RESOLVIDO!**
+
+Se você viu este erro antes, atualize seu repositório:
+
 ```bash
-./start.sh: line 22: nvm: command not found
-📦 Node.js: v25.2.1 (/opt/homebrew/bin/node)
-❌ ERRO: Node.js v20 não está ativo!
+cd ~/dev/nu/jira-monitor
+git pull
+npm start
 ```
 
-**Causa:** Você tem Node.js instalado via Homebrew, mas o app precisa de Node.js v20 via nvm.
+O Jira Monitor agora aceita **Node.js v20+** (incluindo v22, v25, v26, etc.)!
 
-**Solução:** Consulte o guia completo: [FIX-NODE-VERSION.md](./FIX-NODE-VERSION.md)
+**Para mais detalhes:** [FIX-NODE-VERSION-COMPATIBILITY.md](./FIX-NODE-VERSION-COMPATIBILITY.md)
 
 **Solução Rápida:**
 ```bash
@@ -270,7 +280,7 @@ dyld[14840]: Library not loaded: /opt/homebrew/opt/simdjson/lib/libsimdjson.28.d
 zsh: abort   npm install
 ```
 
-**Causa:** Node.js instalado via Homebrew com dependências quebradas ou versão incompatível (Node 24+)
+**Causa:** Node.js instalado via Homebrew com dependências quebradas (versões antigas do Electron)
 
 **Solução:**
 
@@ -316,7 +326,7 @@ npm install
 **Solução:**
 ```bash
 # Verificar Node.js
-node --version  # Deve ser 18-20
+node --version  # Deve ser 20+
 
 # Verificar se Electron está instalado
 ls node_modules/.bin/electron
@@ -378,8 +388,9 @@ Este é um projeto em **fase beta** de testes internos.
 ### Problemas Comuns
 
 **App não inicia:**
-- Verifique se tem Node.js 18+ instalado
+- Verifique se tem Node.js 20+ instalado (`node --version`)
 - Execute `npm install` novamente
+- Consulte [FIX-NODE-VERSION-COMPATIBILITY.md](./FIX-NODE-VERSION-COMPATIBILITY.md)
 
 **Erro de autenticação:**
 - Verifique suas credenciais
