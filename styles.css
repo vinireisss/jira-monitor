@@ -51,6 +51,35 @@ body {
   --expand-btn-shadow: rgba(102, 126, 234, 0.3);
 }
 
+/* Tema Padrão (quando explicitamente definido) */
+.app-container[data-theme="default"] {
+  --bg-gradient-start: #667eea;
+  --bg-gradient-end: #764ba2;
+  --header-bg: rgba(255, 255, 255, 0.15);
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --card-text: #333;
+  --header-text: white;
+  --footer-text: rgba(255, 255, 255, 0.9);
+  --button-bg: rgba(255, 255, 255, 0.2);
+  --button-hover: rgba(255, 255, 255, 0.3);
+  
+  /* Modal/Preview */
+  --modal-bg: white;
+  --modal-text: #333;
+  --modal-text-secondary: #666;
+  --modal-border: #f0f0f0;
+  --modal-section-bg: #f8f9fa;
+  --modal-close-bg: #f0f0f0;
+  --modal-close-text: #333;
+  
+  /* Setas de Expansão */
+  --expand-btn-bg: rgba(102, 126, 234, 0.15);
+  --expand-btn-border: rgba(102, 126, 234, 0.3);
+  --expand-btn-color: #667eea;
+  --expand-btn-hover-bg: rgba(102, 126, 234, 0.25);
+  --expand-btn-shadow: rgba(102, 126, 234, 0.3);
+}
+
 /* Tema Escuro */
 .app-container[data-theme="dark"] {
   --bg-gradient-start: #1a1a2e;
@@ -107,6 +136,768 @@ body {
   --expand-btn-color: #5568d3;
   --expand-btn-hover-bg: rgba(102, 126, 234, 0.2);
   --expand-btn-shadow: rgba(102, 126, 234, 0.25);
+}
+
+/* ====================================================================
+   CORREÇÕES DE CONTRASTE PARA TEMAS CLARO E PADRÃO
+   ==================================================================== */
+
+/* Headers e Títulos */
+.app-container[data-theme="light"] .monitored-user-indicator,
+.app-container[data-theme="default"] .monitored-user-indicator {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .menu-item,
+.app-container[data-theme="default"] .menu-item {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .notification-badge,
+.app-container[data-theme="default"] .notification-badge {
+  background: #e74c3c;
+  color: white;
+}
+
+/* Modais e Dropdowns */
+.app-container[data-theme="light"] .notifications-preview-header h3,
+.app-container[data-theme="light"] .docs-dropdown-header h3,
+.app-container[data-theme="light"] .user-monitor-dropdown-header h3,
+.app-container[data-theme="light"] .config-header h2,
+.app-container[data-theme="light"] .add-user-modal-header h2,
+.app-container[data-theme="light"] .shortcuts-modal-header h2,
+.app-container[data-theme="light"] .language-header h3,
+.app-container[data-theme="default"] .notifications-preview-header h3,
+.app-container[data-theme="default"] .docs-dropdown-header h3,
+.app-container[data-theme="default"] .user-monitor-dropdown-header h3,
+.app-container[data-theme="default"] .config-header h2,
+.app-container[data-theme="default"] .add-user-modal-header h2,
+.app-container[data-theme="default"] .shortcuts-modal-header h2,
+.app-container[data-theme="default"] .language-header h3 {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .close-preview-btn,
+.app-container[data-theme="light"] .close-config-btn,
+.app-container[data-theme="light"] .close-add-user-btn,
+.app-container[data-theme="light"] .close-shortcuts-btn,
+.app-container[data-theme="default"] .close-preview-btn,
+.app-container[data-theme="default"] .close-config-btn,
+.app-container[data-theme="default"] .close-add-user-btn,
+.app-container[data-theme="default"] .close-shortcuts-btn {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .close-preview-btn:hover,
+.app-container[data-theme="light"] .close-config-btn:hover,
+.app-container[data-theme="light"] .close-add-user-btn:hover,
+.app-container[data-theme="light"] .close-shortcuts-btn:hover,
+.app-container[data-theme="default"] .close-preview-btn:hover,
+.app-container[data-theme="default"] .close-config-btn:hover,
+.app-container[data-theme="default"] .close-add-user-btn:hover,
+.app-container[data-theme="default"] .close-shortcuts-btn:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Notificações */
+.app-container[data-theme="light"] .notification-time,
+.app-container[data-theme="default"] .notification-time {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.app-container[data-theme="light"] .notification-summary,
+.app-container[data-theme="default"] .notification-summary {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .notification-body,
+.app-container[data-theme="default"] .notification-body {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.app-container[data-theme="light"] .notification-badge-item,
+.app-container[data-theme="default"] .notification-badge-item {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .notification-badge-item.comment,
+.app-container[data-theme="default"] .notification-badge-item.comment {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+/* Links e Botões */
+.app-container[data-theme="light"] .btn-link-small,
+.app-container[data-theme="default"] .btn-link-small {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.app-container[data-theme="light"] .btn-link-small:hover,
+.app-container[data-theme="default"] .btn-link-small:hover {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.app-container[data-theme="light"] .docs-link-btn,
+.app-container[data-theme="default"] .docs-link-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .docs-link-btn:hover,
+.app-container[data-theme="default"] .docs-link-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* User Monitor */
+.app-container[data-theme="light"] .user-monitor-btn svg,
+.app-container[data-theme="default"] .user-monitor-btn svg {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.app-container[data-theme="light"] .user-item,
+.app-container[data-theme="default"] .user-item {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .user-name,
+.app-container[data-theme="default"] .user-name {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .user-email,
+.app-container[data-theme="default"] .user-email {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Search Input */
+.app-container[data-theme="light"] .search-input,
+.app-container[data-theme="default"] .search-input {
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .search-input::placeholder,
+.app-container[data-theme="default"] .search-input::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.app-container[data-theme="light"] .search-input:focus,
+.app-container[data-theme="default"] .search-input:focus {
+  background: rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+/* Mini Stats */
+.app-container[data-theme="light"] .mini-stat-label,
+.app-container[data-theme="default"] .mini-stat-label {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.app-container[data-theme="light"] .mini-stat-value,
+.app-container[data-theme="default"] .mini-stat-value {
+  color: #2c3e50;
+}
+
+/* Loading Spinner */
+.app-container[data-theme="light"] .loading-indicator .spinner,
+.app-container[data-theme="default"] .loading-indicator .spinner {
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #2c3e50;
+}
+
+/* Footer Refresh Button */
+.app-container[data-theme="light"] .refresh-btn,
+.app-container[data-theme="default"] .refresh-btn {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .refresh-btn:hover,
+.app-container[data-theme="default"] .refresh-btn:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Config Panel */
+.app-container[data-theme="light"] .config-group label,
+.app-container[data-theme="default"] .config-group label {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .config-group input,
+.app-container[data-theme="light"] .config-group select,
+.app-container[data-theme="default"] .config-group input,
+.app-container[data-theme="default"] .config-group select {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .config-group input::placeholder,
+.app-container[data-theme="default"] .config-group input::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.app-container[data-theme="light"] .config-group input:focus,
+.app-container[data-theme="default"] .config-group input:focus {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.app-container[data-theme="light"] .theme-select option,
+.app-container[data-theme="default"] .theme-select option {
+  background: white;
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .toggle-password-btn,
+.app-container[data-theme="default"] .toggle-password-btn {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.app-container[data-theme="light"] .toggle-password-btn:hover,
+.app-container[data-theme="default"] .toggle-password-btn:hover {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .api-token-link,
+.app-container[data-theme="default"] .api-token-link {
+  color: #5568d3;
+}
+
+.app-container[data-theme="light"] .api-token-link:hover,
+.app-container[data-theme="default"] .api-token-link:hover {
+  color: #3b4ba8;
+}
+
+/* Theme Customizer */
+.app-container[data-theme="light"] .theme-mode-btn,
+.app-container[data-theme="default"] .theme-mode-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .theme-mode-btn:hover,
+.app-container[data-theme="default"] .theme-mode-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.app-container[data-theme="light"] .theme-mode-btn.active,
+.app-container[data-theme="default"] .theme-mode-btn.active {
+  background: rgba(102, 126, 234, 0.15);
+  border-color: #667eea;
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+}
+
+.app-container[data-theme="light"] .theme-mode-label,
+.app-container[data-theme="default"] .theme-mode-label {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .theme-mode-desc,
+.app-container[data-theme="default"] .theme-mode-desc {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Language Modal */
+.app-container[data-theme="light"] .language-option-btn,
+.app-container[data-theme="default"] .language-option-btn {
+  border: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.app-container[data-theme="light"] .language-option-btn:hover,
+.app-container[data-theme="default"] .language-option-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.app-container[data-theme="light"] .language-name,
+.app-container[data-theme="default"] .language-name {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .language-region,
+.app-container[data-theme="default"] .language-region {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Buttons */
+.app-container[data-theme="light"] .btn-secondary,
+.app-container[data-theme="default"] .btn-secondary {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .btn-secondary:hover,
+.app-container[data-theme="default"] .btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Add User Modal */
+.app-container[data-theme="light"] .add-user-description,
+.app-container[data-theme="default"] .add-user-description {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .new-user-email-input,
+.app-container[data-theme="default"] .new-user-email-input {
+  background: rgba(0, 0, 0, 0.05);
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .new-user-email-input::placeholder,
+.app-container[data-theme="default"] .new-user-email-input::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.app-container[data-theme="light"] .new-user-email-input:focus,
+.app-container[data-theme="default"] .new-user-email-input:focus {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: #667eea;
+}
+
+/* Dropdown de Usuário */
+.app-container[data-theme="light"] .add-user-btn,
+.app-container[data-theme="default"] .add-user-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .add-user-btn:hover,
+.app-container[data-theme="default"] .add-user-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Shortcuts Modal */
+.app-container[data-theme="light"] .shortcuts-section h3,
+.app-container[data-theme="default"] .shortcuts-section h3 {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .shortcut-keys kbd,
+.app-container[data-theme="default"] .shortcut-keys kbd {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.app-container[data-theme="light"] .shortcut-description,
+.app-container[data-theme="default"] .shortcut-description {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+/* Footer */
+.app-container[data-theme="light"] .footer,
+.app-container[data-theme="default"] .footer {
+  background: var(--header-bg);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.app-container[data-theme="light"] #last-update,
+.app-container[data-theme="default"] #last-update {
+  color: var(--footer-text);
+}
+
+/* Pro Mode Sections */
+.app-container[data-theme="light"] .pro-section-title,
+.app-container[data-theme="default"] .pro-section-title {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .activity-card-label,
+.app-container[data-theme="light"] .activity-card-sublabel,
+.app-container[data-theme="default"] .activity-card-label,
+.app-container[data-theme="default"] .activity-card-sublabel {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.app-container[data-theme="light"] .activity-card-value,
+.app-container[data-theme="default"] .activity-card-value {
+  color: #2c3e50;
+}
+
+/* Templates Modal */
+.app-container[data-theme="light"] .templates-header h3,
+.app-container[data-theme="default"] .templates-header h3 {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .templates-hint,
+.app-container[data-theme="default"] .templates-hint {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.app-container[data-theme="light"] .edit-template-header h3,
+.app-container[data-theme="default"] .edit-template-header h3 {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .form-group label,
+.app-container[data-theme="default"] .form-group label {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .template-input,
+.app-container[data-theme="light"] .template-textarea,
+.app-container[data-theme="default"] .template-input,
+.app-container[data-theme="default"] .template-textarea {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .template-input::placeholder,
+.app-container[data-theme="light"] .template-textarea::placeholder,
+.app-container[data-theme="default"] .template-input::placeholder,
+.app-container[data-theme="default"] .template-textarea::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.app-container[data-theme="light"] .template-checkbox span,
+.app-container[data-theme="default"] .template-checkbox span {
+  color: #2c3e50;
+}
+
+/* Export Modal */
+.app-container[data-theme="light"] .export-header h3,
+.app-container[data-theme="default"] .export-header h3 {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .export-option label,
+.app-container[data-theme="default"] .export-option label {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .export-checkboxes label,
+.app-container[data-theme="default"] .export-checkboxes label {
+  color: #2c3e50;
+}
+
+/* Quick Search Modal */
+.app-container[data-theme="light"] .quick-search-header input,
+.app-container[data-theme="default"] .quick-search-header input {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .quick-search-header input::placeholder,
+.app-container[data-theme="default"] .quick-search-header input::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.app-container[data-theme="light"] .quick-search-hint,
+.app-container[data-theme="default"] .quick-search-hint {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Ticket Preview Modal */
+.app-container[data-theme="light"] .ticket-preview-modal,
+.app-container[data-theme="default"] .ticket-preview-modal {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Theme Customizer Modal */
+.app-container[data-theme="light"] .theme-customizer-header h3,
+.app-container[data-theme="default"] .theme-customizer-header h3 {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .theme-option label,
+.app-container[data-theme="default"] .theme-option label {
+  color: #2c3e50;
+}
+
+/* Daily Activity Widget */
+.app-container[data-theme="light"] .daily-activity-header span,
+.app-container[data-theme="default"] .daily-activity-header span {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .daily-stat-label,
+.app-container[data-theme="default"] .daily-stat-label {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.app-container[data-theme="light"] .daily-stat-value,
+.app-container[data-theme="default"] .daily-stat-value {
+  color: #2c3e50;
+}
+
+/* Opacity Slider */
+.app-container[data-theme="light"] .menu-item-slider-header span,
+.app-container[data-theme="default"] .menu-item-slider-header span {
+  color: #2c3e50;
+}
+
+/* Checkbox Groups */
+.app-container[data-theme="light"] .checkbox-group label,
+.app-container[data-theme="default"] .checkbox-group label {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .checkbox-group span,
+.app-container[data-theme="default"] .checkbox-group span {
+  color: #2c3e50;
+}
+
+/* Pro Mode Indicators */
+.app-container[data-theme="light"] .pro-mode-user-indicator,
+.app-container[data-theme="default"] .pro-mode-user-indicator {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .pro-monitored-user-badge,
+.app-container[data-theme="default"] .pro-monitored-user-badge {
+  background: rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+/* Activity Details */
+.app-container[data-theme="light"] .activity-detail-title,
+.app-container[data-theme="default"] .activity-detail-title {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .no-activity-msg,
+.app-container[data-theme="default"] .no-activity-msg {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Performance Dashboard */
+.app-container[data-theme="light"] .perf-metric-label,
+.app-container[data-theme="light"] .perf-metric-sublabel,
+.app-container[data-theme="default"] .perf-metric-label,
+.app-container[data-theme="default"] .perf-metric-sublabel {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.app-container[data-theme="light"] .perf-metric-value,
+.app-container[data-theme="default"] .perf-metric-value {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .perf-chart-title,
+.app-container[data-theme="default"] .perf-chart-title {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .heatmap-subtitle,
+.app-container[data-theme="default"] .heatmap-subtitle {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* Alerts */
+.app-container[data-theme="light"] .alert-title,
+.app-container[data-theme="default"] .alert-title {
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .no-alerts-text,
+.app-container[data-theme="default"] .no-alerts-text {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* Corrections for Menu Dropdown */
+.app-container[data-theme="light"] .menu-dropdown,
+.app-container[data-theme="default"] .menu-dropdown {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.app-container[data-theme="light"] .menu-item:hover,
+.app-container[data-theme="default"] .menu-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.app-container[data-theme="light"] .menu-divider,
+.app-container[data-theme="default"] .menu-divider {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Stat Cards */
+.app-container[data-theme="light"] .stat-card h3,
+.app-container[data-theme="default"] .stat-card h3 {
+  color: var(--card-text);
+}
+
+.app-container[data-theme="light"] .stat-number,
+.app-container[data-theme="default"] .stat-number {
+  color: var(--card-text);
+}
+
+/* Badges dentro dos stat cards */
+.app-container[data-theme="light"] .badge-text,
+.app-container[data-theme="default"] .badge-text {
+  color: inherit; /* Manter cor do badge pai */
+}
+
+/* Custom Buttons */
+.app-container[data-theme="light"] .custom-btn,
+.app-container[data-theme="default"] .custom-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .custom-btn:hover,
+.app-container[data-theme="default"] .custom-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.app-container[data-theme="light"] .btn-text,
+.app-container[data-theme="default"] .btn-text {
+  color: #2c3e50;
+}
+
+/* Recent Tickets */
+.app-container[data-theme="light"] .recent-tickets-list,
+.app-container[data-theme="default"] .recent-tickets-list {
+  color: var(--card-text);
+}
+
+/* Trend Chart */
+.app-container[data-theme="light"] .trend-chart,
+.app-container[data-theme="default"] .trend-chart {
+  color: var(--card-text);
+}
+
+/* SIM Cards Section */
+.app-container[data-theme="light"] .sim-cards-count-btn,
+.app-container[data-theme="light"] .evaluated-tickets-count-btn,
+.app-container[data-theme="default"] .sim-cards-count-btn,
+.app-container[data-theme="default"] .evaluated-tickets-count-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .stat-number-inline,
+.app-container[data-theme="default"] .stat-number-inline {
+  color: #2c3e50;
+}
+
+/* Draggable Buttons */
+.app-container[data-theme="light"] .draggable-btn,
+.app-container[data-theme="default"] .draggable-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.app-container[data-theme="light"] .drag-handle,
+.app-container[data-theme="default"] .drag-handle {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* Project Stats Buttons */
+.app-container[data-theme="light"] .custom-buttons-container .custom-btn,
+.app-container[data-theme="default"] .custom-buttons-container .custom-btn {
+  color: #2c3e50;
+}
+
+/* Ticket Items in Lists */
+.app-container[data-theme="light"] .ticket-item,
+.app-container[data-theme="default"] .ticket-item {
+  background: var(--card-bg);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.app-container[data-theme="light"] .ticket-item:hover,
+.app-container[data-theme="default"] .ticket-item:hover {
+  border-color: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.app-container[data-theme="light"] .ticket-key,
+.app-container[data-theme="default"] .ticket-key {
+  color: #5568d3;
+}
+
+.app-container[data-theme="light"] .ticket-summary,
+.app-container[data-theme="default"] .ticket-summary {
+  color: var(--card-text);
+}
+
+.app-container[data-theme="light"] .ticket-meta,
+.app-container[data-theme="default"] .ticket-meta {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Expand Buttons - já tem variáveis CSS mas garantindo */
+.app-container[data-theme="light"] .expand-btn,
+.app-container[data-theme="light"] .expand-btn-inline,
+.app-container[data-theme="default"] .expand-btn,
+.app-container[data-theme="default"] .expand-btn-inline {
+  color: var(--expand-btn-color);
+}
+
+/* Config Actions */
+.app-container[data-theme="light"] .config-actions,
+.app-container[data-theme="default"] .config-actions {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* User Monitor Dropdown */
+.app-container[data-theme="light"] .user-monitor-dropdown,
+.app-container[data-theme="default"] .user-monitor-dropdown {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.app-container[data-theme="light"] .user-list,
+.app-container[data-theme="default"] .user-list {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.app-container[data-theme="light"] .user-item:hover,
+.app-container[data-theme="default"] .user-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Notifications Preview */
+.app-container[data-theme="light"] .notifications-preview,
+.app-container[data-theme="default"] .notifications-preview {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.app-container[data-theme="light"] .notifications-preview-footer,
+.app-container[data-theme="default"] .notifications-preview-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Docs Dropdown */
+.app-container[data-theme="light"] .docs-dropdown,
+.app-container[data-theme="default"] .docs-dropdown {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Garantir que os SVGs também fiquem com boa cor */
+.app-container[data-theme="light"] .header-btn svg,
+.app-container[data-theme="default"] .header-btn svg {
+  fill: var(--header-text);
+}
+
+.app-container[data-theme="light"] .menu-item svg,
+.app-container[data-theme="default"] .menu-item svg {
+  fill: currentColor;
+  color: #2c3e50;
 }
 
 .app-container {
