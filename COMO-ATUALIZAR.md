@@ -1,5 +1,124 @@
 # 📦 Como Atualizar/Instalar o Jira Monitor
 
+---
+
+## 🔄 **ATUALIZAÇÃO RÁPIDA (Para Colegas de Equipe):**
+
+Se você já tem o Jira Monitor instalado via Git e quer pegar as últimas atualizações:
+
+### ⚡ **Comando Rápido:**
+
+```bash
+cd "/Users/SEU_USUARIO/jira monitor"
+git pull origin main
+npm install  # Apenas se houve mudanças no package.json
+```
+
+### 📋 **Passo a Passo Detalhado:**
+
+#### 1️⃣ **Parar o App (se estiver rodando)**
+```bash
+# Fechar pela interface ou:
+killall "Electron" 2>/dev/null
+```
+
+#### 2️⃣ **Navegar até a pasta do projeto**
+```bash
+cd "/Users/SEU_USUARIO/jira monitor"
+```
+
+#### 3️⃣ **Atualizar o código**
+```bash
+git pull origin main
+```
+
+Você verá algo como:
+```
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+Unpacking objects: 100% (3/3), done.
+From github.com:gabinubank/jira-monitor
+   46a5f90..af4e76a  main -> main
+Updating 46a5f90..af4e76a
+Fast-forward
+ styles.css | 791 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 791 insertions(+)
+```
+
+#### 4️⃣ **Instalar dependências (se necessário)**
+```bash
+# Apenas se aparecer aviso sobre package.json ou package-lock.json
+npm install
+```
+
+#### 5️⃣ **Iniciar novamente**
+```bash
+npm start
+```
+
+### 🆕 **Última Atualização Disponível:**
+
+**v1.6.1 - Correção de Contraste** (Hoje)
+- ✅ Corrigido textos ilegíveis nos modos Padrão e Claro
+- ✅ Mais de 100 elementos com melhor contraste
+- ✅ Temas agora 100% legíveis em todos os modos
+
+---
+
+### ⚠️ **Problemas Comuns ao Atualizar:**
+
+#### ❌ **"Your local changes would be overwritten"**
+
+Se você fez alterações locais:
+
+```bash
+# Ver o que mudou localmente
+git status
+
+# Opção 1: Descartar suas mudanças locais
+git reset --hard origin/main
+
+# Opção 2: Salvar suas mudanças antes de atualizar
+git stash
+git pull origin main
+git stash pop
+```
+
+#### ❌ **"Cannot pull with rebase: You have unstaged changes"**
+
+```bash
+# Salvar mudanças temporariamente
+git stash
+git pull origin main
+git stash pop
+```
+
+#### ❌ **Conflitos de Merge**
+
+Se aparecer conflito:
+```bash
+# Ver arquivos em conflito
+git status
+
+# Abrir arquivo e resolver conflitos manualmente
+# Procurar por <<<<<<< HEAD
+
+# Depois de resolver:
+git add .
+git commit -m "Resolvendo conflitos"
+```
+
+---
+
+### 🎯 **Verificar Versão Instalada:**
+
+```bash
+cat package.json | grep version
+```
+
+---
+
 ## 🎯 **Para Gerar uma Nova Versão Instalável:**
 
 ### 1️⃣ **Atualizar a Versão (Opcional)**
