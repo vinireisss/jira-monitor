@@ -412,6 +412,9 @@ class JiraService {
     const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
     const todayCreatedJql = `assignee = ${assignee} AND created >= "${todayStr}" ORDER BY created DESC`;
     
+    // 🎯 Query para tickets RESOLVIDOS hoje (independente de quando foram criados)
+    const todayResolvedJql = `assignee = ${assignee} AND resolved >= "${todayStr}" ORDER BY resolved DESC`;
+    
     // 🔥 Query para agrupar TODOS os projetos (não apenas IT)
     const allProjectsJql = `assignee = ${assignee} AND resolution = Unresolved AND status NOT IN ("Cancelled", "Canceled", "Cancelado", "Closed") ORDER BY updated DESC`;
 
@@ -421,12 +424,13 @@ class JiraService {
       const baseFields = ['status', 'summary', 'key', 'updated', 'created', 'project', 'duedate', 'resolutiondate', 'assignee'];
       const allFields = [...baseFields, ...slaFields];
       
-      const [totalData, supportData, customerData, pendingData, todayCreatedData, allProjectsData] = await Promise.all([
+      const [totalData, supportData, customerData, pendingData, todayCreatedData, todayResolvedData, allProjectsData] = await Promise.all([
         this._searchJql(totalJql, allFields),
         this._searchJql(supportJql, [...baseFields, ...slaFields]),
         this._searchJql(customerJql, [...baseFields, ...slaFields]),
         this._searchJql(pendingJql, [...baseFields, ...slaFields]),
         this._searchJql(todayCreatedJql, ['status', 'summary', 'key', 'created', 'resolutiondate', 'customfield_10123', 'customfield_10124']),
+        this._searchJql(todayResolvedJql, ['status', 'summary', 'key', 'created', 'resolutiondate', 'resolved', 'customfield_10123', 'customfield_10124']),
         this._searchJql(allProjectsJql, [...baseFields, ...slaFields])
       ]);
 
@@ -436,6 +440,7 @@ class JiraService {
         customerData: { total: customerData.issues?.length },
         pendingData: { total: pendingData.issues?.length },
         todayCreatedData: { total: todayCreatedData.issues?.length },
+        todayResolvedData: { total: todayResolvedData.issues?.length },
         allProjectsData: { total: allProjectsData.issues?.length }
       });
 
@@ -467,33 +472,30 @@ class JiraService {
       // Tickets recebidos hoje = todos os tickets criados hoje (da query específica)
       const todayReceived = todayCreatedData.issues || [];
       
-      // Tickets fechados hoje = filtrar os que foram resolvidos hoje
-      // Combinar totalData (tickets abertos) + todayCreatedData (pode ter fechados de hoje)
-      const allTicketsToCheck = [
-        ...totalData.issues,
-        ...todayCreatedData.issues
-      ];
+      // 🎯 Tickets fechados hoje = usar query específica de tickets resolvidos hoje
+      const todayResolved = todayResolvedData.issues || [];
       
-      // Remover duplicatas e filtrar apenas os fechados hoje
-      const uniqueTickets = new Map();
-      allTicketsToCheck.forEach(issue => {
-        if (!uniqueTickets.has(issue.key)) {
-          uniqueTickets.set(issue.key, issue);
-        }
-      });
-      
-      const todayResolved = Array.from(uniqueTickets.values()).filter(issue => {
+      // Validar que realmente foram resolvidos hoje (double-check)
+      const todayResolvedFiltered = todayResolved.filter(issue => {
         const resolutionDate = issue.fields.resolutiondate ? new Date(issue.fields.resolutiondate) : null;
+        const resolvedDate = issue.fields.resolved ? new Date(issue.fields.resolved) : null;
         const status = issue.fields.status?.name || '';
         const closedStatuses = ['Fechado', 'Closed', 'Resolvido', 'Resolved', 'Concluído', 'Concluido', 'Done'];
-        return resolutionDate && resolutionDate >= startOfDay && closedStatuses.includes(status);
+        
+        // Verificar se foi resolvido hoje (por resolutiondate ou resolved) E status está fechado
+        const wasResolvedToday = (resolutionDate && resolutionDate >= startOfDay) || (resolvedDate && resolvedDate >= startOfDay);
+        return wasResolvedToday && closedStatuses.includes(status);
       });
       
       console.log('📊 Atividade diária calculada:', {
         recebidos: todayReceived.length,
-        fechados: todayResolved.length,
+        fechados: todayResolvedFiltered.length,
         ticketsRecebidos: todayReceived.map(t => ({ key: t.key, created: t.fields.created })),
-        ticketsFechados: todayResolved.map(t => ({ key: t.key, resolved: t.fields.resolutiondate }))
+        ticketsFechados: todayResolvedFiltered.map(t => ({ 
+          key: t.key, 
+          resolved: t.fields.resolutiondate || t.fields.resolved,
+          status: t.fields.status?.name
+        }))
       });
 
       // Dados de tendência (implementaremos histórico real)
@@ -551,7 +553,7 @@ class JiraService {
         evaluatedTickets,
         // Dados de atividade diária (calculados dos tickets existentes)
         todayReceived: todayReceived,
-        todayResolved: todayResolved,
+        todayResolved: todayResolvedFiltered,
         todayComments: todayComments
       };
     } catch (error) {
