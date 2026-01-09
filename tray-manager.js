@@ -50,24 +50,10 @@ class TrayManager {
   createTextIcon(text, color) {
     const path = require('path');
     
-    // SOLUÇÃO FINAL: Usar o ícone do Jira Monitor + setTitle para mostrar emoji colorido
+    // SOLUÇÃO FINAL: Usar o ícone do Jira Monitor (sem texto/emoji aqui)
     const iconPath = path.join(__dirname, 'assets', 'icon.png');
     let image = nativeImage.createFromPath(iconPath);
     image = image.resize({ width: 16, height: 16 });
-    
-    // Definir emoji que aparecerá AO LADO do ícone
-    const emoji = {
-      red: '🔴',
-      yellow: '🟡',
-      green: '🟢',
-      gray: '⚪'
-    }[color] || '⚪';
-    
-    // Usar setTitle para mostrar o emoji
-    if (this.tray) {
-      this.tray.setTitle(emoji);
-      console.log(`🎨 Ícone criado: ${emoji} (${color})`);
-    }
     
     return image;
   }
