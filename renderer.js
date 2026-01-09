@@ -252,6 +252,11 @@ ipcRenderer.on('set-monitored-user', async (event, userEmail) => {
   }
 });
 
+// Listener para alternar modo focus (do menu de contexto)
+ipcRenderer.on('toggle-focus-mode', () => {
+  toggleFocusMode();
+});
+
 // Carregar Configuração
 async function loadConfig() {
   try {
