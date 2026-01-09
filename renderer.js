@@ -257,6 +257,21 @@ ipcRenderer.on('toggle-focus-mode', () => {
   toggleFocusMode();
 });
 
+// Listener para focar em um ticket específico (do menu bar / tray)
+ipcRenderer.on('focus-ticket', (event, ticketKey) => {
+  console.log(`📨 Evento focus-ticket recebido para: ${ticketKey}`);
+  focusAndHighlightTicket(ticketKey);
+});
+
+// Listener para abrir configurações do tray
+ipcRenderer.on('open-config-from-tray', () => {
+  // Simular clique no botão de configurações
+  const configBtn = document.getElementById('config-btn');
+  if (configBtn) {
+    configBtn.click();
+  }
+});
+
 // Carregar Configuração
 async function loadConfig() {
   try {
@@ -1566,7 +1581,7 @@ function showBadgeTickets(type) {
             }
             
             return `
-              <div class="badge-ticket-item" onclick="openTicketPreview('${ticket.key}'); closeBadgeModal();">
+              <div class="badge-ticket-item" data-ticket-key="${ticket.key}" onclick="openTicketPreview('${ticket.key}'); closeBadgeModal();">
                 <div class="badge-ticket-header">
                   <span class="badge-ticket-key">${ticket.key}</span>
                   <span class="badge-ticket-status">${ticket.fields.status.name}</span>
@@ -2290,6 +2305,183 @@ async function fetchAndUpdateStats() {
   }
 }
 
+// ===================================
+// 🔔 MENU BAR / TRAY - FOCAR TICKET
+// ===================================
+
+// Focar e destacar um ticket específico na UI
+function focusAndHighlightTicket(ticketKey) {
+  console.log(`🎯 Focando no ticket: ${ticketKey}`);
+  
+  // Procurar o ticket em todas as listas expandidas
+  const ticketElements = document.querySelectorAll('[data-ticket-key]');
+  let targetElement = null;
+  
+  for (const element of ticketElements) {
+    if (element.dataset.ticketKey === ticketKey) {
+      targetElement = element;
+      break;
+    }
+  }
+  
+  if (!targetElement) {
+    console.warn(`⚠️ Ticket ${ticketKey} não encontrado na UI`);
+    // Tentar expandir listas se estiverem fechadas
+    expandAllTicketLists();
+    
+    // Tentar novamente após um delay
+    setTimeout(() => {
+      const retryElement = document.querySelector(`[data-ticket-key="${ticketKey}"]`);
+      if (retryElement) {
+        scrollAndHighlight(retryElement);
+      } else {
+        console.warn(`⚠️ Ticket ${ticketKey} ainda não encontrado após expandir listas`);
+      }
+    }, 500);
+    return;
+  }
+  
+  scrollAndHighlight(targetElement);
+}
+
+// Fazer scroll suave e destacar elemento
+function scrollAndHighlight(element) {
+  // Scroll suave até o elemento
+  element.scrollIntoView({ 
+    behavior: 'smooth', 
+    block: 'center'
+  });
+  
+  // Adicionar classe de destaque temporariamente
+  element.classList.add('ticket-highlight');
+  
+  // Criar efeito de pulso
+  element.style.animation = 'ticketPulse 1s ease-in-out 2';
+  
+  // Remover destaque após 3 segundos
+  setTimeout(() => {
+    element.classList.remove('ticket-highlight');
+    element.style.animation = '';
+  }, 3000);
+  
+  console.log('✨ Ticket destacado com sucesso');
+}
+
+// Expandir todas as listas de tickets
+function expandAllTicketLists() {
+  const expandButtons = document.querySelectorAll('.expand-toggle');
+  expandButtons.forEach(btn => {
+    const card = btn.closest('.stat-card');
+    if (card) {
+      const cardId = card.id?.replace('stat-', '');
+      if (cardId) {
+        expandTickets(cardId);
+      }
+    }
+  });
+}
+
+// ===================================
+// 🔔 ATUALIZAR MENU BAR / TRAY
+// ===================================
+
+function updateTrayWithTickets(stats) {
+  if (!stats || !stats.allTickets) {
+    console.log('⚠️ Sem tickets para atualizar o tray');
+    return;
+  }
+
+  const ticketsData = {
+    critical: [],
+    warning: [],
+    normal: []
+  };
+
+  // Processar todos os tickets e categorizar por status de SLA
+  stats.allTickets.forEach(ticket => {
+    const slaInfo = extractSLAInfo(ticket);
+    const ticketData = {
+      key: ticket.key,
+      summary: ticket.fields?.summary || 'Sem título',
+      slaInfo: slaInfo.displayText
+    };
+
+    // Categorizar baseado no status de SLA
+    if (slaInfo.isBreached) {
+      ticketsData.critical.push(ticketData);
+    } else if (slaInfo.isNearBreach) {
+      ticketsData.warning.push(ticketData);
+    } else {
+      ticketsData.normal.push(ticketData);
+    }
+  });
+
+  // Limitar a quantidade para não sobrecarregar o menu
+  ticketsData.critical = ticketsData.critical.slice(0, 10);
+  ticketsData.warning = ticketsData.warning.slice(0, 10);
+  ticketsData.normal = ticketsData.normal.slice(0, 5);
+
+  console.log('🔔 Atualizando tray:', {
+    critical: ticketsData.critical.length,
+    warning: ticketsData.warning.length,
+    normal: ticketsData.normal.length
+  });
+
+  // Enviar para o main process atualizar o tray
+  ipcRenderer.send('update-tray-tickets', ticketsData);
+}
+
+// Extrair informações de SLA do ticket
+function extractSLAInfo(ticket) {
+  // Tentar pegar do campo customizado (varia por instância do Jira)
+  const slaField = ticket.fields?.customfield_10034 || 
+                   ticket.fields?.['Time to resolution'] ||
+                   ticket.fields?.sla;
+  
+  let isBreached = false;
+  let isNearBreach = false;
+  let displayText = '';
+
+  if (slaField && slaField.ongoingCycle) {
+    const { breachTime, goalDuration, remainingTime } = slaField.ongoingCycle;
+    
+    if (breachTime) {
+      const breachDate = new Date(breachTime.iso8601 || breachTime);
+      const now = new Date();
+      const diffMs = breachDate - now;
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (diffMs < 0) {
+        // SLA estourado
+        isBreached = true;
+        displayText = `Estourado há ${Math.abs(diffHours)}h ${Math.abs(diffMinutes)}m`;
+      } else if (diffHours < 4) {
+        // Próximo de estourar (menos de 4h)
+        isNearBreach = true;
+        displayText = `Estoura em ${diffHours}h ${diffMinutes}m`;
+      } else {
+        displayText = `SLA: ${diffHours}h ${diffMinutes}m restantes`;
+      }
+    }
+  }
+
+  // Fallback: checar se está na lista de tickets com SLA em alerta
+  if (!displayText && window.slaTicketsList) {
+    const inSlaList = window.slaTicketsList.find(t => t.key === ticket.key);
+    if (inSlaList) {
+      isNearBreach = true;
+      displayText = 'SLA em alerta';
+    }
+  }
+
+  return {
+    isBreached,
+    isNearBreach,
+    displayText: displayText || 'SLA OK'
+  };
+}
+
 function updateUI(stats) {
   // Debug: verificar os dados recebidos
   console.log('🔢 Atualizando contadores:', {
@@ -2309,6 +2501,9 @@ function updateUI(stats) {
       hasStats: !!stats.allTickets
     });
   }
+  
+  // Atualizar Menu Bar / Tray com dados dos tickets
+  updateTrayWithTickets(stats);
   
   // Atualizar contadores com animação
   animateNumber('stat-total', stats.total || 0);

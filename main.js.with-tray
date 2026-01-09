@@ -1,8 +1,15 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, shell, screen } = require('electron');
+const electron = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, shell, screen } = electron;
+const ipcMain = electron.ipcMain;
+
+console.log('✅ Electron importado, ipcMain:', typeof ipcMain, ipcMain);
+console.log('📋 Electron keys:', Object.keys(electron).filter(k => k.includes('ipc')));
 
 const path = require('path');
 const Store = require('electron-store');
 const fs = require('fs');
+
+console.log('📦 Módulos carregados, ipcMain:', typeof ipcMain);
 
 const store = new Store();
 let mainWindow;
@@ -209,20 +216,13 @@ function createWindow() {
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();
   }
-  
-  // Atualizar referência no trayManager se ele existir
-  if (trayManager) {
-    trayManager.mainWindow = mainWindow;
-  }
-  
-  return mainWindow;
 }
 
 // Criar ícone na bandeja do sistema (NOVO - Menu Bar Inteligente)
 function createTray() {
-  // Usar TrayManager com menu inteligente
+  // Carregar TrayManager apenas quando necessário
   const TrayManager = require('./tray-manager');
-  trayManager = new TrayManager(mainWindow, createWindow);
+  trayManager = new TrayManager(mainWindow);
   trayManager.create();
   tray = trayManager.tray;
   return; // Usar novo sistema
@@ -924,17 +924,6 @@ ipcMain.handle('get-recent-notifications', async (event, maxResults) => {
 ipcMain.on('update-tray-tickets', (event, ticketsData) => {
   if (trayManager) {
     trayManager.updateTickets(ticketsData);
-    
-    // Se há um ticket pendente para focar (após recriar janela), focar agora
-    if (trayManager.pendingTicketFocus && mainWindow && !mainWindow.isDestroyed()) {
-      const ticketKey = trayManager.pendingTicketFocus;
-      console.log(`🎯 Dados carregados! Focando no ticket pendente: ${ticketKey}`);
-      
-      setTimeout(() => {
-        mainWindow.webContents.send('focus-ticket', ticketKey);
-        trayManager.pendingTicketFocus = null;
-      }, 500); // Aguardar 500ms após os dados carregarem
-    }
   }
 });
 

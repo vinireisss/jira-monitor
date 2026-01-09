@@ -54,18 +54,16 @@ else
   echo "✅ Versão do Node compatível (v20+)"
 fi
 
-# Obter o caminho completo do Electron
-ELECTRON_PATH="$(pwd)/node_modules/.bin/electron"
-
-if [ ! -f "$ELECTRON_PATH" ]; then
-  echo "❌ ERRO: Electron não encontrado em $ELECTRON_PATH"
+# Verificar se Electron está instalado
+if [ ! -f "node_modules/.bin/electron" ]; then
+  echo "❌ ERRO: Electron não encontrado"
   echo "❌ Execute: npm install"
   exit 1
 fi
 
-# Iniciar Electron com PATH isolado
+# Iniciar Electron
 echo "⚡ Iniciando Electron..."
-echo "📍 Electron: $ELECTRON_PATH"
 
-# Executar Electron (sem env -i que pode quebrar o Electron)
-exec "$ELECTRON_PATH" "$(pwd)"
+# Executar Electron passando o diretório atual
+# O Electron lerá o package.json para encontrar o main file
+exec "./node_modules/.bin/electron" .

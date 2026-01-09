@@ -47,6 +47,16 @@
 - Tickets pendentes
 - Estatísticas em tempo real
 
+### 🎯 Menu Bar Inteligente (NOVO!)
+- 🔴🟡🟢 **Indicadores visuais múltiplos**: Veja todos os estados ativos simultaneamente
+- 📊 **Menu dropdown categorizado**: Tickets críticos, em alerta e normais
+- 🎯 **Foco inteligente**: Clique em qualquer ticket e ele abre destacado
+- 🔄 **Atualização em tempo real**: Sincronização automática com o Jira
+- 🧪 **Menu de testes**: Simule diferentes estados para demonstrações
+- ✨ **Funciona com janela fechada**: Monitore sem ocupar espaço na tela
+
+> 📖 **Documentação completa**: [MENU-BAR.md](./MENU-BAR.md) | **Guia rápido**: [MENU-BAR-GUIA-RAPIDO.md](./MENU-BAR-GUIA-RAPIDO.md)
+
 ---
 
 ## 🚀 Instalação
