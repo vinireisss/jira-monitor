@@ -22,7 +22,8 @@ class JiraService {
     
     // Cache para IDs de campos customizados identificados dinamicamente
     this._cachedFieldIds = {
-      itopsTeam: null
+      itopsTeam: 'customfield_10635',      // ITOps Team
+      supportLevel: 'customfield_10906'     // Support Level - ITOPS
     };
   }
 
@@ -1109,7 +1110,8 @@ class JiraService {
   async getTicketDetails(ticketKey) {
     try {
       const endpoint = `/rest/api/3/issue/${ticketKey}`;
-      const fields = 'status,summary,description,assignee,reporter,priority,created,updated,duedate,comment,attachment,project,customfield_*';
+      // Incluir explicitamente os campos conhecidos
+      const fields = 'status,summary,description,assignee,reporter,priority,created,updated,duedate,comment,attachment,project,customfield_10906,customfield_10635,customfield_*';
       
       const [ticketData, editMetaData, transitionsData] = await Promise.all([
         this._makeRequest(`${endpoint}?fields=${fields}`),
@@ -1168,38 +1170,108 @@ class JiraService {
       let supportLevel = null;
       let team = null;
       
-      Object.keys(editMeta).forEach(fieldId => {
+      // 🔍 DEBUG: Listar campos do ticket
+      console.log(`\n🔍 === DEBUG: Campos do ticket ${ticketKey} ===`);
+      const customFieldsFound = Object.keys(issue).filter(k => k.startsWith('customfield_'));
+      console.log(`📦 Total de ${customFieldsFound.length} campos customizados no issue`);
+      customFieldsFound.forEach(fieldId => {
+        const value = issue[fieldId];
+        console.log(`  ${fieldId}:`, JSON.stringify(value, null, 2));
+      });
+      
+      console.log(`\n📝 Campos disponíveis no editmeta:`);
+      const editMetaFields = Object.keys(editMeta).filter(k => k.startsWith('customfield_'));
+      console.log(`📦 Total de ${editMetaFields.length} campos customizados no editmeta`);
+      editMetaFields.forEach(fieldId => {
         const field = editMeta[fieldId];
+        console.log(`  ${fieldId}: ${field.name} (${field.schema?.type || 'unknown type'})`);
+      });
+      console.log(`=== FIM DEBUG ===\n`);
+      
+      console.log(`🔍 Processando campos customizados do ticket ${ticketKey}...`);
+      
+      // ESTRATÉGIA: Processar campos do editmeta PRIMEIRO (campos disponíveis para edição)
+      // e depois buscar os valores no issue
+      
+      console.log(`📝 Processando ${Object.keys(editMeta).length} campos do editmeta...`);
+      
+      Object.keys(editMeta).forEach(fieldId => {
         if (fieldId.startsWith('customfield_')) {
-          const value = issue[fieldId];
+          const field = editMeta[fieldId];
+          const fieldName = field.name || fieldId;
+          const value = issue[fieldId]; // Buscar valor do issue
           let displayValue = '';
           
-          if (value) {
+          // Processar valor (se existir)
+          if (value !== null && value !== undefined) {
             if (typeof value === 'object' && value.value) {
               displayValue = value.value;
             } else if (typeof value === 'string') {
               displayValue = value;
             } else if (Array.isArray(value)) {
-              displayValue = value.map(v => v.value || v).join(', ');
+              displayValue = value.map(v => {
+                if (typeof v === 'object' && v.value) return v.value;
+                if (typeof v === 'string') return v;
+                return '';
+              }).filter(Boolean).join(', ');
+            } else if (typeof value === 'object' && value.name) {
+              displayValue = value.name;
+            } else if (typeof value === 'object') {
+              // Tentar extrair qualquer valor útil
+              displayValue = JSON.stringify(value);
             }
           }
           
           customFields[fieldId] = {
             id: fieldId,
-            name: field.name,
+            name: fieldName,
             value: displayValue,
             schema: field.schema
           };
           
-          // Identificar campos específicos
-          if (field.name && field.name.toLowerCase().includes('support level')) {
+          console.log(`  📋 ${fieldId} (${fieldName}): ${displayValue || '(vazio)'}`);
+          
+          // Identificar campos específicos por ID (mais confiável) ou por nome (fallback)
+          
+          // Support Level - ITOPS (customfield_10906)
+          if (fieldId === 'customfield_10906') {
             supportLevel = displayValue;
+            console.log(`  ✅ Support Level encontrado por ID ${fieldId}: ${supportLevel || '(vazio)'}`);
+          } else if (!supportLevel && fieldName.toLowerCase().includes('support level')) {
+            supportLevel = displayValue;
+            console.log(`  ✅ Support Level encontrado por nome em ${fieldId} (${fieldName}): ${supportLevel || '(vazio)'}`);
           }
-          if (field.name && field.name.toLowerCase().includes('itops team')) {
+          
+          // ITOps Team (customfield_10635)
+          if (fieldId === 'customfield_10635') {
             team = displayValue;
+            console.log(`  ✅ ITOps Team encontrado por ID ${fieldId}: ${team || '(vazio)'}`);
+          } else if (!team && fieldName.toLowerCase() === 'itops team') {
+            team = displayValue;
+            console.log(`  ✅ ITOps Team encontrado por nome em ${fieldId} (${fieldName}): ${team || '(vazio)'}`);
           }
         }
       });
+      
+      // Buscar valores específicos dos campos conhecidos se não foram encontrados
+      if (!supportLevel && issue.customfield_10906) {
+        const field = issue.customfield_10906;
+        supportLevel = field?.value || field;
+        console.log(`🔍 Support Level encontrado diretamente: ${supportLevel}`);
+      }
+      
+      if (!team && issue.customfield_10635) {
+        const field = issue.customfield_10635;
+        if (Array.isArray(field)) {
+          team = field.map(item => item?.value || item).filter(Boolean).join(', ');
+        } else {
+          team = field?.value || field;
+        }
+        console.log(`🔍 ITOps Team encontrado diretamente: ${team}`);
+      }
+      
+      console.log(`✅ Campos processados - Support Level: ${supportLevel || '(não encontrado)'}, ITOps Team: ${team || '(não encontrado)'}`);
+      console.log(`📊 Total de campos customizados processados: ${Object.keys(customFields).length}`);
       
       // Processar transições disponíveis
       const availableTransitions = transitionsData.transitions.map(t => ({
@@ -1853,17 +1925,17 @@ class JiraService {
           break;
           
         case 'supportLevel':
-          // Campo customizado Support Level - ITOPS
-          // Ajuste o ID do campo conforme seu Jira
-          payload.fields.customfield_10050 = { value: value };
+          // Campo customizado Support Level - ITOPS (customfield_10906)
+          console.log(`📝 Atualizando Support Level (customfield_10906) = ${value}`);
+          // O campo Support Level é um select que espera um objeto com value
+          payload.fields.customfield_10906 = { value: value };
           break;
           
         case 'team':
-          // Campo customizado ITOps Team - identificar ID dinamicamente
-          const teamFieldId = await this._identifyITOpsTeamField();
-          console.log(`📝 Atualizando ITOps Team usando campo: ${teamFieldId} = ${value}`);
-          // O campo ITOps Team espera um array de valores
-          payload.fields[teamFieldId] = [{ value: value }];
+          // Campo customizado ITOps Team (customfield_10635)
+          console.log(`📝 Atualizando ITOps Team (customfield_10635) = ${value}`);
+          // O campo ITOps Team é um array de opções (multicheckboxes)
+          payload.fields.customfield_10635 = [{ value: value }];
           break;
           
         default:
@@ -1944,40 +2016,24 @@ class JiraService {
     }
   }
 
+  // Identificar o ID do campo Support Level
+  async _identifySupportLevelField() {
+    // Usar o ID correto conhecido: customfield_10906
+    if (!this._cachedFieldIds.supportLevel) {
+      this._cachedFieldIds.supportLevel = 'customfield_10906';
+      console.log(`✅ Campo Support Level usando ID conhecido: customfield_10906`);
+    }
+    return this._cachedFieldIds.supportLevel;
+  }
+  
   // Identificar o ID do campo ITOps Team
   async _identifyITOpsTeamField() {
-    if (this._cachedFieldIds.itopsTeam) {
-      return this._cachedFieldIds.itopsTeam;
+    // Usar o ID correto conhecido: customfield_10635
+    if (!this._cachedFieldIds.itopsTeam) {
+      this._cachedFieldIds.itopsTeam = 'customfield_10635';
+      console.log(`✅ Campo ITOps Team usando ID conhecido: customfield_10635`);
     }
-    
-    // Se não está em cache, tentar identificar
-    try {
-      const fieldsEndpoint = '/rest/api/3/field';
-      const allFields = await this._makeRequest(fieldsEndpoint);
-      
-      const possibleFields = allFields.filter(f => 
-        f.name && (
-          f.name.toLowerCase().includes('itops team') ||
-          f.name.toLowerCase() === 'team' ||
-          f.name === 'ITOps Team' ||
-          f.name === 'ITOPS TEAM'
-        )
-      );
-      
-      for (const field of possibleFields) {
-        if (field.id.startsWith('customfield_')) {
-          this._cachedFieldIds.itopsTeam = field.id;
-          console.log(`✅ Campo ITOps Team identificado: ${field.name} (${field.id})`);
-          return field.id;
-        }
-      }
-    } catch (err) {
-      console.log('⚠️ Erro ao identificar campo ITOps Team:', err.message);
-    }
-    
-    // Fallback para ID padrão
-    this._cachedFieldIds.itopsTeam = 'customfield_10051';
-    return 'customfield_10051';
+    return this._cachedFieldIds.itopsTeam;
   }
 
   // Buscar opções de campo customizado (ITOps Team)

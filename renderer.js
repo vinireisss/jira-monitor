@@ -3751,6 +3751,9 @@ let currentPreviewTicket = null;
 
 function displayTicketPreview(ticket) {
   console.log('🎨 Renderizando preview do ticket:', ticket);
+  console.log('📋 Support Level:', ticket.supportLevel);
+  console.log('📋 ITOps Team:', ticket.team);
+  console.log('📋 Custom Fields:', ticket.customFields);
   
   if (!ticket) {
     console.error('❌ Ticket vazio ou undefined!');
@@ -3841,8 +3844,8 @@ function displayTicketPreview(ticket) {
           Support Level - ITOPS
           <span class="edit-icon" title="Clique para editar">✏️</span>
         </div>
-        <div class="ticket-info-value-editable" onclick="makeFieldEditable('supportLevel', '${ticket.key}', '${ticket.supportLevel || 'L1'}')">
-          <span id="supportLevel-display">${ticket.supportLevel || 'L1'}</span>
+        <div class="ticket-info-value-editable" onclick="makeFieldEditable('supportLevel', '${ticket.key}', '${ticket.supportLevel || ''}')">
+          <span id="supportLevel-display">${ticket.supportLevel || '<span style="color: #999; font-style: italic;">Não definido</span>'}</span>
         </div>
       </div>
       
@@ -3853,7 +3856,7 @@ function displayTicketPreview(ticket) {
           <span class="edit-icon" title="Clique para editar">✏️</span>
         </div>
         <div class="ticket-info-value-editable" onclick="makeFieldEditable('team', '${ticket.key}', '${ticket.team || ''}')">
-          <span id="team-display">${ticket.team || 'TechCenter'}</span>
+          <span id="team-display">${ticket.team || '<span style="color: #999; font-style: italic;">Não definido</span>'}</span>
         </div>
       </div>
       
