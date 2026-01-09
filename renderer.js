@@ -2696,6 +2696,10 @@ function checkForNewTickets(allTickets) {
     dailyActivity.new += newTickets.length;
     dailyActivity.updated += changedTickets.length;
     updateDailyActivityUI();
+    
+    // 🔄 IMPORTANTE: Forçar atualização dos cards expandidos após mudanças
+    console.log('🔄 Forçando re-renderização dos cards após mudanças...');
+    updateExpandedTicketsLists();
   } else {
     console.log('✅ Nenhuma mudança nesta verificação');
   }
