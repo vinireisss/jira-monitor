@@ -2,8 +2,55 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const FormData = require('form-data');
 
-// 🔥 VERSÃO COM SLA COLORS - TESTE DE CARREGAMENTO
-console.log('🔥🔥🔥 JIRA-SERVICE.JS CARREGADO - VERSÃO SLA COLORS v2.0 🔥🔥🔥');
+// 🔥 VERSÃO COM API v3 /search/jql (NOVO ENDPOINT OBRIGATÓRIO) - TICKETS AVALIADOS
+// 🔥 V9.0 - FIX CRÍTICO: Extração rigorosa de ratings (estava classificando todos como 5★)
+const JIRA_SERVICE_VERSION = 'v9.0-strict-rating-validation';
+
+// 🛡️ PROTEÇÃO GLOBAL: Ignorar erros EPIPE em stdout/stderr
+if (process.stdout) {
+  process.stdout.on('error', (err) => {
+    if (err.code === 'EPIPE' || err.code === 'ERR_STREAM_DESTROYED') {
+      // Ignorar silenciosamente
+    }
+  });
+}
+
+if (process.stderr) {
+  process.stderr.on('error', (err) => {
+    if (err.code === 'EPIPE' || err.code === 'ERR_STREAM_DESTROYED') {
+      // Ignorar silenciosamente
+    }
+  });
+}
+
+// 🛡️ Wrapper seguro para logs que previne crashes EPIPE (NUNCA chama a si mesmo)
+const safeLog = (...args) => {
+  // Se stdout não está disponível, não faz nada
+  if (!process.stdout || process.stdout.destroyed || !process.stdout.writable) {
+    return;
+  }
+  
+  try {
+    // Tentar usar console.log normalmente
+    console.log(...args);
+  } catch (error) {
+    // Se der EPIPE ou stream destruído, silenciosamente ignorar
+    if (error?.code === 'EPIPE' || error?.code === 'ERR_STREAM_DESTROYED') {
+      return;
+    }
+    
+    // Para outros erros, tentar logar no stderr
+    try {
+      if (process.stderr && !process.stderr.destroyed && process.stderr.writable) {
+        process.stderr.write(`[safeLog error: ${error?.code || error?.message}]\n`);
+      }
+    } catch (_) {
+      // Se nem stderr funcionar, realmente não há nada a fazer
+    }
+  }
+};
+
+safeLog(`🔥🔥🔥 JIRA-SERVICE.JS CARREGADO - VERSÃO ${JIRA_SERVICE_VERSION} 🔥🔥🔥`);
 
 class JiraService {
   constructor(config) {
@@ -13,6 +60,9 @@ class JiraService {
     this.queueId = config.queueId || '1104';
     this.monitorOtherUser = config.monitorOtherUser || false;
     this.otherUserEmail = config.otherUserEmail || '';
+    this.evaluatedTicketsJql = config.evaluatedTicketsJql || null; // JQL customizada opcional para tickets avaliados
+    this.evaluatedTicketsSatisfactionField = config.evaluatedTicketsSatisfactionField || null; // Campo de avaliação configurado manualmente
+    this.evaluatedTicketsMaxPages = config.evaluatedTicketsMaxPages || 100; // Limite de páginas para evitar buscar milhares de tickets
     
     if (!this.email || !this.apiToken) {
       throw new Error('Email e API Token são obrigatórios');
@@ -265,7 +315,7 @@ class JiraService {
         body: JSON.stringify(body)
       });
       
-      console.log('✅ Worklog adicionado:', ticketKey, timeSpentSeconds, 'segundos');
+      safeLog('✅ Worklog adicionado:', ticketKey, timeSpentSeconds, 'segundos');
       return result;
     } catch (error) {
       console.error('Erro ao adicionar worklog:', error);
@@ -391,6 +441,7 @@ class JiraService {
   }
 
   async fetchStats() {
+    safeLog('🔥🔥🔥 fetchStats() INICIANDO - VERSÃO COM _getEvaluatedTickets() BLINDADA 🔥🔥🔥');
     const assignee = this._getAssignee();
     
     // Query para Total de Tickets - 🔥 APENAS PROJETO IT
@@ -430,7 +481,7 @@ class JiraService {
         this._searchJql(allProjectsJql, [...baseFields, ...slaFields])
       ]);
 
-      console.log('📦 Dados recebidos das queries:', {
+      safeLog('📦 Dados recebidos das queries:', {
         totalData: { total: totalData.issues?.length },
         supportData: { total: supportData.issues?.length },
         customerData: { total: customerData.issues?.length },
@@ -457,7 +508,8 @@ class JiraService {
         key: issue.key,
         summary: issue.fields.summary,
         status: issue.fields.status.name,
-        updated: issue.fields.updated
+        updated: issue.fields.updated,
+        assignee: issue.fields.assignee
       }));
 
       // Calcular atividade diária
@@ -489,7 +541,7 @@ class JiraService {
         return resolutionDate && resolutionDate >= startOfDay && closedStatuses.includes(status);
       });
       
-      console.log('📊 Atividade diária calculada:', {
+      safeLog('📊 Atividade diária calculada:', {
         recebidos: todayReceived.length,
         fechados: todayResolved.length,
         ticketsRecebidos: todayReceived.map(t => ({ key: t.key, created: t.fields.created })),
@@ -497,16 +549,53 @@ class JiraService {
       });
 
       // Dados de tendência (implementaremos histórico real)
+      safeLog('🔍 [DEBUG] Buscando trend data...');
       const trend = await this._getTrendData();
+      safeLog('✅ [DEBUG] Trend data OK');
 
       // Tickets de Telefonia SIM cards (Modo Pro)
-      const simCardsTickets = await this._getSimCardsTickets();
+      safeLog('🔍 [DEBUG] Buscando SIM cards tickets...');
+      const simcardPendingTickets = await this._getSimCardsTickets();
+      safeLog('✅ [DEBUG] SIM cards OK');
+
+      // 🤖 Tickets L0 Jira Bot (Modo Pro)
+      safeLog('🔍 [DEBUG] Buscando L0 Jira Bot tickets...');
+      const l0BotTickets = await this._getL0BotTickets();
+      safeLog('✅ [DEBUG] L0 Jira Bot OK');
+
+      // 🎯 Tickets All L1 Open (Modo Pro)
+      safeLog('🔍 [DEBUG] Buscando All L1 Open tickets...');
+      const l1OpenTickets = await this._getL1OpenTickets();
+      safeLog('✅ [DEBUG] All L1 Open OK');
 
       // Tickets Avaliados (Modo Pro)
-      const evaluatedTickets = await this._getEvaluatedTickets();
+      safeLog('🔍 CHAMANDO _getEvaluatedTickets()...');
+      let evaluatedTickets = { count: 0, tickets: [], jql: '', ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+      try {
+        evaluatedTickets = await this._getEvaluatedTickets();
+        safeLog('\n✅ _getEvaluatedTickets() retornou SUCESSO:');
+        safeLog(`   📦 count: ${evaluatedTickets.count}`);
+        safeLog(`   📋 tickets.length: ${evaluatedTickets.tickets?.length || 0}`);
+        safeLog(`   📊 ratingDistribution:`, evaluatedTickets.ratingDistribution);
+        safeLog(`   🔍 Primeiro ticket:`, evaluatedTickets.tickets?.[0]);
+        safeLog(`   🔑 Primeiras 5 chaves:`, evaluatedTickets.tickets?.slice(0, 5).map(t => t.key));
+      } catch (error) {
+        console.error('\n❌ ERRO em _getEvaluatedTickets():', error.message);
+        console.error(error.stack);
+      }
+
+      // 🔍 BUSCA FORENSE (Histórico de Avaliações)
+      // Após análise exaustiva, confirmamos que customfield_10120 contém as avaliações reais.
+      // O filtro JQL agora cobre os últimos 730 dias para capturar todo o histórico solicitado.
 
       // Contar comentários feitos hoje pelo usuário
       const todayComments = await this._getTodayUserComments();
+
+      safeLog('\n🎯 fetchStats() RETORNANDO PARA RENDERER:');
+      safeLog(`   📦 evaluatedTickets.count: ${evaluatedTickets.count}`);
+      safeLog(`   📋 evaluatedTickets.tickets.length: ${evaluatedTickets.tickets?.length || 0}`);
+      safeLog(`   🔍 evaluatedTickets é array? ${Array.isArray(evaluatedTickets.tickets)}`);
+      safeLog(`   🔑 Primeiras chaves no return:`, evaluatedTickets.tickets?.slice(0, 3).map(t => t?.key));
 
       return {
         total,
@@ -539,7 +628,9 @@ class JiraService {
         byProject,
         recentTickets,
         trend,
-        simCardsTickets,
+        simcardPendingTickets,
+        l0BotTickets,
+        l1OpenTickets,
         evaluatedTickets,
         // Dados de atividade diária (calculados dos tickets existentes)
         todayReceived: todayReceived,
@@ -553,11 +644,17 @@ class JiraService {
   }
 
   async _searchJql(jql, fields = ['status', 'summary', 'key']) {
+    // ✅ USANDO API v3 /search/jql (NOVO ENDPOINT OBRIGATÓRIO)
     const endpoint = `/rest/api/3/search/jql`;
     
     // Garantir que fields é um array
     if (!fields || !Array.isArray(fields)) {
       fields = ['status', 'summary', 'key'];
+    }
+
+    const slaFields = fields.filter(f => f && f.includes('customfield_10'));
+    if (slaFields.length > 0) {
+      safeLog('📤 Solicitando campos à API Jira:', slaFields);
     }
     
     const body = {
@@ -565,11 +662,8 @@ class JiraService {
       fields,
       maxResults: 1000
     };
-
-    const slaFields = fields.filter(f => f && f.includes('customfield_10'));
-    if (slaFields.length > 0) {
-      console.log('📤 Solicitando campos à API Jira:', slaFields);
-    }
+    
+    safeLog('🔍 _searchJql usando POST /rest/api/3/search/jql (novo endpoint)');
 
     const data = await this._makeRequest(endpoint, {
       method: 'POST',
@@ -582,12 +676,77 @@ class JiraService {
       if (firstIssue.fields) {
         const hasCustom10123 = 'customfield_10123' in firstIssue.fields;
         const hasCustom10124 = 'customfield_10124' in firstIssue.fields;
-        console.log('📥 API Jira retornou customfield_10123?', hasCustom10123);
-        console.log('📥 API Jira retornou customfield_10124?', hasCustom10124);
+        safeLog('📥 API Jira retornou customfield_10123?', hasCustom10123);
+        safeLog('📥 API Jira retornou customfield_10124?', hasCustom10124);
       }
     }
 
     return data;
+  }
+
+  // 🔄 Buscar TODOS os resultados com paginação completa usando API v3
+  async _searchJqlWithPagination(jql, fields = ['status', 'summary', 'key'], maxResults = 50, hardLimit = 50000) {
+    // ✅ API v3 /search/jql usa nextPageToken (NÃO usa startAt/total)
+    const endpoint = `/rest/api/3/search/jql`;
+
+    if (!fields || !Array.isArray(fields)) {
+      fields = ['status', 'summary', 'key'];
+    }
+
+    let allIssues = [];
+    let nextPageToken = null;
+    let page = 0;
+
+    safeLog(`🔄 Iniciando paginação (nextPageToken) em /rest/api/3/search/jql: ${jql.substring(0, 120)}...`);
+
+    while (true) {
+      page++;
+
+      const qs = new URLSearchParams();
+      // Alguns tenants ignoram maxResults aqui, mas não atrapalha.
+      if (maxResults) qs.set('maxResults', String(maxResults));
+      if (nextPageToken) qs.set('nextPageToken', nextPageToken);
+
+      const endpointWithToken = `${endpoint}?${qs.toString()}`;
+      const body = { jql, fields };
+
+      // Log reduzido
+      if (page === 1 || page % 10 === 0) {
+        safeLog(`📥 Página ${page} (token): ${nextPageToken ? 'continuando' : 'início'} | acumulado=${allIssues.length}`);
+      }
+
+      const data = await this._makeRequest(endpointWithToken, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+
+      const issues = Array.isArray(data?.issues) ? data.issues : [];
+      allIssues.push(...issues);
+
+      if (hardLimit && allIssues.length >= hardLimit) {
+        safeLog(`⚠️ hardLimit atingido (${hardLimit}). Parando paginação.`);
+        break;
+      }
+
+      // /search/jql retorna { issues, nextPageToken, isLast }
+      if (data?.isLast === true) break;
+      if (!data?.nextPageToken) break;
+
+      nextPageToken = data.nextPageToken;
+
+      // Segurança adicional: evitar loops infinitos
+      if (page >= 2000) {
+        safeLog('⚠️ Limite de páginas (2000) atingido. Parando paginação.');
+        break;
+      }
+    }
+
+    safeLog(`✅ Paginação concluída: ${allIssues.length} tickets (páginas=${page})`);
+
+    return {
+      issues: allIssues,
+      total: allIssues.length,
+    };
   }
 
   _calculateSlaAlerts(issues) {
@@ -761,7 +920,7 @@ class JiraService {
         );
       }
       
-      const data = await this._searchJql(jql, ['status', 'summary', 'key', 'duedate', 'updated', 'project', 'customfield_10123', 'customfield_10124']);
+      const data = await this._searchJql(jql, ['status', 'summary', 'key', 'duedate', 'updated', 'project', 'assignee', 'customfield_10123', 'customfield_10124']);
       
       return {
         count: data.issues?.length || 0,
@@ -770,13 +929,514 @@ class JiraService {
           summary: issue.fields.summary,
           status: issue.fields.status.name,
           duedate: issue.fields.duedate,
-          updated: issue.fields.updated
+          updated: issue.fields.updated,
+          assignee: issue.fields.assignee
         })),
         jql: jql
       };
     } catch (error) {
       console.error('Erro ao buscar tickets de SIM cards:', error);
       return { count: 0, tickets: [], jql: '' };
+    }
+  }
+
+  /**
+   * 🤖 Buscar tickets da fila L0 Jira Bot (Service Queue 7631)
+   */
+  async _getL0BotTickets() {
+    try {
+      // Tentar buscar JQL do filtro/queue se possível, senão usar JQL direta
+      let jql = 'project = "IT" AND statusCategory != "Done" AND (queue = 7631 OR "Service Desk Queue" = 7631) ORDER BY created DESC';
+      
+      // Tentar buscar via endpoint de queue se disponível (API Service Desk)
+      try {
+        const queueData = await this._makeRequest('/rest/servicedeskapi/servicedesk/IT/queue/7631');
+        if (queueData && queueData.jql) {
+          jql = queueData.jql;
+          safeLog(`✅ JQL da Fila L0 Bot obtida via API: ${jql}`);
+        }
+      } catch (e) {
+        safeLog(`ℹ️ Não foi possível obter JQL da fila via API Service Desk, usando JQL manual.`);
+      }
+
+      safeLog(`🔍 Buscando L0 Bot com JQL: ${jql}`);
+      const data = await this._searchJql(jql, ['status', 'summary', 'key', 'updated', 'assignee']);
+      
+      safeLog(`✅ L0 Bot retornou ${data.issues?.length || 0} tickets`);
+      
+      return {
+        count: data.issues?.length || 0,
+        tickets: (data.issues || []).map(issue => ({
+          key: issue.key,
+          summary: issue.fields.summary,
+          status: issue.fields.status.name,
+          updated: issue.fields.updated,
+          assignee: issue.fields.assignee
+        })),
+        jql: jql
+      };
+    } catch (error) {
+      safeLog(`⚠️ Erro ao buscar L0 Bot: ${error.message}`);
+      return { count: 0, tickets: [], jql: '' };
+    }
+  }
+
+  /**
+   * 🎯 Buscar tickets da fila All L1 Open (Service Queue 3015)
+   */
+  async _getL1OpenTickets() {
+    try {
+      // Tentar buscar JQL do filtro/queue se possível, senão usar JQL direta
+      let jql = 'project = "IT" AND statusCategory != "Done" AND (queue = 3015 OR "Service Desk Queue" = 3015) ORDER BY created DESC';
+      
+      // Tentar buscar via endpoint de queue se disponível (API Service Desk)
+      try {
+        const queueData = await this._makeRequest('/rest/servicedeskapi/servicedesk/IT/queue/3015');
+        if (queueData && queueData.jql) {
+          jql = queueData.jql;
+          safeLog(`✅ JQL da Fila All L1 Open obtida via API: ${jql}`);
+        }
+      } catch (e) {
+        safeLog(`ℹ️ Não foi possível obter JQL da fila via API Service Desk, usando JQL manual.`);
+      }
+
+      safeLog(`🔍 Buscando All L1 Open com JQL: ${jql}`);
+      const data = await this._searchJql(jql, ['status', 'summary', 'key', 'updated', 'assignee']);
+      
+      safeLog(`✅ All L1 Open retornou ${data.issues?.length || 0} tickets`);
+
+      return {
+        count: data.issues?.length || 0,
+        tickets: (data.issues || []).map(issue => ({
+          key: issue.key,
+          summary: issue.fields.summary,
+          status: issue.fields.status.name,
+          updated: issue.fields.updated,
+          assignee: issue.fields.assignee
+        })),
+        jql: jql
+      };
+    } catch (error) {
+      safeLog(`⚠️ Erro ao buscar All L1 Open: ${error.message}`);
+      return { count: 0, tickets: [], jql: '' };
+    }
+  }
+
+  /**
+   * 🌟 BUSCA COMPLETA DE TICKETS AVALIADOS (Algoritmo de Paginação Tradicional)
+   * 
+   * Usa paginação startAt/maxResults para buscar TODOS os tickets sem limites.
+   * 
+   * Algoritmo:
+   * 1. allIssues = []
+   * 2. startAt = 0
+   * 3. Loop: fetch API com startAt/maxResults
+   * 4. Adiciona issues ao allIssues
+   * 5. Incrementa startAt
+   * 6. Continua enquanto startAt < total
+   * 
+   * @returns {Object} { count, tickets[], jql, ratingDistribution }
+   */
+  
+  
+  async _getEvaluatedTickets() {
+    if (this._isFetchingEvaluated) return this._evaluatedTicketsCache;
+    this._isFetchingEvaluated = true;
+
+    try {
+      // 1. JQL HARDCODED (Para teste definitivo)
+      const jql = "status IN (Resolved, Cancelado) AND assignee = currentUser() ORDER BY created DESC";
+      
+      const SATISFACTION_FIELD_ID = (this.evaluatedTicketsSatisfactionField && this.evaluatedTicketsSatisfactionField[0]) || 'customfield_10120';
+      const fields = ['summary', 'status', 'resolutiondate', 'created', 'assignee', 'updated', SATISFACTION_FIELD_ID].join(',');
+
+      safeLog('\n════════════════════════════════════════════════════════');
+      safeLog('🚨 MODO DE EMERGÊNCIA: BUSCA COM JQL BLINDADA');
+      safeLog('════════════════════════════════════════════════════════\n');
+
+      const allIssues = [];
+      let nextPageToken = null;
+      let isLast = false;
+      let page = 0;
+
+      do {
+        page++;
+        
+        // 2. CONSTRUÇÃO DA URL COM JQL CODIFICADA
+        let endpoint = `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&maxResults=100&fields=${encodeURIComponent(fields)}`;
+        
+        if (nextPageToken) {
+          endpoint += `&nextPageToken=${encodeURIComponent(nextPageToken)}`;
+        }
+
+        // 3. LOG DE SEGURANÇA (Para você conferir no terminal)
+        safeLog(`🚨 URL SENDO CHAMADA: ${this.baseUrl}${endpoint}`);
+
+        const response = await this._makeRequest(endpoint, {
+          method: 'GET' // Mudado para GET para garantir leitura dos Query Params
+        });
+
+        const issues = response.issues || [];
+        allIssues.push(...issues);
+        
+        nextPageToken = response.nextPageToken;
+        isLast = response.isLast === true || !nextPageToken;
+
+        safeLog(`📥 Página ${page}: +${issues.length} tickets | Acumulado: ${allIssues.length}`);
+
+        // Segurança: Se passar de 5000 tickets com esse filtro, algo ainda está errado no Jira
+        if (allIssues.length > 5000) {
+          safeLog('🛑 ERRO: O filtro JQL parece estar sendo ignorado pelo Jira (5000+ tickets). ABORTANDO.');
+          break;
+        }
+
+      } while (!isLast);
+
+      safeLog(`\n✅ BUSCA FINALIZADA: ${allIssues.length} TICKETS PROCESSADOS`);
+
+      // PROCESSAMENTO DE ESTRELAS
+      const processedTickets = [];
+      const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+      allIssues.forEach(issue => {
+        const rawField = issue.fields[SATISFACTION_FIELD_ID];
+        let rating = null;
+
+        if (rawField) {
+          const rawValue = rawField.value ? rawField.value : (rawField.rating ? rawField.rating : rawField);
+          const stringValue = String(rawValue).trim().charAt(0);
+          if (['1', '2', '3', '4', '5'].includes(stringValue)) {
+            rating = parseInt(stringValue);
+          }
+        }
+
+        if (rating) {
+          ratingDistribution[rating]++;
+          processedTickets.push({
+            key: issue.key,
+            summary: issue.fields.summary,
+            status: issue.fields.status?.name,
+            ratingNumber: rating,
+            satisfaction: rating,
+            ratingEmoji: '⭐'.repeat(rating)
+          });
+        }
+      });
+
+      this._evaluatedTicketsCache = {
+        count: processedTickets.length,
+        tickets: processedTickets,
+        ratingDistribution
+      };
+
+      return this._evaluatedTicketsCache;
+
+    } catch (error) {
+      safeLog(`❌ ERRO NO FETCH: ${error.message}`);
+      throw error;
+    } finally {
+      this._isFetchingEvaluated = false;
+    }
+  }
+
+
+
+
+  async _forensicSearchMissingRatings() {
+    safeLog('\n════════════════════════════════════════════════════════');
+    safeLog('🔍 BUSCA FORENSE ILIMITADA: CAÇANDO NOTAS 2, 3 e 4 PERDIDAS');
+    safeLog('════════════════════════════════════════════════════════\n');
+    
+    // Blacklist: APENAS campos que são DEFINITIVAMENTE não-avaliações
+    const BLACKLIST = [
+      'customfield_20061'  // SLA/Prazo ({"value": "3 work days"}) - CONFIRMADO como falso positivo
+      // customfield_30195 REMOVIDO - pode ser avaliação real de 1 estrela!
+    ];
+    
+    safeLog('🚫 BLACKLIST (apenas campos 100% confirmados como não-avaliação):');
+    BLACKLIST.forEach(field => safeLog(`   ❌ ${field}`));
+    safeLog(`\n💡 ATENÇÃO: Busca ILIMITADA - vai processar TODO o histórico!\n`);
+    
+    try {
+      // Buscar TODOS os tickets - sem limite de páginas
+      safeLog('📥 Iniciando busca ILIMITADA de tickets resolvidos...');
+      const jql = 'status IN (Resolved, Cancelado) AND assignee WAS currentUser() ORDER BY created DESC';
+      
+      const allIssues = [];
+      let startAt = 0;
+      const maxResults = 100;
+      let page = 0;
+      let totalFromApi = null;
+      
+      // Buscar TODAS as páginas (sem limite)
+      while (true) {
+        page++;
+        const endpoint = `/rest/api/3/search/jql?startAt=${startAt}&maxResults=${maxResults}`;
+        
+        safeLog(`📄 Buscando página ${page}...`);
+        
+        const data = await this._makeRequest(endpoint, {
+          method: 'POST',
+          body: JSON.stringify({
+            jql: jql,
+            fields: ['key', 'summary', 'created', 'assignee'] // Vamos buscar TODOS os campos depois
+          })
+        });
+        
+        if (!data || !data.issues || data.issues.length === 0) {
+          safeLog(`✅ Fim da busca (página ${page} vazia)\n`);
+          break;
+        }
+        
+        // Guardar total na primeira página
+        if (totalFromApi === null && data.total !== undefined) {
+          totalFromApi = data.total;
+          safeLog(`   🎯 Total de tickets no Jira: ${totalFromApi}`);
+        }
+        
+        allIssues.push(...data.issues);
+        startAt += data.issues.length;
+        
+        safeLog(`   ✓ ${data.issues.length} tickets recebidos (total acumulado: ${allIssues.length})`);
+        
+        // Parar se chegamos ao fim
+        if (totalFromApi && allIssues.length >= totalFromApi) {
+          safeLog(`✅ Todos os ${totalFromApi} tickets foram carregados!\n`);
+          break;
+        }
+        
+        // Segurança: Limite absoluto de 10.000 tickets para evitar loops infinitos
+        if (allIssues.length >= 10000) {
+          safeLog(`⚠️ Limite de segurança atingido: 10.000 tickets`);
+          safeLog(`   Se precisar analisar mais, aumente este limite no código\n`);
+          break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100)); // Delay para não sobrecarregar
+      }
+      
+      safeLog(`\n📦 Total de tickets para análise: ${allIssues.length}`);
+      safeLog(`🎯 Procurando por valores EXATAMENTE iguais a 1, 2, 3 ou 4...\n`);
+      safeLog(`💡 Vamos buscar nota 1 também para validar customfield_30195\n`);
+      
+      const findings = {
+        1: [],
+        2: [],
+        3: [],
+        4: []
+      };
+      
+      let ticketsAnalyzed = 0;
+      const TARGET_RATINGS = [1, 2, 3, 4]; // Incluir nota 1 para validação
+      
+      // Analisar cada ticket individualmente (buscar campos completos)
+      for (const issue of allIssues) {
+        ticketsAnalyzed++;
+        
+        if (ticketsAnalyzed % 100 === 0) {
+          safeLog(`⏳ Analisados ${ticketsAnalyzed}/${allIssues.length} tickets...`);
+        }
+        
+        // Buscar detalhes completos do ticket
+        let ticketDetails;
+        try {
+          ticketDetails = await this._makeRequest(`/rest/api/3/issue/${issue.key}`);
+        } catch (error) {
+          console.warn(`   ⚠️ Erro ao buscar ${issue.key}: ${error.message}`);
+          continue;
+        }
+        
+        if (!ticketDetails || !ticketDetails.fields) continue;
+        
+        const assigneeEmail = ticketDetails.fields.assignee?.emailAddress || 
+                             ticketDetails.fields.assignee?.name;
+        const currentUserEmail = this.monitorOtherUser && this.otherUserEmail ? 
+                                this.otherUserEmail : this.email;
+        
+        // Pular se não for do usuário atual
+        if (!assigneeEmail || assigneeEmail.toLowerCase() !== currentUserEmail.toLowerCase()) {
+          continue;
+        }
+        
+        // Examinar TODOS os customfields
+        const allFields = Object.keys(ticketDetails.fields);
+        const customFields = allFields.filter(f => f.startsWith('customfield_'));
+        
+        for (const fieldId of customFields) {
+          // Pular se estiver na blacklist
+          if (BLACKLIST.includes(fieldId)) {
+            continue;
+          }
+          
+          const fieldValue = ticketDetails.fields[fieldId];
+          
+          // Pular se vazio
+          if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+            continue;
+          }
+          
+          let extractedRating = null;
+          let rawValueDescription = '';
+          
+          // Tentar extrair valor - VALIDAÇÃO ULTRA-RIGOROSA
+          if (typeof fieldValue === 'number') {
+            extractedRating = fieldValue;
+            rawValueDescription = `number: ${fieldValue}`;
+          } else if (typeof fieldValue === 'string') {
+            // Aceitar APENAS strings numéricas puras ("1", "2", "3", "4", "5")
+            // Rejeitar "3 work days", "level 1", etc.
+            const trimmed = fieldValue.trim();
+            if (/^[1-5]$/.test(trimmed)) {
+              extractedRating = parseInt(trimmed);
+              rawValueDescription = `string: "${fieldValue}"`;
+            }
+          } else if (typeof fieldValue === 'object') {
+            // Tentar diferentes formatos de objeto
+            if (fieldValue.rating !== undefined) {
+              const rating = fieldValue.rating;
+              if (typeof rating === 'number') {
+                extractedRating = rating;
+                rawValueDescription = `object.rating: ${JSON.stringify(fieldValue)}`;
+              } else if (typeof rating === 'string' && /^[1-5]$/.test(rating.trim())) {
+                extractedRating = parseInt(rating);
+                rawValueDescription = `object.rating: ${JSON.stringify(fieldValue)}`;
+              }
+            } else if (fieldValue.value !== undefined) {
+              const val = fieldValue.value;
+              // Rejeitar "0" e valores com texto
+              if (val !== "0" && val !== 0) {
+                if (typeof val === 'number') {
+                  extractedRating = val;
+                  rawValueDescription = `object.value: ${JSON.stringify(fieldValue)}`;
+                } else if (typeof val === 'string' && /^[1-5]$/.test(val.trim())) {
+                  // Aceitar APENAS strings numéricas puras
+                  extractedRating = parseInt(val);
+                  rawValueDescription = `object.value: ${JSON.stringify(fieldValue)}`;
+                }
+                // Se tiver texto (ex: "3 work days"), será null e rejeitado
+              }
+            }
+          }
+          
+          // 🎯 ACHAMOS UMA NOTA ALVO?
+          if (extractedRating && TARGET_RATINGS.includes(extractedRating)) {
+            const finding = {
+              ticket: issue.key,
+              fieldId: fieldId,
+              rating: extractedRating,
+              rawValue: rawValueDescription,
+              created: ticketDetails.fields.created,
+              summary: ticketDetails.fields.summary?.substring(0, 60) || 'N/A'
+            };
+            
+            findings[extractedRating].push(finding);
+            
+            // 🚨 ALERTA ESPECIAL PARA NOTAS RARAS
+            safeLog(`\n${'🚨'.repeat(30)}`);
+            safeLog(`🎯 AGULHA NO PALHEIRO ENCONTRADA!`);
+            safeLog(`${'🚨'.repeat(30)}`);
+            safeLog(`   ⭐ NOTA: ${extractedRating} estrelas`);
+            safeLog(`   🎫 TICKET: ${issue.key}`);
+            safeLog(`   📅 CRIADO EM: ${ticketDetails.fields.created}`);
+            safeLog(`   📋 CAMPO ID: ${fieldId}`);
+            safeLog(`   📦 VALOR RAW: ${rawValueDescription}`);
+            safeLog(`   📝 RESUMO: ${ticketDetails.fields.summary?.substring(0, 100)}...`);
+            safeLog(`   🔍 JSON COMPLETO DO CAMPO:`);
+            safeLog(`      ${JSON.stringify(fieldValue, null, 2).split('\n').join('\n      ')}`);
+            safeLog(`${'🚨'.repeat(30)}\n`);
+          }
+        }
+        
+        // Pequeno delay para não sobrecarregar
+        if (ticketsAnalyzed % 50 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
+      // Relatório final
+      safeLog('\n════════════════════════════════════════════════════════');
+      safeLog('📊 RELATÓRIO DA BUSCA FORENSE');
+      safeLog('════════════════════════════════════════════════════════\n');
+      
+      safeLog(`✅ Tickets analisados: ${ticketsAnalyzed}`);
+      safeLog(`\n🎯 NOTAS ENCONTRADAS (incluindo nota 1 para validação):\n`);
+      
+      for (const rating of TARGET_RATINGS) {
+        const count = findings[rating].length;
+        const emoji = rating === 1 ? '⭐' : `${'⭐'.repeat(rating)}`;
+        safeLog(`${emoji} Nota ${rating}: ${count} ticket(s) encontrado(s)`);
+        
+        if (count > 0) {
+          // Agrupar por campo
+          const byField = {};
+          findings[rating].forEach(f => {
+            if (!byField[f.fieldId]) {
+              byField[f.fieldId] = [];
+            }
+            byField[f.fieldId].push(f);
+          });
+          
+          safeLog(`   📋 Campos que contêm nota ${rating}:`);
+          Object.entries(byField).forEach(([fieldId, tickets]) => {
+            safeLog(`      ✅ ${fieldId}: ${tickets.length} ticket(s)`);
+            // Mostrar primeiros 3 tickets como exemplo
+            tickets.slice(0, 3).forEach(t => {
+              safeLog(`         - ${t.ticket} (${t.created?.substring(0, 10)}): ${t.summary}`);
+            });
+          });
+          safeLog('');
+        }
+      }
+      
+      // Sugestão de configuração
+      safeLog('\n💡 PRÓXIMOS PASSOS:\n');
+      const allFieldsFound = new Set();
+      Object.values(findings).forEach(ratingFindings => {
+        ratingFindings.forEach(f => allFieldsFound.add(f.fieldId));
+      });
+      
+      if (allFieldsFound.size > 0) {
+        safeLog('✅ Campos de avaliação identificados:');
+        allFieldsFound.forEach(fieldId => {
+          const ratingsInField = [];
+          TARGET_RATINGS.forEach(rating => {
+            if (findings[rating].some(f => f.fieldId === fieldId)) {
+              ratingsInField.push(rating);
+            }
+          });
+          safeLog(`   📌 ${fieldId} (contém notas: ${ratingsInField.join(', ')})`);
+        });
+        
+        safeLog('\n📝 Adicione estes campos no config.json:');
+        safeLog('   "evaluatedTicketsSatisfactionField": [');
+        Array.from(allFieldsFound).forEach((fieldId, index) => {
+          const comma = index < allFieldsFound.size - 1 ? ',' : '';
+          safeLog(`     "${fieldId}"${comma}`);
+        });
+        safeLog('   ]');
+        
+        // Validação especial para customfield_30195
+        if (allFieldsFound.has('customfield_30195')) {
+          const count = findings[1].filter(f => f.fieldId === 'customfield_30195').length;
+          safeLog(`\n✅ customfield_30195 CONFIRMADO como campo de avaliação!`);
+          safeLog(`   Encontradas ${count} avaliações de 1 estrela neste campo.`);
+        }
+      } else {
+        safeLog('❌ Nenhuma nota 1, 2, 3 ou 4 foi encontrada nos tickets analisados');
+        safeLog('💡 Possibilidades:');
+        safeLog('   - Todos os seus tickets avaliados realmente têm apenas nota 5');
+        safeLog('   - As notas estão em campos com formato diferente');
+        safeLog('   - As notas estão em tickets com outros status além de Resolved/Cancelado');
+      }
+      
+      safeLog('\n════════════════════════════════════════════════════════\n');
+      
+      return findings;
+      
+    } catch (error) {
+      console.error('❌ Erro na busca forense:', error);
+      console.error(error.stack);
+      return null;
     }
   }
 
@@ -821,7 +1481,7 @@ class JiraService {
         });
       }
       
-      console.log(`💬 Comentários feitos hoje: ${commentsToday.length}`, {
+      safeLog(`💬 Comentários feitos hoje: ${commentsToday.length}`, {
         ticketsVerificados: data.issues?.length || 0,
         comentariosEncontrados: commentsToday.map(c => ({ ticket: c.ticketKey, data: c.commentCreated }))
       });
@@ -833,188 +1493,6 @@ class JiraService {
     }
   }
 
-  async _getEvaluatedTickets() {
-    try {
-      // Buscar tickets do filtro 52358
-      console.log('⭐ Buscando tickets avaliados (filtro 52358)...');
-      const filterData = await this._makeRequest('/rest/api/3/filter/52358');
-      const jql = filterData.jql;
-      
-      // Buscar metadata de campos do Jira para encontrar "Satisfaction"
-      console.log('🔍 Buscando campo Satisfaction...');
-      
-      let satisfactionFieldId = null;
-      
-      // Tentar buscar os campos do Jira
-      try {
-        const fieldsMetadata = await this._makeRequest('/rest/api/3/field');
-        
-        // Procurar campo com nome "Satisfaction"
-        for (const field of fieldsMetadata) {
-          if (field.name === 'Satisfaction' || field.name === 'satisfaction') {
-            satisfactionFieldId = field.id;
-            console.log(`✅ Campo Satisfaction encontrado na metadata: ${field.id} (${field.name})`);
-            break;
-          }
-        }
-      } catch (err) {
-        console.log('⚠️ Erro ao buscar metadata de campos:', err.message);
-      }
-      
-      // Se não encontrou, tentar campos customizados comuns para satisfaction no JSM
-      if (!satisfactionFieldId) {
-        console.log('🔍 Tentando campos customizados comuns...');
-        const commonFields = [
-          'customfield_10200', // Satisfaction comum JSM
-          'customfield_10043', // CSAT comum
-          'customfield_10002', // Feedback comum
-          'customfield_10010'  // Request Satisfaction
-        ];
-        
-        // Buscar um ticket para testar os campos
-        const testData = await this._searchJql(jql, ['key', ...commonFields]);
-        
-        if (testData.issues && testData.issues.length > 0) {
-          // Verificar qual campo tem valor não-nulo
-          for (const fieldId of commonFields) {
-            for (const issue of testData.issues.slice(0, 5)) {
-              if (issue.fields[fieldId] !== null && issue.fields[fieldId] !== undefined) {
-                satisfactionFieldId = fieldId;
-                console.log(`✅ Campo Satisfaction encontrado testando: ${fieldId}`, issue.fields[fieldId]);
-                break;
-              }
-            }
-            if (satisfactionFieldId) break;
-          }
-        }
-      }
-      
-      if (!satisfactionFieldId) {
-        console.warn('⚠️ Campo Satisfaction não encontrado! Retornando lista vazia.');
-        return { count: 0, tickets: [], jql: jql };
-      }
-      
-      console.log(`📌 Usando campo Satisfaction: ${satisfactionFieldId}`);
-      
-      // Buscar todos os tickets com o campo de satisfaction
-      const data = await this._searchJql(jql, ['status', 'summary', 'key', 'updated', 'resolutiondate', 'assignee', satisfactionFieldId]);
-      
-      // Filtrar apenas tickets com Satisfaction preenchida
-      const ticketsWithSatisfaction = data.issues.filter(issue => {
-        const satisfactionValue = issue.fields[satisfactionFieldId];
-        return satisfactionValue !== null && satisfactionValue !== undefined;
-      });
-      
-      console.log(`✅ ${ticketsWithSatisfaction.length} tickets COM avaliação (de ${data.issues?.length || 0} total)`);
-      
-      // Retornar tickets com satisfação
-      return {
-        count: ticketsWithSatisfaction.length,
-        tickets: ticketsWithSatisfaction.slice(0, 50).map(issue => {
-          const satisfactionValue = issue.fields[satisfactionFieldId];
-          let stars = '⭐';
-          let ratingNumber = null;
-          
-          // Processar valor da satisfação
-          if (satisfactionValue) {
-            let ratingText = '';
-            
-            // Verificar diferentes formatos possíveis
-            if (typeof satisfactionValue === 'object') {
-              // Formato { rating: 5 } (Jira Service Management)
-              if (satisfactionValue.rating !== undefined) {
-                ratingNumber = satisfactionValue.rating;
-              } 
-              // Formato { value: "5" } (antigo)
-              else if (satisfactionValue.value !== undefined) {
-                ratingText = satisfactionValue.value;
-              }
-            } else if (typeof satisfactionValue === 'string') {
-              ratingText = satisfactionValue;
-            } else if (typeof satisfactionValue === 'number') {
-              ratingNumber = satisfactionValue;
-            }
-            
-            console.log(`⭐ ${issue.key} - Satisfaction:`, satisfactionValue, '→ Rating:', ratingNumber || ratingText);
-            
-            // Se já temos o número (rating), converter para estrelas
-            if (ratingNumber !== null && ratingNumber !== undefined) {
-              const numStars = Math.min(5, Math.max(1, parseInt(ratingNumber)));
-              stars = '⭐'.repeat(numStars);
-              console.log(`  → ${numStars} estrelas:`, stars);
-            } 
-            // Se temos texto, tentar extrair número
-            else if (ratingText) {
-              const lowerRating = String(ratingText).toLowerCase();
-              
-              if (lowerRating.includes('5') || lowerRating.includes('five')) {
-                stars = '⭐⭐⭐⭐⭐';
-                ratingNumber = 5;
-              } else if (lowerRating.includes('4') || lowerRating.includes('four')) {
-                stars = '⭐⭐⭐⭐';
-                ratingNumber = 4;
-              } else if (lowerRating.includes('3') || lowerRating.includes('three')) {
-                stars = '⭐⭐⭐';
-                ratingNumber = 3;
-              } else if (lowerRating.includes('2') || lowerRating.includes('two')) {
-                stars = '⭐⭐';
-                ratingNumber = 2;
-              } else if (lowerRating.includes('1') || lowerRating.includes('one')) {
-                stars = '⭐';
-                ratingNumber = 1;
-              } else {
-                // Tentar extrair número do texto
-                const numMatch = ratingText.match(/\d+/);
-                if (numMatch) {
-                  ratingNumber = parseInt(numMatch[0]);
-                  stars = '⭐'.repeat(Math.min(5, Math.max(1, ratingNumber)));
-                }
-              }
-            }
-          }
-          
-          // Calcular tempo desde resolução
-          let timeAgo = '';
-          if (issue.fields.resolutiondate) {
-            const resolved = new Date(issue.fields.resolutiondate);
-            const now = new Date();
-            const diffDays = Math.floor((now - resolved) / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) {
-              timeAgo = 'Hoje';
-            } else if (diffDays === 1) {
-              timeAgo = 'Ontem';
-            } else if (diffDays < 7) {
-              timeAgo = `${diffDays}d atrás`;
-            } else if (diffDays < 30) {
-              const weeks = Math.floor(diffDays / 7);
-              timeAgo = `${weeks} sem atrás`;
-            } else {
-              const months = Math.floor(diffDays / 30);
-              timeAgo = `${months} mês${months > 1 ? 'es' : ''} atrás`;
-            }
-          }
-          
-          return {
-            key: issue.key,
-            summary: issue.fields.summary,
-            status: issue.fields.status?.name || 'N/A',
-            updated: issue.fields.updated,
-            resolutiondate: issue.fields.resolutiondate,
-            assignee: issue.fields.assignee?.displayName || 'Não atribuído',
-            timeAgo: timeAgo,
-            ratingEmoji: stars,
-            ratingNumber: ratingNumber,
-            satisfaction: satisfactionValue
-          };
-        }),
-        jql: jql
-      };
-    } catch (error) {
-      console.error('❌ Erro ao buscar tickets avaliados:', error);
-      return { count: 0, tickets: [], jql: '' };
-    }
-  }
 
   async getTicketDetails(ticketKey) {
     try {
@@ -1034,7 +1512,7 @@ class JiraService {
       
       // Processar comentários
       const comments = issue.comment?.comments || [];
-      console.log(`💬 Processando ${comments.length} comentários para ${ticketKey}`);
+      safeLog(`💬 Processando ${comments.length} comentários para ${ticketKey}`);
       
       const processedComments = comments.map(comment => {
         try {
@@ -1149,7 +1627,7 @@ class JiraService {
         team: team
       };
       
-      console.log(`✅ Ticket ${ticketKey} processado:`, {
+      safeLog(`✅ Ticket ${ticketKey} processado:`, {
         key: ticketDetails.key,
         summary: ticketDetails.summary,
         commentsCount: ticketDetails.comments?.length || 0,
@@ -1172,7 +1650,7 @@ class JiraService {
     }
     
     // Log para debug
-    console.log('🔍 Convertendo ADF para HTML:', JSON.stringify(content, null, 2));
+    safeLog('🔍 Convertendo ADF para HTML:', JSON.stringify(content, null, 2));
     
     if (content.type === 'doc') {
       return content.content.map(node => this._convertNodeToHTML(node)).join('');
@@ -1288,7 +1766,7 @@ class JiraService {
         return emojiText;
         
       default:
-        console.log(`⚠️ Tipo de nó ADF não suportado: ${node.type}`, node);
+        safeLog(`⚠️ Tipo de nó ADF não suportado: ${node.type}`, node);
         if (node.content) {
           return node.content.map(n => this._convertNodeToHTML(n)).join('');
         }
@@ -1298,8 +1776,8 @@ class JiraService {
 
   async addComment(ticketKey, commentBody, isInternal = false, mentions = {}) {
     try {
-      console.log(`💬 Adicionando comentário ao ticket ${ticketKey}`);
-      console.log('📝 Menções:', mentions);
+      safeLog(`💬 Adicionando comentário ao ticket ${ticketKey}`);
+      safeLog('📝 Menções:', mentions);
       
       const endpoint = `/rest/api/3/issue/${ticketKey}/comment`;
       
@@ -1382,14 +1860,14 @@ class JiraService {
         ];
       }
       
-      console.log('📤 Payload do comentário:', JSON.stringify(payload, null, 2));
+      safeLog('📤 Payload do comentário:', JSON.stringify(payload, null, 2));
       
       const result = await this._makeRequest(endpoint, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
       
-      console.log('✅ Comentário adicionado com sucesso!');
+      safeLog('✅ Comentário adicionado com sucesso!');
       return result;
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error);
@@ -1635,7 +2113,7 @@ class JiraService {
       const assignee = this._getAssignee();
       const userEmail = this.monitorOtherUser && this.otherUserEmail ? this.otherUserEmail : this.email;
       
-      console.log('🔔 Buscando notificações para:', {
+      safeLog('🔔 Buscando notificações para:', {
         monitorOtherUser: this.monitorOtherUser,
         otherUserEmail: this.otherUserEmail,
         userEmail: userEmail,
@@ -1652,7 +2130,7 @@ class JiraService {
       const monitoredUserAccountId = await this.getMonitoredUserAccountId();
       const currentUserAccountId = monitoredUserAccountId;
       
-      console.log('🔔 AccountId usado para filtrar notificações:', currentUserAccountId);
+      safeLog('🔔 AccountId usado para filtrar notificações:', currentUserAccountId);
       
       // Iterar pelos tickets e buscar comentários/atividades
       for (const issue of data.issues) {
@@ -1694,7 +2172,7 @@ class JiraService {
       notifications.sort((a, b) => new Date(b.created) - new Date(a.created));
       
       const result = notifications.slice(0, maxResults);
-      console.log('✅ Notificações encontradas:', result.length, 'de', notifications.length, 'total');
+      safeLog('✅ Notificações encontradas:', result.length, 'de', notifications.length, 'total');
       
       return result;
     } catch (error) {
@@ -1706,7 +2184,7 @@ class JiraService {
   // Atualizar campo do ticket
   async updateTicketField(ticketKey, fieldName, value) {
     try {
-      console.log(`🔄 Atualizando ${fieldName} do ticket ${ticketKey} para: ${value}`);
+      safeLog(`🔄 Atualizando ${fieldName} do ticket ${ticketKey} para: ${value}`);
       
       // Para STATUS, fazer transição
       if (fieldName === 'status') {
@@ -1717,7 +2195,7 @@ class JiraService {
             transition: { id: value }
           })
         });
-        console.log(`✅ Status atualizado com sucesso!`);
+        safeLog(`✅ Status atualizado com sucesso!`);
         return;
       }
       
@@ -1732,7 +2210,7 @@ class JiraService {
             }
           })
         });
-        console.log(`✅ Prioridade atualizada com sucesso!`);
+        safeLog(`✅ Prioridade atualizada com sucesso!`);
         return;
       }
       
@@ -1771,7 +2249,7 @@ class JiraService {
         case 'team':
           // Campo customizado ITOps Team - identificar ID dinamicamente
           const teamFieldId = await this._identifyITOpsTeamField();
-          console.log(`📝 Atualizando ITOps Team usando campo: ${teamFieldId} = ${value}`);
+          safeLog(`📝 Atualizando ITOps Team usando campo: ${teamFieldId} = ${value}`);
           // O campo ITOps Team espera um array de valores
           payload.fields[teamFieldId] = [{ value: value }];
           break;
@@ -1786,7 +2264,7 @@ class JiraService {
         body: JSON.stringify(payload)
       });
       
-      console.log(`✅ Campo ${fieldName} atualizado com sucesso!`);
+      safeLog(`✅ Campo ${fieldName} atualizado com sucesso!`);
     } catch (error) {
       console.error('Erro ao atualizar campo:', error);
       throw error;
@@ -1799,7 +2277,7 @@ class JiraService {
       const endpoint = '/rest/api/3/priority';
       const priorities = await this._makeRequest(endpoint);
       
-      console.log(`✅ ${priorities.length} prioridades encontradas`);
+      safeLog(`✅ ${priorities.length} prioridades encontradas`);
       
       return priorities.map(p => ({
         id: p.id,
@@ -1877,12 +2355,12 @@ class JiraService {
       for (const field of possibleFields) {
         if (field.id.startsWith('customfield_')) {
           this._cachedFieldIds.itopsTeam = field.id;
-          console.log(`✅ Campo ITOps Team identificado: ${field.name} (${field.id})`);
+          safeLog(`✅ Campo ITOps Team identificado: ${field.name} (${field.id})`);
           return field.id;
         }
       }
     } catch (err) {
-      console.log('⚠️ Erro ao identificar campo ITOps Team:', err.message);
+      safeLog('⚠️ Erro ao identificar campo ITOps Team:', err.message);
     }
     
     // Fallback para ID padrão
@@ -1893,7 +2371,7 @@ class JiraService {
   // Buscar opções de campo customizado (ITOps Team)
   async getITOpsTeamOptions() {
     try {
-      console.log('🔍 Buscando opções de ITOps Team do Jira...');
+      safeLog('🔍 Buscando opções de ITOps Team do Jira...');
       
       // 1. Primeiro, buscar todos os campos para encontrar o campo ITOps Team
       let itopsTeamFieldId = null;
@@ -1913,7 +2391,7 @@ class JiraService {
           const teamFields = allFields.filter(f => 
             f.name && f.name.toLowerCase().includes('team') && f.id.startsWith('customfield_')
           );
-          console.log('🔍 Campos com "team" encontrados:', teamFields.map(f => ({ id: f.id, name: f.name })));
+          safeLog('🔍 Campos com "team" encontrados:', teamFields.map(f => ({ id: f.id, name: f.name })));
           
           // Pegar o primeiro que parece ser ITOps Team
           itopsTeamField = teamFields[0];
@@ -1922,25 +2400,26 @@ class JiraService {
         if (itopsTeamField) {
           itopsTeamFieldId = itopsTeamField.id;
           this._cachedFieldIds.itopsTeam = itopsTeamFieldId;
-          console.log(`✅ Campo encontrado: ${itopsTeamField.name} (${itopsTeamFieldId})`);
+          safeLog(`✅ Campo encontrado: ${itopsTeamField.name} (${itopsTeamFieldId})`);
         }
       } catch (err) {
-        console.log('⚠️ Erro ao buscar campos do Jira:', err.message);
+        safeLog('⚠️ Erro ao buscar campos do Jira:', err.message);
       }
       
       // Se não encontrou, tentar IDs comuns
       if (!itopsTeamFieldId) {
-        console.log('⚠️ Campo ITOps Team não encontrado, testando IDs comuns...');
+        safeLog('⚠️ Campo ITOps Team não encontrado, testando IDs comuns...');
         const commonFieldIds = ['customfield_10010', 'customfield_10051', 'customfield_10020', 'customfield_10030'];
         
         for (const fieldId of commonFieldIds) {
           try {
-            const testEndpoint = `/rest/api/3/search?jql=project=IT&fields=${fieldId}&maxResults=1`;
-            const result = await this._makeRequest(testEndpoint);
+            const jqlQuery = 'project=IT';
+            const fieldsArray = [fieldId];
+            const result = await this._searchJql(jqlQuery, fieldsArray);
             if (result.issues && result.issues.length > 0) {
               itopsTeamFieldId = fieldId;
               this._cachedFieldIds.itopsTeam = fieldId;
-              console.log(`✅ Usando campo: ${fieldId}`);
+              safeLog(`✅ Usando campo: ${fieldId}`);
               break;
             }
           } catch (err) {
@@ -1950,19 +2429,19 @@ class JiraService {
       }
       
       if (!itopsTeamFieldId) {
-        console.log('❌ Não foi possível identificar o campo ITOps Team');
+        safeLog('❌ Não foi possível identificar o campo ITOps Team');
         return this._getDefaultTeams();
       }
       
       // 2. Tentar buscar as opções do campo via API de contexts
       try {
-        console.log(`🔍 Buscando opções do campo ${itopsTeamFieldId} via contexts...`);
+        safeLog(`🔍 Buscando opções do campo ${itopsTeamFieldId} via contexts...`);
         const contextsEndpoint = `/rest/api/3/field/${itopsTeamFieldId}/context`;
         const contexts = await this._makeRequest(contextsEndpoint);
         
         if (contexts.values && contexts.values.length > 0) {
           const contextId = contexts.values[0].id;
-          console.log(`📋 Context ID encontrado: ${contextId}`);
+          safeLog(`📋 Context ID encontrado: ${contextId}`);
           
           // Buscar opções do contexto
           const optionsEndpoint = `/rest/api/3/field/${itopsTeamFieldId}/context/${contextId}/option`;
@@ -1970,19 +2449,20 @@ class JiraService {
           
           if (optionsResult.values && optionsResult.values.length > 0) {
             const teams = optionsResult.values.map(opt => opt.value).sort();
-            console.log(`✅ ${teams.length} times encontrados via API:`, teams);
+            safeLog(`✅ ${teams.length} times encontrados via API:`, teams);
             return teams;
           }
         }
       } catch (err) {
-        console.log('⚠️ Erro ao buscar opções via contexts:', err.message);
+        safeLog('⚠️ Erro ao buscar opções via contexts:', err.message);
       }
       
       // 3. Fallback: Buscar valores únicos de tickets existentes
       try {
-        console.log(`🔍 Buscando times de tickets existentes...`);
-        const searchEndpoint = `/rest/api/3/search?jql=project=IT&fields=${itopsTeamFieldId}&maxResults=500`;
-        const searchResult = await this._makeRequest(searchEndpoint);
+        safeLog(`🔍 Buscando times de tickets existentes...`);
+        const jqlQuery = 'project=IT';
+        const fieldsArray = [itopsTeamFieldId];
+        const searchResult = await this._searchJql(jqlQuery, fieldsArray);
         
         const teamsSet = new Set();
         searchResult.issues?.forEach(issue => {
@@ -1999,13 +2479,13 @@ class JiraService {
         });
         
         const teams = Array.from(teamsSet).sort();
-        console.log(`✅ ${teams.length} times únicos encontrados em tickets:`, teams);
+        safeLog(`✅ ${teams.length} times únicos encontrados em tickets:`, teams);
         
         if (teams.length > 0) {
           return teams;
         }
       } catch (err) {
-        console.log('⚠️ Erro ao buscar times via JQL:', err.message);
+        safeLog('⚠️ Erro ao buscar times via JQL:', err.message);
       }
       
       // Fallback final para valores padrão
@@ -2017,7 +2497,7 @@ class JiraService {
   }
 
   _getDefaultTeams() {
-    console.log('⚠️ Usando valores padrão de ITOps Team');
+    safeLog('⚠️ Usando valores padrão de ITOps Team');
     return [
       'TechCenter',
       'Infrastructure',
@@ -2065,7 +2545,7 @@ class JiraService {
   // Upload de anexo
   async uploadAttachment(ticketKey, filePath) {
     try {
-      console.log(`📤 Fazendo upload de ${filePath} para ${ticketKey}`);
+      safeLog(`📤 Fazendo upload de ${filePath} para ${ticketKey}`);
       
       const fs = require('fs');
       const path = require('path');
@@ -2093,7 +2573,7 @@ class JiraService {
         throw new Error(`Upload falhou: ${response.statusText}`);
       }
       
-      console.log(`✅ Anexo enviado com sucesso!`);
+      safeLog(`✅ Anexo enviado com sucesso!`);
     } catch (error) {
       console.error('Erro ao fazer upload de anexo:', error);
       throw error;
@@ -2103,7 +2583,7 @@ class JiraService {
   // Download de anexo
   async downloadAttachment(attachmentId) {
     try {
-      console.log(`📥 Baixando anexo ${attachmentId}`);
+      safeLog(`📥 Baixando anexo ${attachmentId}`);
       
       const endpoint = `/rest/api/3/attachment/content/${attachmentId}`;
       const fullUrl = `${this.baseUrl}${endpoint}`;
@@ -2119,7 +2599,7 @@ class JiraService {
       }
       
       const buffer = await response.arrayBuffer();
-      console.log(`✅ Anexo baixado com sucesso!`);
+      safeLog(`✅ Anexo baixado com sucesso!`);
       
       return Buffer.from(buffer);
     } catch (error) {

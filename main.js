@@ -10,11 +10,20 @@ let tray;
 
 // Criar janela principal
 function createWindow() {
-  // Restaurar posição e tamanho salvos ou usar padrão
-  const defaultBounds = { width: 420, height: 700, x: undefined, y: undefined };
+  // 1. Tentar carregar config.json primeiro para ter valores padrão do projeto
+  const projectConfigPath = path.join(__dirname, 'config.json');
+  let projectConfig = {};
+  if (fs.existsSync(projectConfigPath)) {
+    try {
+      projectConfig = JSON.parse(fs.readFileSync(projectConfigPath, 'utf8'));
+    } catch (e) {}
+  }
+
+  // 2. Restaurar posição e tamanho (Prioridade: Electron Store > config.json > Padrão)
+  const defaultBounds = projectConfig.windowBounds || { width: 420, height: 700, x: undefined, y: undefined };
   const savedBounds = store.get('windowBounds', defaultBounds);
   
-  console.log('📍 Posição carregada:', savedBounds);
+  console.log('📍 Posição carregada final:', savedBounds);
   
   const { screen } = require('electron');
   const displays = screen.getAllDisplays();
@@ -50,7 +59,7 @@ function createWindow() {
   }
   
   // Configurar ícone customizado
-  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const iconPath = path.join(__dirname, 'icon.png');
   const windowIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined;
   
   mainWindow = new BrowserWindow({
@@ -204,10 +213,18 @@ function createWindow() {
 
 // Criar ícone na bandeja do sistema
 function createTray() {
-  // Criar ícone simples para o tray (você pode substituir por um ícone real)
-  const trayIcon = nativeImage.createFromDataURL(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKcSURBVFhH7ZfPaxNBFMe/u5vdJLttmqYxadMfQVGLVRS0Xrx4ELx68OJF/wLxD/DiSfDgQRAv3kREUEQQxIOgIh5ERPBg8aAeVLDVNjZNm83u7szszvjebkqbtDG7iQdB/MDHZmfevPd9M2/e7AYALrjgggv+b2ia9kZRlJdarVZX13Xd0HV9QNf1QU3TBur1+n1FUd5qmvZGAIA8APzer7Caruu5SqXydXR09MH6+vq9ZrP5tNls3lxfX7+7urp6f2xs7F6pVPqq6/pAu90e0HU9D0BeAIBCoZAtl8ufJiYmnmxsbNxtNBqfAXwHUG8CawCW2u3289nZ2ffFYjELAHkBAFKp1MhsNvthamrqRaPR+Nxut+sANLs9tRbAEoBPy8vLd6empj7kcrmRdDo9IgBAJpN5PTU19aJWq33pdDoNwzBMAEZ3bZlGo/FpYWHh9dTU1NuRkZHXAgB4vd7xYrH4fnl5+U6r1foeQA6A74B/4u5/Xn755/Ly8u1isfje7/ePCwCQTqffzc3NvavVahV7LvSzVqvN2ft/l06n3wkA4Ha7R4vF4vvl5eVbaZpmV/8LmqY53O73QqHgEgAgkUi8mp+ff1WtVr8xxuxOj+E4jrPPv0wkEq8EAIhGo28XFxffVCqVH4wxv/8R9t5SqfQmGo2+FQAgGo2+XVhYeF0ul38ahlGxvyXHcQr7HrH33r8DAABYXFx8U6lUvhmGsQZABrDk8Xjm3G73nDOXy+WKxWKvBABIJBKv5ufnn1er1R+GYawCKHs8njmv1zvXL5fLFY/HXwkAEI/HX87Pzz+vVqs/DcNYBVByu93zXq933ilnv4/H4y8FAIhEIm/m5uae1mq1z4ZhrABYcrlcc16vd84pl8sVi8VeCADg9/uf2Oe1Wu2zYRgrAJZcLtec1+ud+5uyH/4PAAAAAElFTkSuQmCC'
-  );
+  // Usar o ícone customizado para o tray
+  const trayIconPath = path.join(__dirname, 'icon-tray.png');
+  let trayIcon;
+  
+  if (fs.existsSync(trayIconPath)) {
+    trayIcon = nativeImage.createFromPath(trayIconPath);
+  } else {
+    // Fallback para ícone padrão se não encontrar
+    trayIcon = nativeImage.createFromDataURL(
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKcSURBVFhH7ZfPaxNBFMe/u5vdJLttmqYxadMfQVGLVRS0Xrx4ELx68OJF/wLxD/DiSfDgQRAv3kREUEQQxIOgIh5ERPBg8aAeVLDVNjZNm83u7szszvjebkqbtDG7iQdB/MDHZmfevPd9M2/e7AYALrjgggv+b2ia9kZRlJdarVZX13Xd0HV9QNf1QU3TBur1+n1FUd5qmvZGAIA8APzer7Karuu5SqXydXR09MH6+vq9ZrP5tNls3lxfX7+7urp6f2xs7F6pVPqq6/pAu90e0HU9D0BeAIBCoZAtl8ufJiYmnmxsbNxtNBqfAXwHUG8CawCW2u3289nZ2ffFYjELAHkBAFKp1MhsNvthamrqRaPR+Nxut+sANLs9tRbAEoBPy8vLd6ampj7kcrmRdDo9IgBAJpN5PTU19aJWq33pdDoNwzBMAEZ3bZlGo/FpYWHh9dTU1NuRkZHXAgB4vd7xYrH4fnl5+U6r1foeQA6A74B/4u5/Xn555/Ly8u1isfje7/ePCwCQTqffzc3NvavVahV7LvSzVqvN2ft/l06n3wkA4Ha7R4vF4vvl5eVbaZpmV/8LmqY53O73QqHgEgAgkUi8mp+ff1WtVr8xxuxOj+E4jrPPv0wkEq8EAIhGo28XFxffVCqVH4wxv/8R9t5SqfQmGo2+FQAgGo2+XVhYeF0ul38ahlGxvyXHcQr7HrH33r8DAABYXFx8U6lUvhmGsQZABrDk8Xjm3G73nDOXy+WKxWKvBABIJBKv5ufnn1er1R+GYawCKHs8njmv1zvXL5fLFY/HXwkAEI/HX87Pzz+vVqs/DcNYBVByu93zXq933ilnv4/H4y8FAIhEIm/m5uae1mq1z4ZhrABYcrlcc16vd84pl8sVi8VeCADg9/uf2Oe1Wu2zYRgrAJZcLlec1+ud+5uyH/4PAAAAAElFTkSuQmCC'
+    );
+  }
   
   tray = new Tray(trayIcon);
   
@@ -461,13 +478,38 @@ function createJiraWebviewWindow(url, ticketKey) {
 
 // IPC Handlers
 ipcMain.handle('get-config', () => {
-  const config = store.store;
+  // 🔥 FIX: SEMPRE ler do config.json do projeto para evitar cache corrompido
+  const projectConfigPath = path.join(__dirname, 'config.json');
+  let projectConfig = {};
+  
+  if (fs.existsSync(projectConfigPath)) {
+    try {
+      const fileContent = fs.readFileSync(projectConfigPath, 'utf8');
+      projectConfig = JSON.parse(fileContent);
+      console.log('✅ Config lida do config.json do projeto');
+    } catch (err) {
+      console.error('❌ Erro ao ler config.json:', err.message);
+    }
+  }
+  
+  // Mesclar com Electron Store (PRIORIDADE para Electron Store agora)
+  const electronConfig = store.store;
+  const mergedConfig = {
+    ...projectConfig, // Valores do arquivo config.json
+    ...electronConfig // ✅ Electron Store sobrescreve config.json (preserva alterações do usuário)
+  };
+  
   console.log('📂 ========================================');
-  console.log('📂 CONFIG LIDA DO DISCO (electron-store)');
-  console.log('📂 Modo Pro lido:', config.proMode);
-  console.log('📂 Localização:', store.path);
+  console.log('📂 CONFIG MESCLADA (projeto + electron-store)');
+  console.log('📂 evaluatedTicketsSatisfactionField:', mergedConfig.evaluatedTicketsSatisfactionField);
+  console.log('📂 evaluatedTicketsMaxPages:', mergedConfig.evaluatedTicketsMaxPages);
+  console.log('📂 Tipo:', typeof mergedConfig.evaluatedTicketsSatisfactionField);
+  console.log('📂 É array?', Array.isArray(mergedConfig.evaluatedTicketsSatisfactionField));
+  console.log('📂 Modo Pro:', mergedConfig.proMode);
+  console.log('📂 Localização Electron Store:', store.path);
   console.log('📂 ========================================');
-  return config;
+  
+  return mergedConfig;
 });
 
 ipcMain.handle('save-config', (event, config) => {
@@ -524,10 +566,34 @@ ipcMain.handle('toggle-devtools', () => {
 });
 
 ipcMain.handle('close-window', (event) => {
-  // Fechar apenas a janela que enviou o comando, não o app inteiro
+  // 🔴 GRACEFUL SHUTDOWN - Fechar app completamente ao clicar no X
   const window = BrowserWindow.fromWebContents(event.sender);
-  if (window && !window.isDestroyed()) {
-    window.close();
+  
+  // Se for a janela principal, sair completamente do app
+  if (window === mainWindow) {
+    console.log('🔴 Fechando aplicação completamente...');
+    
+    // Salvar posição da janela antes de fechar
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const bounds = mainWindow.getBounds();
+      store.set('windowBounds', bounds);
+      console.log('💾 Posição final salva:', bounds);
+    }
+    
+    // Destruir todas as janelas
+    BrowserWindow.getAllWindows().forEach(w => {
+      if (!w.isDestroyed()) {
+        w.destroy();
+      }
+    });
+    
+    // Sair do aplicativo completamente
+    app.quit();
+  } else {
+    // Se for uma janela secundária, apenas fechá-la
+    if (window && !window.isDestroyed()) {
+      window.close();
+    }
   }
 });
 
@@ -987,7 +1053,7 @@ function createUserMonitorWindow(userEmail) {
   }
   
   // Usar o mesmo ícone customizado
-  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const iconPath = path.join(__dirname, 'icon.png');
   const windowIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined;
   
   const userWindow = new BrowserWindow({
@@ -1121,14 +1187,45 @@ function createUserMonitorWindow(userEmail) {
   return userWindow;
 }
 
-// Inicializar app
-app.whenReady().then(() => {
-  // Definir nome do app (força o nome no macOS)
-  app.setName('Jira Monitor');
+// 🔒 SINGLE INSTANCE LOCK - Prevenir múltiplas janelas
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Se já existe uma instância, não criar nova - apenas sair
+  console.log('⚠️ Aplicação já está em execução. Encerrando esta instância...');
+  app.quit();
+} else {
+  // Quando alguém tentar abrir uma segunda instância, focar na primeira
+  app.on('second-instance', () => {
+    console.log('🔍 Tentativa de abrir segunda instância - focando na janela principal');
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
   
-  createWindow();
-  createTray();
-});
+  // Inicializar app
+  app.whenReady().then(() => {
+    // Definir nome do app (força o nome no macOS)
+    app.setName('Jira Monitor');
+    
+    // Definir ícone do Dock no macOS
+    if (process.platform === 'darwin') {
+      const dockIconPath = path.join(__dirname, 'icon.png');
+      if (fs.existsSync(dockIconPath)) {
+        const dockIcon = nativeImage.createFromPath(dockIconPath);
+        app.dock.setIcon(dockIcon);
+        console.log('✅ Ícone do Dock configurado:', dockIconPath);
+      }
+    }
+    
+    createWindow();
+    // createTray(); // Desabilitado - ícone do tray removido
+  });
+}
 
 // Sair quando todas as janelas forem fechadas
 // Salvar posição antes de fechar o app (garante salvamento em Ctrl+C)

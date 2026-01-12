@@ -388,7 +388,7 @@ renderer.js → ipcRenderer.invoke('fetch-stats')
 main.js → jiraService.fetchStats(config)
 
 // 3. Jira Service busca na API
-jira-service.js → axios.post(jiraUrl + '/rest/api/3/search')
+jira-service.js → axios.post(jiraUrl + '/rest/api/3/search/jql')
 
 // 4. Resposta volta
 Jira API → jira-service.js → main.js → renderer.js
@@ -422,7 +422,7 @@ headers: {
 
 #### 1. Search (JQL)
 ```javascript
-POST /rest/api/3/search
+POST /rest/api/3/search/jql
 {
   "jql": "assignee = currentUser() AND resolution = Unresolved",
   "fields": [
@@ -789,7 +789,7 @@ Escrita (Modo Pro):
 ```javascript
 // Todas as comunicações são via HTTPS
 const jiraUrl = config.jiraUrl; // https://...
-axios.post(jiraUrl + '/rest/api/3/search', ...)
+axios.post(jiraUrl + '/rest/api/3/search/jql', ...)
 
 // Certificado SSL verificado automaticamente
 ```

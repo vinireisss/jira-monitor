@@ -210,7 +210,7 @@ screen                  Informações da tela
 ## Endpoints da API Jira Utilizados
 
 ```
-POST   /rest/api/3/search                       # Buscar tickets (JQL)
+POST   /rest/api/3/search/jql                   # Buscar tickets (JQL) - NOVO ENDPOINT OBRIGATÓRIO
 GET    /rest/api/3/filter/{filterId}            # Obter filtro
 GET    /rest/api/3/issue/{issueKey}             # Detalhes do ticket
 GET    /rest/api/3/issue/{issueKey}/editmeta    # Metadados de edição

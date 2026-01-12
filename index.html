@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="ux-enhancements.css">
   <link rel="stylesheet" href="performance-optimizations.css">
+  <link rel="stylesheet" href="custom-fixes.css">
   <script src="confetti.js"></script>
   <script src="i18n.js"></script>
 </head>
@@ -407,6 +408,75 @@
             <!-- Lista de tickets será inserida aqui -->
           </div>
         </div>
+
+        <!-- 📱 NOVA FILA: Tickets Pending SimCard (Filtro 52128) -->
+        <div class="stat-card stat-card-simcard" data-card-id="simcard" id="card-simcard">
+          <div class="stat-card-header">
+            <div class="stat-card-title-group">
+              <div class="stat-card-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path fill="currentColor" d="M19.5 6h-15C3.67 6 3 6.67 3 7.5v13c0 .83.67 1.5 1.5 1.5h15c.83 0 1.5-.67 1.5-1.5v-13c0-.83-.67-1.5-1.5-1.5zm-14 13h-1v-11h1v11zm2 0h-1v-11h1v11zm2 0h-1v-11h1v11zm2 0h-1v-11h1v11zm8 0h-7v-11h7v11z"/>
+                </svg>
+              </div>
+              <h3>Tickets Pending SimCard</h3>
+            </div>
+            <button class="expand-btn" data-card="simcard" title="Expandir">
+              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="stat-number" id="stat-simcard">0</div>
+          <div class="tickets-list" id="tickets-list-simcard" style="display: none;">
+            <!-- Lista de tickets será inserida aqui -->
+          </div>
+        </div>
+
+        <!-- 🤖 NOVA FILA: Tickets L0 Jira Bot (Queue 7631) -->
+        <div class="stat-card stat-card-l0bot" data-card-id="l0bot" id="card-l0bot">
+          <div class="stat-card-header">
+            <div class="stat-card-title-group">
+              <div class="stat-card-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path fill="currentColor" d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                </svg>
+              </div>
+              <h3>Tickets L0 Jira Bot</h3>
+            </div>
+            <button class="expand-btn" data-card="l0bot" title="Expandir">
+              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="stat-number" id="stat-l0bot">0</div>
+          <div class="tickets-list" id="tickets-list-l0bot" style="display: none;">
+            <!-- Lista de tickets será inserida aqui -->
+          </div>
+        </div>
+
+        <!-- 🎯 NOVA FILA: All L1 Open (Queue 3015) -->
+        <div class="stat-card stat-card-l1open" data-card-id="l1open" id="card-l1open">
+          <div class="stat-card-header">
+            <div class="stat-card-title-group">
+              <div class="stat-card-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
+              <h3>All L1 Open</h3>
+            </div>
+            <button class="expand-btn" data-card="l1open" title="Expandir">
+              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="stat-number" id="stat-l1open">0</div>
+          <div class="tickets-list" id="tickets-list-l1open" style="display: none;">
+            <!-- Lista de tickets será inserida aqui -->
+          </div>
+        </div>
       </div>
 
       <!-- Modo Pro -->
@@ -512,10 +582,32 @@
         <!-- Tickets Avaliados -->
         <div class="pro-section" id="evaluated-tickets-section">
           <h3 class="pro-section-title" data-i18n="pro.evaluated">✅ Tickets Avaliados</h3>
-          <div class="sim-cards-main">
-            <button class="custom-btn evaluated-tickets-count-btn" id="evaluated-tickets-count-btn">
-              <span class="btn-text" data-i18n="pro.lastEvaluated">Últimos Avaliados</span>
-              <span class="stat-number-inline" id="evaluated-tickets-count">0</span>
+          
+          <!-- Barra de Filtros por Estrelas -->
+          <div class="evaluated-filters" id="evaluated-filters">
+            <button class="filter-chip active" id="filter-all" data-rating="all" onclick="filterEvaluatedTicketsByRating(null)">
+              <span class="filter-label">Todos</span>
+              <span class="filter-count" id="count-all">0</span>
+            </button>
+            <button class="filter-chip" id="filter-5" data-rating="5" onclick="filterEvaluatedTicketsByRating(5)">
+              <span class="filter-label">⭐⭐⭐⭐⭐</span>
+              <span class="filter-count" id="count-5">0</span>
+            </button>
+            <button class="filter-chip" id="filter-4" data-rating="4" onclick="filterEvaluatedTicketsByRating(4)">
+              <span class="filter-label">⭐⭐⭐⭐</span>
+              <span class="filter-count" id="count-4">0</span>
+            </button>
+            <button class="filter-chip" id="filter-3" data-rating="3" onclick="filterEvaluatedTicketsByRating(3)">
+              <span class="filter-label">⭐⭐⭐</span>
+              <span class="filter-count" id="count-3">0</span>
+            </button>
+            <button class="filter-chip" id="filter-2" data-rating="2" onclick="filterEvaluatedTicketsByRating(2)">
+              <span class="filter-label">⭐⭐</span>
+              <span class="filter-count" id="count-2">0</span>
+            </button>
+            <button class="filter-chip" id="filter-1" data-rating="1" onclick="filterEvaluatedTicketsByRating(1)">
+              <span class="filter-label">⭐</span>
+              <span class="filter-count" id="count-1">0</span>
             </button>
             <button class="expand-btn-inline" id="expand-evaluated-tickets" title="Expandir">
               <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
@@ -523,6 +615,7 @@
               </svg>
             </button>
           </div>
+          
           <div class="tickets-list" id="tickets-list-evaluated-tickets" style="display: none;">
             <!-- Lista de tickets avaliados será inserida aqui -->
           </div>

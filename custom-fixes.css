@@ -1,0 +1,371 @@
+/* ========================================
+   🎨 CUSTOMIZAÇÕES ADICIONAIS - Jira Monitor
+   ======================================== */
+
+/* ========================================
+   HIDE SCROLLBARS (manter funcionalidade)
+   ======================================== */
+
+/* Hide scrollbars nas listas de tickets */
+.tickets-list,
+.recent-tickets-list,
+.trend-chart,
+.activity-detail-list,
+.custom-buttons-container,
+.daily-activity-details,
+.proactive-alerts-container,
+.performance-details,
+.recent-resolved-list {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+.tickets-list::-webkit-scrollbar,
+.recent-tickets-list::-webkit-scrollbar,
+.trend-chart::-webkit-scrollbar,
+.activity-detail-list::-webkit-scrollbar,
+.custom-buttons-container::-webkit-scrollbar,
+.daily-activity-details::-webkit-scrollbar,
+.proactive-alerts-container::-webkit-scrollbar,
+.performance-details::-webkit-scrollbar,
+.recent-resolved-list::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+}
+
+/* ========================================
+   FIX CARD COLORS - Tickets Recentes & Tendência
+   ======================================== */
+
+/* Garantir que os cards sigam o tema (remover fundo branco) */
+.recent-ticket-item {
+  background: var(--card-bg) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.recent-ticket-item:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  transform: translateX(4px);
+}
+
+.trend-chart {
+  background: var(--card-bg) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme adjustments */
+.app-container[data-theme="dark"] .recent-ticket-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-container[data-theme="dark"] .recent-ticket-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.app-container[data-theme="dark"] .trend-chart {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ========================================
+   AVATAR COM INICIAIS
+   ======================================== */
+
+/* Container do avatar ao lado de cada ticket */
+.ticket-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.ticket-avatar:hover {
+  transform: scale(1.1);
+}
+
+/* Variações de cores para diferentes usuários (baseado em hash) */
+.ticket-avatar[data-color="blue"] {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.ticket-avatar[data-color="green"] {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.ticket-avatar[data-color="orange"] {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.ticket-avatar[data-color="red"] {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.ticket-avatar[data-color="purple"] {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.ticket-avatar[data-color="pink"] {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+
+.ticket-avatar[data-color="cyan"] {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+.ticket-avatar[data-color="gray"] {
+  background: linear-gradient(135deg, #9ca3af 0%, #4b5563 100%);
+}
+
+/* Layout dos itens de ticket com avatar */
+.ticket-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  transition: background 0.2s;
+}
+
+.ticket-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Ajuste para telas pequenas */
+@media (max-width: 400px) {
+  .ticket-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+    margin-right: 6px;
+  }
+}
+
+/* ========================================
+   🆕 NOVOS CARDS DE FILAS DO JIRA
+   ======================================== */
+
+/* Card SimCard - 📱 Laranja/Âmbar */
+.stat-card-simcard {
+  border-left-color: #f59e0b;
+}
+
+.stat-card-simcard::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706) !important;
+}
+
+.stat-card-simcard .stat-card-icon {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.15)) !important;
+  color: #f59e0b !important;
+}
+
+.stat-card-simcard .stat-card-icon svg {
+  fill: currentColor !important;
+}
+
+.stat-card-simcard .stat-number {
+  color: #f59e0b;
+}
+
+/* Card L0 Jira Bot - 🤖 Roxo */
+.stat-card-l0bot {
+  border-left-color: #8b5cf6;
+}
+
+.stat-card-l0bot::before {
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed) !important;
+}
+
+.stat-card-l0bot .stat-card-icon {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.15)) !important;
+  color: #8b5cf6 !important;
+}
+
+.stat-card-l0bot .stat-card-icon svg {
+  fill: currentColor !important;
+}
+
+.stat-card-l0bot .stat-number {
+  color: #8b5cf6;
+}
+
+/* Card All L1 Open - 🎯 Verde */
+.stat-card-l1open {
+  border-left-color: #10b981;
+}
+
+.stat-card-l1open::before {
+  background: linear-gradient(90deg, #10b981, #059669) !important;
+}
+
+.stat-card-l1open .stat-card-icon {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.15)) !important;
+  color: #10b981 !important;
+}
+
+.stat-card-l1open .stat-card-icon svg {
+  fill: currentColor !important;
+}
+
+.stat-card-l1open .stat-number {
+  color: #10b981;
+}
+
+/* ========================================
+   🔧 FIX - Dropdown Monitorar Usuário
+   ======================================== */
+
+/* Corrigir posicionamento responsivo do dropdown */
+.user-monitor-dropdown {
+  position: absolute !important;
+  top: 50px !important;
+  right: 20px !important;
+  left: auto !important;
+  width: 320px !important;
+  max-width: calc(100vw - 40px) !important;
+  background: rgba(20, 20, 30, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  z-index: 1000 !important;
+  animation: slideDown 0.2s ease-out !important;
+}
+
+/* Ajuste responsivo para telas pequenas */
+@media (max-width: 450px) {
+  .user-monitor-dropdown {
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+/* Garantir que o dropdown não saia da tela */
+@media (max-width: 400px) {
+  .user-monitor-dropdown {
+    top: 48px !important;
+    left: 5px !important;
+    right: 5px !important;
+  }
+  
+  .user-monitor-dropdown-header h3 {
+    font-size: 14px !important;
+  }
+  
+  .user-item {
+    padding: 10px 12px !important;
+  }
+  
+  .add-user-btn {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* ========================================
+   🔧 FIX - Filtros de Tickets Avaliados (Remover fundo branco)
+   ======================================== */
+.filter-chip {
+  background: rgba(102, 126, 234, 0.15) !important;
+  border: 1px solid rgba(102, 126, 234, 0.3) !important;
+  color: #a3bffa !important;
+}
+
+.filter-chip .filter-count {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #a3bffa !important;
+}
+
+.filter-chip.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border-color: transparent !important;
+}
+
+.filter-chip.active .filter-count {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: white !important;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE DO HEADER (Ajuste Automático)
+   ======================================== */
+
+.header {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.header-left, .header-right {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+/* Quando a tela começa a ficar apertada */
+@media (max-width: 520px) {
+  .user-monitor-label {
+    max-width: 60px !important;
+  }
+}
+
+@media (max-width: 460px) {
+  .header {
+    padding: 8px 12px !important;
+  }
+  
+  .app-title {
+    font-size: 14px !important;
+  }
+
+  .user-monitor-btn {
+    min-width: 40px !important;
+    gap: 4px !important;
+  }
+
+  .user-monitor-label {
+    display: none !important;
+  }
+  
+  .header-right {
+    gap: 4px !important;
+  }
+
+  .connection-status {
+    margin-right: 4px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .app-title {
+    font-size: 0 !important; /* Esconde texto mas mantém ícone */
+  }
+  
+  .app-title svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .header-btn {
+    width: 30px !important;
+    height: 30px !important;
+  }
+}
+
+@media (max-width: 350px) {
+  /* Esconder botões secundários para não quebrar o layout */
+  #docs-btn, 
+  #toggle-layout-btn {
+    display: none !important;
+  }
+}
+
