@@ -4488,72 +4488,100 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
   if (!slaContainer) return;
   
   if (!slaInfo || (!slaInfo.timeToFirstResponse && !slaInfo.timeToResolution)) {
-    slaContainer.innerHTML = '<div style="color: rgba(255, 255, 255, 0.3); font-style: italic; font-size: 10px;">SLA não configurado</div>';
+    slaContainer.innerHTML = '<div style="color: #999; font-style: italic; font-size: 10px;">SLA não configurado</div>';
     return;
   }
   
-  let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
+  let html = '<div style="display: flex; flex-direction: column; gap: 4px;">';
   
-  // Time to First Response - Formato: Data à esquerda | Texto verde à direita
+  // Time to First Response
   if (slaInfo.timeToFirstResponse) {
     const sla = slaInfo.timeToFirstResponse;
     const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
     
     if (cycle) {
-      const breachTime = cycle.breachTime?.epochMillis;
       const remainingTime = cycle.remainingTime?.millis;
+      const elapsedTime = cycle.elapsedTime?.millis;
+      let emoji = '';
+      let color = '';
+      let text = '';
       
-      // Formatar data/hora
-      let dateTimeText = 'Sem prazo';
-      if (breachTime) {
-        const date = new Date(breachTime);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        dateTimeText = `${day}/${month}/${year} ${hours}:${minutes}`;
-      } else if (remainingTime && remainingTime > 0) {
-        dateTimeText = `${formatDuration(remainingTime)} restante`;
-      } else if (remainingTime && remainingTime < 0) {
-        dateTimeText = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+      if (sla.completedCycles && sla.completedCycles.length > 0) {
+        if (sla.completedCycles[0].breached) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado: ${formatDuration(elapsedTime)}`;
+        } else {
+          emoji = '✅';
+          color = '#10b981';
+          text = `OK: ${formatDuration(elapsedTime)}`;
+        }
+      } else if (remainingTime) {
+        if (remainingTime < 0) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+        } else if (remainingTime < 3600000) {
+          emoji = '🟠';
+          color = '#f59e0b';
+          text = `${formatDuration(remainingTime)} restante`;
+        } else {
+          emoji = '🟢';
+          color = '#10b981';
+          text = `${formatDuration(remainingTime)} restante`;
+        }
       }
       
-      html += `<div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: rgba(255, 255, 255, 0.6); font-size: 11px;">${dateTimeText}</span>
-        <span style="color: #2ecc71; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 0 8px rgba(46, 204, 113, 0.4);">TIME TO FIRST RESPONSE</span>
+      html += `<div style="display: flex; align-items: center; gap: 4px; font-size: 10px;">
+        <span>${emoji}</span>
+        <span style="color: ${color}; font-weight: 600;">First Response:</span>
+        <span style="color: #666;">${text}</span>
       </div>`;
     }
   }
   
-  // Time to Resolution - Formato: Data à esquerda | Texto verde à direita
+  // Time to Resolution
   if (slaInfo.timeToResolution) {
     const sla = slaInfo.timeToResolution;
     const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
     
     if (cycle) {
-      const breachTime = cycle.breachTime?.epochMillis;
       const remainingTime = cycle.remainingTime?.millis;
+      const elapsedTime = cycle.elapsedTime?.millis;
+      let emoji = '';
+      let color = '';
+      let text = '';
       
-      // Formatar data/hora
-      let dateTimeText = 'Sem prazo';
-      if (breachTime) {
-        const date = new Date(breachTime);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        dateTimeText = `${day}/${month}/${year} ${hours}:${minutes}`;
-      } else if (remainingTime && remainingTime > 0) {
-        dateTimeText = `${formatDuration(remainingTime)} restante`;
-      } else if (remainingTime && remainingTime < 0) {
-        dateTimeText = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+      if (sla.completedCycles && sla.completedCycles.length > 0) {
+        if (sla.completedCycles[0].breached) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado: ${formatDuration(elapsedTime)}`;
+        } else {
+          emoji = '✅';
+          color = '#10b981';
+          text = `OK: ${formatDuration(elapsedTime)}`;
+        }
+      } else if (remainingTime) {
+        if (remainingTime < 0) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+        } else if (remainingTime < 3600000) {
+          emoji = '🟠';
+          color = '#f59e0b';
+          text = `${formatDuration(remainingTime)} restante`;
+        } else {
+          emoji = '🟢';
+          color = '#10b981';
+          text = `${formatDuration(remainingTime)} restante`;
+        }
       }
       
-      html += `<div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: rgba(255, 255, 255, 0.6); font-size: 11px;">${dateTimeText}</span>
-        <span style="color: #2ecc71; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 0 8px rgba(46, 204, 113, 0.4);">TIME TO RESOLUTION</span>
+      html += `<div style="display: flex; align-items: center; gap: 4px; font-size: 10px;">
+        <span>${emoji}</span>
+        <span style="color: ${color}; font-weight: 600;">Resolution:</span>
+        <span style="color: #666;">${text}</span>
       </div>`;
     }
   }
