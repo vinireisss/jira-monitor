@@ -498,6 +498,10 @@ class JiraService {
         todayResolvedData: { total: todayResolvedData.issues?.length },
         allProjectsData: { total: allProjectsData.issues?.length }
       });
+      
+      safeLog('🔥🔥🔥 JQL FECHADOS HOJE:', todayResolvedJql);
+      safeLog('🔥🔥🔥 DATA DE HOJE:', todayStr);
+      safeLog('🔥🔥🔥 DATA DE ONTEM:', yesterdayStr);
 
       // 🔥 FILTRO DO LADO DO CLIENTE: Garantir que apenas tickets com status correto sejam contados
       // (bug da API Jira que retorna tickets com status diferentes)
@@ -569,9 +573,24 @@ class JiraService {
       startOfDay.setHours(0, 0, 0, 0);
       
       const allResolvedIssues = todayResolvedData.issues || [];
+      
+      safeLog('🔥🔥🔥 TODOS OS TICKETS RESOLVIDOS BUSCADOS:', allResolvedIssues.length);
+      if (allResolvedIssues.length > 0) {
+        safeLog('🔥🔥🔥 AMOSTRA DOS TICKETS:', allResolvedIssues.slice(0, 5).map(t => ({
+          key: t.key,
+          status: t.fields.status?.name,
+          resolutiondate: t.fields.resolutiondate,
+          created: t.fields.created
+        })));
+      }
+      
       const todayResolved = allResolvedIssues.filter(issue => {
         const resolutionDate = issue.fields.resolutiondate ? new Date(issue.fields.resolutiondate) : null;
-        return resolutionDate && resolutionDate >= startOfDay;
+        const isToday = resolutionDate && resolutionDate >= startOfDay;
+        if (resolutionDate) {
+          safeLog(`🔍 Ticket ${issue.key}: resolutionDate=${resolutionDate.toISOString()}, startOfDay=${startOfDay.toISOString()}, isToday=${isToday}`);
+        }
+        return isToday;
       });
       
       safeLog('🔍 DEBUG - Tickets fechados hoje:', {
