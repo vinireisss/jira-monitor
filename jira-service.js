@@ -464,7 +464,11 @@ class JiraService {
     const todayCreatedJql = `assignee = ${assignee} AND created >= "${todayStr}" ORDER BY created DESC`;
     
     // 🔥 Query para buscar tickets FECHADOS hoje (independente de quando foram criados)
-    const todayResolvedJql = `assignee = ${assignee} AND resolved >= "${todayStr}" ORDER BY resolved DESC`;
+    // Ajustar para timezone: pegar desde -1 dia para garantir que pegue tudo em qualquer fuso
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const todayResolvedJql = `assignee = ${assignee} AND resolutiondate >= "${yesterdayStr}" ORDER BY resolutiondate DESC`;
     
     // 🔥 Query para agrupar TODOS os projetos (não apenas IT)
     const allProjectsJql = `assignee = ${assignee} AND resolution = Unresolved AND status NOT IN ("Cancelled", "Canceled", "Cancelado", "Closed") ORDER BY updated DESC`;
@@ -560,8 +564,27 @@ class JiraService {
       // Tickets recebidos hoje = todos os tickets criados hoje (da query específica)
       const todayReceived = todayCreatedData.issues || [];
       
-      // 🔥 Tickets fechados hoje = usar query específica de tickets resolvidos hoje
-      const todayResolved = todayResolvedData.issues || [];
+      // 🔥 Tickets fechados hoje = filtrar apenas os que foram realmente resolvidos hoje
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const allResolvedIssues = todayResolvedData.issues || [];
+      const todayResolved = allResolvedIssues.filter(issue => {
+        const resolutionDate = issue.fields.resolutiondate ? new Date(issue.fields.resolutiondate) : null;
+        return resolutionDate && resolutionDate >= startOfDay;
+      });
+      
+      safeLog('🔍 DEBUG - Tickets fechados hoje:', {
+        totalBuscados: allResolvedIssues.length,
+        totalFiltradosHoje: todayResolved.length,
+        jql: todayResolvedJql,
+        tickets: todayResolved.map(t => ({
+          key: t.key,
+          status: t.fields.status?.name,
+          resolutiondate: t.fields.resolutiondate,
+          created: t.fields.created
+        }))
+      });
       
       safeLog('📊 Atividade diária calculada:', {
         recebidos: todayReceived.length,
