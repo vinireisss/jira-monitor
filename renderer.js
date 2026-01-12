@@ -3164,7 +3164,7 @@ async function loadProjectTickets(projectKey, container) {
             if (slaData && slaData.success) {
               updateTicketSlaDisplay(key, slaData.data);
             } else {
-              slaContainer.innerHTML = '<div style="color: #999; font-style: italic;">SLA não disponível</div>';
+              slaContainer.style.display = 'none';
             }
           } catch (err) {
             console.error(`Erro ao buscar SLA para ${key}:`, err);
@@ -3732,7 +3732,7 @@ function loadTicketsList(cardId) {
         if (slaData && slaData.success) {
           updateTicketSlaDisplay(key, slaData.data);
         } else {
-          slaContainer.innerHTML = '<div style="color: rgba(255, 255, 255, 0.3); font-style: italic; font-size: 10px;">SLA não disponível</div>';
+          slaContainer.style.display = 'none';
         }
       } catch (err) {
         console.error(`Erro ao buscar SLA para ${key}:`, err);
@@ -3868,7 +3868,7 @@ function loadSimCardsTicketsList() {
         if (slaData && slaData.success) {
           updateTicketSlaDisplay(key, slaData.data);
         } else {
-          slaContainer.innerHTML = '<div style="color: rgba(255, 255, 255, 0.3); font-style: italic; font-size: 10px;">SLA não disponível</div>';
+          slaContainer.style.display = 'none';
         }
       } catch (err) {
         console.error(`Erro ao buscar SLA para ${key}:`, err);
@@ -4531,8 +4531,9 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
   const slaContainer = document.getElementById(`sla-${ticketKey}`);
   if (!slaContainer) return;
   
+  // Se não houver SLA, esconder completamente a seção
   if (!slaInfo || (!slaInfo.timeToFirstResponse && !slaInfo.timeToResolution)) {
-    slaContainer.innerHTML = '<div style="color: #999; font-style: italic; font-size: 10px;">SLA não configurado</div>';
+    slaContainer.style.display = 'none';
     return;
   }
   
