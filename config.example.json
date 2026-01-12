@@ -11,6 +11,9 @@
   "proMode": false,
   "monitorOtherUser": false,
   "otherUserEmail": "",
+  "evaluatedTicketsJql": null,
+  "_comment_evaluatedTicketsSatisfactionField": "Campo(s) de avaliação. Use null para descoberta automática, uma string para campo único, ou array para múltiplos campos (ex: ['customfield_10120', 'customfield_30195', 'customfield_14628']). O sistema verifica em ordem e usa o primeiro com valor válido.",
+  "evaluatedTicketsSatisfactionField": null,
   "windowBounds": {
     "x": 100,
     "y": 100,

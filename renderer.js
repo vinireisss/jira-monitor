@@ -178,7 +178,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       proMode: isProMode,
       isHorizontalLayout: isHorizontalLayout,
       windowOpacity: windowOpacity,
-      focusMode: isFocusMode
+      focusMode: isFocusMode,
+      densityMode: densityMode
     };
     console.log('🚪 ========================================');
     console.log('🚪 FECHANDO APP - SALVANDO ESTADO FINAL');
@@ -358,6 +359,12 @@ async function loadConfig() {
       dailyActivity.lastReset = new Date().toDateString();
     }
     
+    // Restaurar modo de densidade
+    if (config.densityMode) {
+      densityMode = config.densityMode;
+      applyDensityMode(densityMode, false); // false para não mostrar toast no início
+    }
+    
     // Atualizar indicador de usuário monitorado
     updateMonitoredUserIndicator();
   } catch (error) {
@@ -394,6 +401,7 @@ async function saveConfig() {
       isHorizontalLayout: isHorizontalLayout,
       windowOpacity: windowOpacity,
       focusMode: isFocusMode,
+      densityMode: densityMode,
       accentColor: currentConfig.accentColor,
       themePreset: currentConfig.themePreset,
       clearedNotifications: currentConfig.clearedNotifications || [],
@@ -691,29 +699,42 @@ function applyTheme(theme) {
 
 // Modo de Densidade
 function toggleDensityMode() {
-  const container = document.querySelector('.app-container');
   const modes = ['default', 'compact', 'comfortable'];
   const currentIndex = modes.indexOf(densityMode);
   const nextIndex = (currentIndex + 1) % modes.length;
   densityMode = modes[nextIndex];
   
+  applyDensityMode(densityMode);
+  saveCurrentState(); // Salvar automaticamente
+}
+
+/**
+ * Aplica o modo de densidade visual
+ * @param {string} mode - 'default', 'compact' ou 'comfortable'
+ * @param {boolean} showNotification - Se deve mostrar o toast informativo
+ */
+function applyDensityMode(mode, showNotification = true) {
+  const container = document.querySelector('.app-container');
+  if (!container) return;
+
   // Remover classes anteriores
   container.classList.remove('density-compact', 'density-comfortable');
   
   // Adicionar nova classe
-  if (densityMode !== 'default') {
-    container.classList.add(`density-${densityMode}`);
+  if (mode !== 'default') {
+    container.classList.add(`density-${mode}`);
   }
   
-  // Mostrar toast com o modo atual
-  const modeNames = {
-    default: 'Padrão',
-    compact: 'Compacto',
-    comfortable: 'Confortável'
-  };
+  if (showNotification) {
+    const modeNames = {
+      default: 'Padrão',
+      compact: 'Compacto',
+      comfortable: 'Confortável'
+    };
+    showToast('Modo de Densidade', `Modo ${modeNames[mode] || mode} ativado`, 'info');
+  }
   
-  showToast('Modo de Densidade', `Modo ${modeNames[densityMode]} ativado`, 'info');
-  console.log('📐 Modo de densidade:', densityMode);
+  console.log('📐 Modo de densidade aplicado:', mode);
 }
 
 // Atualizar Mini Stats
@@ -1785,6 +1806,7 @@ async function saveCurrentState() {
       isHorizontalLayout: isHorizontalLayout,
       windowOpacity: windowOpacity,
       focusMode: isFocusMode,
+      densityMode: densityMode,
       dailyActivity: dailyActivity // Salvar atividade diária
     };
     
@@ -2547,7 +2569,16 @@ function updateUI(stats) {
   animateNumber('stat-customer', stats.waitingForCustomer || 0);
   animateNumber('stat-pending', stats.pending || 0);
   
-  console.log('✅ Números animados com sucesso');
+  // 🆕 NOVOS CARDS - Atualizar contadores
+  console.log('📊 Stats para Novos Cards:', {
+    simcard: stats.simcardPendingTickets?.count,
+    l0bot: stats.l0BotTickets?.count,
+    l1open: stats.l1OpenTickets?.count
+  });
+  
+  animateNumber('stat-simcard', stats.simcardPendingTickets?.count || 0);
+  animateNumber('stat-l0bot', stats.l0BotTickets?.count || 0);
+  animateNumber('stat-l1open', stats.l1OpenTickets?.count || 0);
   
   // Atualizar badges
   const slaBadge = document.getElementById('badge-sla');
@@ -2884,9 +2915,72 @@ function updateProModeSection(stats) {
     document.getElementById('sim-cards-count').textContent = stats.simCardsTickets.count || 0;
   }
   
-  // Tickets Avaliados
+  // =========================================================
+  // CORREÇÃO DOS TICKETS AVALIADOS (SOLUÇÃO DEFINITIVA)
+  // =========================================================
   if (stats.evaluatedTickets) {
-    document.getElementById('evaluated-tickets-count').textContent = stats.evaluatedTickets.count || 0;
+    // 🔥 FILTRO AGRESSIVO: Só aceita se a propriedade 'satisfaction' existir de fato.
+    // Se for 'undefined', o ticket foi resolvido mas NÃO foi avaliado.
+    const allTickets = stats.evaluatedTickets.tickets || [];
+    const ticketsValidos = allTickets.filter(t => 
+      t.satisfaction !== undefined && t.satisfaction !== null
+    );
+
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔍 FILTRO POR CAMPO SATISFACTION (Solução Definitiva)');
+    console.log(`📥 Total de tickets recebidos do backend: ${allTickets.length}`);
+    console.log(`✅ Tickets com avaliação real (satisfaction definido): ${ticketsValidos.length}`);
+    console.log(`❌ Tickets sem avaliação (satisfaction undefined): ${allTickets.length - ticketsValidos.length}`);
+    
+    if (ticketsValidos.length > 0) {
+      console.log('\n⭐ Amostra dos primeiros 3 tickets com avaliação:');
+      ticketsValidos.slice(0, 3).forEach((t, i) => {
+        const rating = t.satisfaction || t.ratingNumber;
+        console.log(`  ${i + 1}. ${t.key}: ${rating} estrelas (satisfaction: ${t.satisfaction})`);
+      });
+    }
+
+    // Contar por rating usando satisfaction ou ratingNumber como fallback
+    const counts = {
+      all: ticketsValidos.length,
+      5: ticketsValidos.filter(t => parseInt(t.satisfaction || t.ratingNumber) === 5).length,
+      4: ticketsValidos.filter(t => parseInt(t.satisfaction || t.ratingNumber) === 4).length,
+      3: ticketsValidos.filter(t => parseInt(t.satisfaction || t.ratingNumber) === 3).length,
+      2: ticketsValidos.filter(t => parseInt(t.satisfaction || t.ratingNumber) === 2).length,
+      1: ticketsValidos.filter(t => parseInt(t.satisfaction || t.ratingNumber) === 1).length
+    };
+    
+    console.log('\n📊 Distribuição por estrelas:');
+    console.log(`   ⭐⭐⭐⭐⭐ (5): ${counts[5]}`);
+    console.log(`   ⭐⭐⭐⭐ (4): ${counts[4]}`);
+    console.log(`   ⭐⭐⭐ (3): ${counts[3]}`);
+    console.log(`   ⭐⭐ (2): ${counts[2]}`);
+    console.log(`   ⭐ (1): ${counts[1]}`);
+    console.log(`   📦 TOTAL: ${counts.all}`);
+    console.log('═══════════════════════════════════════════════════════\n');
+    
+    // Atualizar os contadores nos botões de filtro
+    document.getElementById('count-all').textContent = counts.all;
+    document.getElementById('count-5').textContent = counts[5];
+    document.getElementById('count-4').textContent = counts[4];
+    document.getElementById('count-3').textContent = counts[3];
+    document.getElementById('count-2').textContent = counts[2];
+    document.getElementById('count-1').textContent = counts[1];
+    
+    // 🎨 Atualizar as barras do gráfico "Resumo de Avaliações"
+    const total = counts.all || 1;
+    [5, 4, 3, 2, 1].forEach(num => {
+      const bar = document.querySelector(`.rating-row[onclick*="(${num})"] .rating-bar-fill`);
+      const label = document.querySelector(`.rating-row[onclick*="(${num})"] .rating-count`);
+      if (bar && label) {
+        const percent = (counts[num] / total) * 100;
+        bar.style.width = `${percent}%`;
+        label.textContent = counts[num];
+      }
+    });
+    
+    // ✅ IMPORTANTE: Atualizar a lista de tickets para usar apenas os válidos
+    stats.evaluatedTickets.tickets = ticketsValidos;
   }
   
   // Projeto Stats
@@ -3023,6 +3117,7 @@ async function loadProjectTickets(projectKey, container) {
         const status = issue.fields.status.name;
         const priority = issue.fields.priority?.name || 'Sem prioridade';
         const updated = new Date(issue.fields.updated).toLocaleDateString('pt-BR');
+        const assigneeEmail = issue.fields.assignee?.emailAddress || '';
         
         // 🎨 Calcular status do SLA para tickets IT
         let slaStatus = '';
@@ -3054,16 +3149,22 @@ async function loadProjectTickets(projectKey, container) {
           }
         }
         
+        // 👤 Gerar avatar com iniciais
+        const avatarHTML = createAvatarHTML(assigneeEmail);
+        
         return `
           <div class="ticket-item" data-ticket-key="${key}" ${slaStatus ? `data-sla-status="${slaStatus}"` : ''}>
-            <div class="ticket-key-link">
-              <a href="https://nubank.atlassian.net/browse/${key}" target="_blank" onclick="event.stopPropagation()">${key}</a>
-            </div>
-            <div class="ticket-summary">${summary}</div>
-            <div class="ticket-meta">
-              <span class="ticket-status">${status}</span>
-              <span class="ticket-priority priority-${priority.toLowerCase().replace(/\s+/g, '-')}">${priority}</span>
-              <span class="ticket-updated">${updated}</span>
+            ${avatarHTML}
+            <div class="ticket-item-content">
+              <div class="ticket-key-link">
+                <a href="https://nubank.atlassian.net/browse/${key}" target="_blank" onclick="event.stopPropagation()">${key}</a>
+              </div>
+              <div class="ticket-summary">${summary}</div>
+              <div class="ticket-meta">
+                <span class="ticket-status">${status}</span>
+                <span class="ticket-priority priority-${priority.toLowerCase().replace(/\s+/g, '-')}">${priority}</span>
+                <span class="ticket-updated">${updated}</span>
+              </div>
             </div>
           </div>
         `;
@@ -3097,12 +3198,17 @@ function updateRecentTickets(tickets) {
   container.innerHTML = tickets.map(ticket => {
     const isNew = !viewedTickets.has(ticket.key);
     const newBadge = isNew ? '<span class="ticket-new-badge">NOVO</span>' : '';
+    const assigneeEmail = ticket.assignee?.emailAddress || '';
+    const avatarHTML = createAvatarHTML(assigneeEmail);
     
     return `
-      <div class="recent-ticket-item" data-ticket-key="${ticket.key}" style="position: relative;">
-        <div class="recent-ticket-key">${ticket.key} ${newBadge}</div>
-        <div class="recent-ticket-summary">${ticket.summary}</div>
-        <div class="recent-ticket-meta">${ticket.status} • ${getTimeAgo(ticket.updated)}</div>
+      <div class="recent-ticket-item" data-ticket-key="${ticket.key}" style="position: relative; display: flex; align-items: center; gap: 8px;">
+        ${avatarHTML}
+        <div style="flex: 1; min-width: 0;">
+          <div class="recent-ticket-key">${ticket.key} ${newBadge}</div>
+          <div class="recent-ticket-summary">${ticket.summary}</div>
+          <div class="recent-ticket-meta">${ticket.status} • ${getTimeAgo(ticket.updated)}</div>
+        </div>
         <div class="ticket-quick-actions">
           <button class="quick-action-btn" onclick="event.stopPropagation(); navigator.clipboard.writeText('${ticket.key}');" title="Copiar Key">
             <svg viewBox="0 0 24 24"><path fill="white" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
@@ -3177,7 +3283,7 @@ function openTrendDay(jql) {
 
 // Cards
 function setupCardListeners() {
-  const cards = ['total', 'support', 'customer', 'pending'];
+  const cards = ['total', 'support', 'customer', 'pending', 'simcard', 'l0bot', 'l1open'];
   cards.forEach(cardId => {
     const card = document.getElementById(`card-${cardId}`);
     
@@ -3273,6 +3379,21 @@ function openCardInJira(cardId) {
     case 'customer':
       jql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Waiting for Customer", "Aguardando Cliente")`;
       break;
+    case 'simcard':
+      // Abrir filtro 52128
+      url = 'https://nubank.atlassian.net/issues/?filter=52128';
+      ipcRenderer.invoke('open-url', url);
+      return;
+    case 'l0bot':
+      // Abrir queue 7631
+      url = 'https://nubank.atlassian.net/jira/servicedesk/projects/IT/queues/custom/7631';
+      ipcRenderer.invoke('open-url', url);
+      return;
+    case 'l1open':
+      // Abrir queue 3015
+      url = 'https://nubank.atlassian.net/jira/servicedesk/projects/IT/queues/custom/3015';
+      ipcRenderer.invoke('open-url', url);
+      return;
   }
   
   url = `${baseUrl}/issues/?jql=${encodeURIComponent(jql)}`;
@@ -3512,6 +3633,15 @@ function loadTicketsList(cardId) {
     case 'pending':
       tickets = currentStats.pendingTickets || [];
       break;
+    case 'simcard':
+      tickets = currentStats.simcardPendingTickets?.tickets || [];
+      break;
+    case 'l0bot':
+      tickets = currentStats.l0BotTickets?.tickets || [];
+      break;
+    case 'l1open':
+      tickets = currentStats.l1OpenTickets?.tickets || [];
+      break;
   }
   
   if (tickets.length === 0) {
@@ -3528,6 +3658,10 @@ function loadTicketsList(cardId) {
     const key = ticket.key;
     const summary = ticket.summary || ticket.fields?.summary || '';
     const status = ticket.status || ticket.fields?.status?.name || '';
+    const assigneeEmail = ticket.assignee?.emailAddress || ticket.fields?.assignee?.emailAddress || '';
+    
+    // 👤 Gerar avatar com iniciais
+    const avatarHTML = createAvatarHTML(assigneeEmail);
     
     // 🎨 Calcular status do SLA para tickets IT
     let slaStatus = '';
@@ -3564,9 +3698,12 @@ function loadTicketsList(cardId) {
     
     return `
       <div class="ticket-item" data-ticket-key="${key}" ${slaStatus ? `data-sla-status="${slaStatus}"` : ''}>
-        <div class="ticket-key">${key}</div>
-        <div class="ticket-summary">${summary}</div>
-        <div class="ticket-status">${status}</div>
+        ${avatarHTML}
+        <div class="ticket-item-content">
+          <div class="ticket-key">${key}</div>
+          <div class="ticket-summary">${summary}</div>
+          <div class="ticket-status">${status}</div>
+        </div>
       </div>
     `;
   }).join('');
@@ -3706,20 +3843,115 @@ function loadSimCardsTicketsList() {
 
 // Função para carregar lista de tickets Avaliados
 function loadEvaluatedTicketsTicketsList() {
+  const ticketsList = document.getElementById('tickets-list-evaluated-tickets');
+  
   if (!currentStats || !currentStats.evaluatedTickets) {
-    document.getElementById('tickets-list-evaluated-tickets').innerHTML = '<p style="color: #666; text-align: center; padding: 12px;">Nenhum ticket avaliado</p>';
+    ticketsList.innerHTML = '<p style="color: #666; text-align: center; padding: 12px;">Nenhum ticket avaliado</p>';
     return;
   }
   
-  const tickets = currentStats.evaluatedTickets.tickets || [];
-  const ticketsList = document.getElementById('tickets-list-evaluated-tickets');
+  const allTickets = currentStats.evaluatedTickets.tickets || [];
+  
+  // 🔍 DEBUG CRÍTICO: Mostrar primeiros 10 tickets BRUTOS do backend
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('🔥 DEBUG CRÍTICO - DADOS BRUTOS DO BACKEND');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log(`📥 Total de tickets recebidos do backend: ${allTickets.length}`);
+  console.log('\n🔍 PRIMEIROS 10 TICKETS (dados brutos):');
+  allTickets.slice(0, 10).forEach((ticket, idx) => {
+    console.log(`\n   ${idx + 1}. ${ticket.key}:`);
+    console.log(`      satisfaction: ${ticket.satisfaction} (tipo: ${typeof ticket.satisfaction})`);
+    console.log(`      ratingNumber: ${ticket.ratingNumber} (tipo: ${typeof ticket.ratingNumber})`);
+    console.log(`      ratingEmoji: ${ticket.ratingEmoji}`);
+    console.log(`      Objeto completo:`, JSON.stringify(ticket, null, 2));
+  });
+  
+  // 🔥 FILTRO: Garantir que estamos usando apenas tickets com satisfaction definido
+  const tickets = allTickets.filter(t => 
+    t.satisfaction !== undefined && t.satisfaction !== null
+  );
+  
+  console.log(`\n📊 APÓS FILTRO:`);
+  console.log(`✅ Tickets com avaliação válida (1-5): ${tickets.length}`);
+  console.log(`❌ Tickets filtrados (sem avaliação): ${allTickets.length - tickets.length}`);
   
   if (tickets.length === 0) {
+    console.log('⚠️ Nenhum ticket com avaliação válida!');
     ticketsList.innerHTML = '<p style="color: #888; text-align: center; padding: 20px; font-size: 14px;">📊 Nenhum ticket avaliado encontrado<br><span style="font-size: 12px; color: #666; margin-top: 8px; display: block;">Os tickets aparecem aqui quando você recebe avaliação do cliente</span></p>';
     return;
   }
   
-  ticketsList.innerHTML = tickets.map(ticket => {
+  // 🌟 NOVO: Calcular estatísticas de avaliações por estrelas
+  const ratingsStats = {
+    5: 0,
+    4: 0,
+    3: 0,
+    2: 0,
+    1: 0
+  };
+  
+  console.log('\n🔍 CONTANDO RATINGS:');
+  tickets.forEach((ticket, idx) => {
+    if (idx < 5) {
+      console.log(`   ${idx + 1}. ${ticket.key}: ratingNumber=${ticket.ratingNumber}, satisfaction=${ticket.satisfaction}`);
+    }
+    if (ticket.ratingNumber >= 1 && ticket.ratingNumber <= 5) {
+      ratingsStats[ticket.ratingNumber]++;
+    } else {
+      console.log(`   ⚠️  Ticket ${ticket.key} tem ratingNumber INVÁLIDO: ${ticket.ratingNumber}`);
+    }
+  });
+  
+  const totalRatings = Object.values(ratingsStats).reduce((sum, count) => sum + count, 0);
+  
+  console.log('\n📊 DISTRIBUIÇÃO FINAL:');
+  console.log(`   ⭐⭐⭐⭐⭐ (5): ${ratingsStats[5]}`);
+  console.log(`   ⭐⭐⭐⭐ (4): ${ratingsStats[4]}`);
+  console.log(`   ⭐⭐⭐ (3): ${ratingsStats[3]}`);
+  console.log(`   ⭐⭐ (2): ${ratingsStats[2]}`);
+  console.log(`   ⭐ (1): ${ratingsStats[1]}`);
+  console.log(`   📦 TOTAL: ${totalRatings}`);
+  console.log('═══════════════════════════════════════════════════════\n');
+  
+  // Gerar HTML do resumo de avaliações
+  const ratingsStatsHtml = totalRatings > 0 ? `
+    <div class="ratings-statistics" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px; color: white;">
+      <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <span>📊</span>
+        <span>Resumo de Avaliações</span>
+        <span style="font-size: 12px; font-weight: 400; opacity: 0.8;">(${totalRatings} ${totalRatings === 1 ? 'avaliação' : 'avaliações'} • Histórico completo)</span>
+      </h4>
+      <div class="ratings-breakdown">
+        ${[5, 4, 3, 2, 1].map(stars => {
+          const count = ratingsStats[stars];
+          const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
+          return `
+            <div class="rating-row" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer; padding: 6px; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'" onclick="filterEvaluatedTicketsByRating(${stars})">
+              <div class="rating-stars" style="min-width: 90px; display: flex; align-items: center; gap: 4px; font-size: 14px;">
+                <span style="color: #ffd700;">${'⭐'.repeat(stars)}</span>
+              </div>
+              <div class="rating-bar-container" style="flex: 1; height: 20px; background: rgba(255, 255, 255, 0.2); border-radius: 10px; overflow: hidden; position: relative;">
+                <div class="rating-bar-fill" style="height: 100%; width: ${percentage}%; background: linear-gradient(90deg, #ffd700 0%, #ffed4e 100%); border-radius: 10px; transition: width 0.3s ease;"></div>
+              </div>
+              <div class="rating-count" style="min-width: 45px; text-align: right; font-weight: 600; font-size: 16px;">
+                ${count}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.2); font-size: 12px; opacity: 0.9;">
+        <div style="text-align: center; margin-bottom: 8px;">💡 Clique em uma linha para filtrar os tickets</div>
+        <div style="display: flex; justify-content: center; gap: 16px; font-size: 11px; opacity: 0.8;">
+          <span>📋 ${tickets.length} ${tickets.length === 1 ? 'ticket' : 'tickets'}</span>
+          <span>⏰ Desde o início</span>
+        </div>
+      </div>
+    </div>
+  ` : '';
+  
+  // Gerar HTML da lista de tickets
+  const ticketsListHtml = tickets.map(ticket => {
     // Mostrar as estrelas da avaliação com número
     const starsHtml = ticket.ratingEmoji ? 
       `<div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
@@ -3728,7 +3960,7 @@ function loadEvaluatedTicketsTicketsList() {
       </div>` : '';
     
     return `
-      <div class="ticket-item" data-ticket-key="${ticket.key}">
+      <div class="ticket-item" data-ticket-key="${ticket.key}" data-rating="${ticket.ratingNumber || 0}">
         <div class="ticket-key">${ticket.key}</div>
         ${starsHtml}
         <div class="ticket-summary">${ticket.summary}</div>
@@ -3740,6 +3972,9 @@ function loadEvaluatedTicketsTicketsList() {
     `;
   }).join('');
   
+  // Combinar resumo + lista
+  ticketsList.innerHTML = ratingsStatsHtml + ticketsListHtml;
+  
   // Add event listeners to prevent propagation
   ticketsList.querySelectorAll('.ticket-item').forEach(item => {
     item.addEventListener('click', (e) => {
@@ -3747,6 +3982,68 @@ function loadEvaluatedTicketsTicketsList() {
       const ticketKey = item.getAttribute('data-ticket-key');
       openTicketPreview(ticketKey);
     });
+  });
+}
+
+// 🌟 NOVA FUNÇÃO: Filtrar tickets avaliados por número de estrelas
+let currentRatingFilter = null;
+
+function filterEvaluatedTicketsByRating(stars) {
+  if (!currentStats || !currentStats.evaluatedTickets) return;
+  
+  const ticketsList = document.getElementById('tickets-list-evaluated-tickets');
+  const allTickets = ticketsList.querySelectorAll('.ticket-item');
+  
+  // Atualizar filtro atual
+  currentRatingFilter = stars;
+  
+  // Remover 'active' de todos os botões de filtro
+  document.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  // Se stars é null, mostrar todos
+  if (stars === null) {
+    allTickets.forEach(ticket => {
+      ticket.style.display = '';
+    });
+    
+    // Ativar botão "Todos"
+    const allButton = document.getElementById('filter-all');
+    if (allButton) allButton.classList.add('active');
+    
+    // Remover destaque das barras (se existirem)
+    document.querySelectorAll('.rating-row').forEach(row => {
+      row.style.background = 'transparent';
+      row.style.opacity = '1';
+    });
+    
+    return;
+  }
+  
+  // Filtrar por rating específico
+  allTickets.forEach(ticket => {
+    const rating = parseInt(ticket.getAttribute('data-rating'));
+    if (rating === stars) {
+      ticket.style.display = '';
+    } else {
+      ticket.style.display = 'none';
+    }
+  });
+  
+  // Ativar o botão correspondente
+  const activeButton = document.getElementById(`filter-${stars}`);
+  if (activeButton) activeButton.classList.add('active');
+  
+  // Destacar a barra selecionada (se existir)
+  document.querySelectorAll('.rating-row').forEach((row, index) => {
+    const rowStars = 5 - index; // 5, 4, 3, 2, 1
+    if (rowStars === stars) {
+      row.style.background = 'rgba(255, 255, 255, 0.15)';
+      row.style.opacity = '1';
+    } else {
+      row.style.opacity = '0.5';
+    }
   });
 }
 
@@ -5941,6 +6238,47 @@ function getUserColor(email) {
   
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
   return colors[Math.abs(hash) % colors.length];
+}
+
+// 👤 AVATAR COM INICIAIS - Extrair iniciais do usuário
+function getUserInitials(username) {
+  if (!username) return '??';
+  
+  // Formato esperado: nome.sobrenome.empresa (ex: yanka.araujo.digisystem)
+  // Regra: pegar primeira letra do índice 0 e índice 1
+  const parts = username.split('.');
+  
+  if (parts.length >= 2) {
+    const firstInitial = parts[0].charAt(0).toUpperCase();
+    const secondInitial = parts[1].charAt(0).toUpperCase();
+    return firstInitial + secondInitial;
+  } else if (parts.length === 1) {
+    // Fallback: se só tiver 1 parte, pegar as 2 primeiras letras
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+  
+  return '??';
+}
+
+// 👤 GERAR HTML DO AVATAR COM INICIAIS
+function createAvatarHTML(assigneeEmail) {
+  if (!assigneeEmail) {
+    return '<div class="ticket-avatar" data-color="gray" title="Não atribuído">U</div>';
+  }
+  
+  // Extrair nome do usuário do email (antes do @)
+  const username = assigneeEmail.split('@')[0];
+  const initials = getUserInitials(username);
+  
+  // Gerar cor baseada no hash do email
+  const colorVariants = ['blue', 'green', 'orange', 'red', 'purple', 'pink', 'cyan'];
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const color = colorVariants[Math.abs(hash) % colorVariants.length];
+  
+  return `<div class="ticket-avatar" data-color="${color}" title="${assigneeEmail}">${initials}</div>`;
 }
 
 // 🔴 PRIORIDADE VISUAL NOS TICKETS
