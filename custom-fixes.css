@@ -3,6 +3,30 @@
    ======================================== */
 
 /* ========================================
+   🔧 FIX CRÍTICO - Garantir clicabilidade dos botões do header
+   ======================================== */
+
+/* Garantir que o glassmorphism overlay não bloqueie cliques */
+.app-container::before {
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Header deve ficar acima do glassmorphism */
+.header {
+  z-index: 1001 !important;
+  position: relative !important;
+}
+
+/* Todos os botões devem ser clicáveis */
+.header-btn {
+  position: relative !important;
+  z-index: 1003 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* ========================================
    HIDE SCROLLBARS (manter funcionalidade)
    ======================================== */
 
@@ -303,12 +327,36 @@
 
 .header {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible !important; /* CRÍTICO: Permitir dropdowns saírem do header */
+  z-index: 1001 !important; /* Garantir que fique acima do glassmorphism */
 }
 
 .header-left, .header-right {
   min-width: 0;
   flex-shrink: 1;
+  z-index: 1002 !important; /* Garantir que os botões sejam clicáveis */
+  position: relative;
+}
+
+/* CRÍTICO: Garantir que todos os botões do header sejam clicáveis */
+.header-btn {
+  position: relative !important;
+  z-index: 1003 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Garantir que SVGs dentro dos botões não bloqueiem cliques */
+.header-btn svg {
+  pointer-events: none !important;
+}
+
+/* Dropdowns devem ter z-index alto */
+.menu-dropdown,
+.user-monitor-dropdown,
+.notifications-preview,
+.docs-dropdown {
+  z-index: 2000 !important;
 }
 
 /* Quando a tela começa a ficar apertada */
