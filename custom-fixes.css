@@ -481,3 +481,137 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
+/* ========================================
+   🎨 FIX - Estilos do Preview de Ticket
+   ======================================== */
+
+/* Mudar fundo dos campos CRIADO e ATUALIZADO para estilo do STATUS */
+.ticket-info-item {
+  background: rgba(102, 126, 234, 0.08) !important;
+  border: 1px solid rgba(102, 126, 234, 0.15) !important;
+  transition: all 0.2s ease;
+}
+
+.ticket-info-item:hover {
+  background: rgba(102, 126, 234, 0.12) !important;
+  border-color: rgba(102, 126, 234, 0.25) !important;
+}
+
+.ticket-info-label {
+  color: #667eea !important;
+  font-weight: 700 !important;
+}
+
+.ticket-info-value {
+  color: var(--modal-text) !important;
+}
+
+/* Dark theme adjustments para ticket-info-item */
+.app-container[data-theme="dark"] .ticket-info-item {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+.app-container[data-theme="dark"] .ticket-info-item:hover {
+  background: rgba(139, 92, 246, 0.18) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
+.app-container[data-theme="dark"] .ticket-info-label {
+  color: #c4b5fd !important;
+}
+
+/* Campo de comentário com fundo cinza claro */
+.comment-textarea {
+  background: #f5f5f5 !important;
+  border: 1px solid #e0e0e0 !important;
+  color: #333 !important;
+  transition: all 0.2s ease;
+}
+
+.comment-textarea:focus {
+  background: #fafafa !important;
+  border-color: #667eea !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Dark theme para comment-textarea */
+.app-container[data-theme="dark"] .comment-textarea {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e0e0e0 !important;
+}
+
+.app-container[data-theme="dark"] .comment-textarea:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* Ajustar layout do comment-actions para não cobrir o checkbox */
+.comment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch !important;
+  margin-top: 12px !important;
+}
+
+.comment-checkbox {
+  order: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--modal-text-secondary);
+  padding: 8px 12px;
+  background: var(--modal-section-bg);
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.comment-checkbox:hover {
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.comment-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.comment-actions .btn-primary {
+  order: 2;
+  width: 100%;
+  padding: 12px 20px !important;
+  font-size: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.comment-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.comment-actions .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Dark theme para comment-actions */
+.app-container[data-theme="dark"] .comment-actions .btn-primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
+.app-container[data-theme="dark"] .comment-actions .btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5);
+}
+
