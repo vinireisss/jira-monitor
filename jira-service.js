@@ -1496,14 +1496,10 @@ class JiraService {
 
   async getTicketSla(ticketKey) {
     try {
-      safeLog(`📊 Buscando SLA para ticket: ${ticketKey}`);
       const slaResponse = await this._makeRequest(`/rest/servicedeskapi/request/${ticketKey}/sla`);
-      safeLog(`📊 Resposta SLA para ${ticketKey}:`, JSON.stringify(slaResponse, null, 2));
-      
       const slaData = slaResponse?.values || [];
       
       if (slaData.length === 0) {
-        safeLog(`⚠️ Nenhum SLA encontrado para ${ticketKey}`);
         return null;
       }
       
@@ -1511,7 +1507,6 @@ class JiraService {
       
       slaData.forEach(sla => {
         const slaName = sla.name.toLowerCase();
-        safeLog(`  📋 SLA encontrado: ${sla.name}`);
         
         if (slaName.includes('time to resolution')) {
           slaInfo.timeToResolution = {
@@ -1532,11 +1527,9 @@ class JiraService {
         }
       });
       
-      safeLog(`✅ SLA processado para ${ticketKey}:`, Object.keys(slaInfo));
       return Object.keys(slaInfo).length > 0 ? slaInfo : null;
     } catch (error) {
-      safeLog(`❌ Erro ao buscar SLA para ${ticketKey}:`, error.message);
-      safeLog(`   Status: ${error.response?.status}, Body:`, error.response?.data);
+      safeLog(`⚠️ Erro ao buscar SLA para ${ticketKey}:`, error.message);
       return null;
     }
   }

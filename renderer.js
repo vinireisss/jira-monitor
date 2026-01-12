@@ -4556,18 +4556,19 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
       let text = '';
       let dateTime = '';
       
-      // Formatar data/hora
-      if (cycle.startTime?.iso8601) {
-        const date = new Date(cycle.startTime.iso8601);
-        dateTime = date.toLocaleString('pt-BR', { 
-          day: '2-digit', 
-          month: '2-digit', 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-      }
-      
+      // Formatar data/hora - usar breachTime (quando vai estourar) ou stopTime (quando foi completado)
       if (sla.completedCycles && sla.completedCycles.length > 0) {
+        // SLA completado - mostrar quando foi resolvido
+        if (cycle.stopTime?.iso8601) {
+          const date = new Date(cycle.stopTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
         if (sla.completedCycles[0].breached) {
           emoji = '🔴';
           color = '#ef4444';
@@ -4578,6 +4579,17 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
           text = `OK: ${formatDuration(elapsedTime)}`;
         }
       } else if (remainingTime) {
+        // SLA em andamento - mostrar quando vai estourar (breachTime)
+        if (cycle.breachTime?.iso8601) {
+          const date = new Date(cycle.breachTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
         if (remainingTime < 0) {
           emoji = '🔴';
           color = '#ef4444';
@@ -4615,18 +4627,19 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
       let text = '';
       let dateTime = '';
       
-      // Formatar data/hora
-      if (cycle.startTime?.iso8601) {
-        const date = new Date(cycle.startTime.iso8601);
-        dateTime = date.toLocaleString('pt-BR', { 
-          day: '2-digit', 
-          month: '2-digit', 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-      }
-      
+      // Formatar data/hora - usar breachTime (quando vai estourar) ou stopTime (quando foi completado)
       if (sla.completedCycles && sla.completedCycles.length > 0) {
+        // SLA completado - mostrar quando foi resolvido
+        if (cycle.stopTime?.iso8601) {
+          const date = new Date(cycle.stopTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
         if (sla.completedCycles[0].breached) {
           emoji = '🔴';
           color = '#ef4444';
@@ -4637,6 +4650,17 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
           text = `OK: ${formatDuration(elapsedTime)}`;
         }
       } else if (remainingTime) {
+        // SLA em andamento - mostrar quando vai estourar (breachTime)
+        if (cycle.breachTime?.iso8601) {
+          const date = new Date(cycle.breachTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
         if (remainingTime < 0) {
           emoji = '🔴';
           color = '#ef4444';
