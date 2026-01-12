@@ -4554,6 +4554,18 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
       let emoji = '';
       let color = '';
       let text = '';
+      let dateTime = '';
+      
+      // Formatar data/hora
+      if (cycle.startTime?.iso8601) {
+        const date = new Date(cycle.startTime.iso8601);
+        dateTime = date.toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      }
       
       if (sla.completedCycles && sla.completedCycles.length > 0) {
         if (sla.completedCycles[0].breached) {
@@ -4585,6 +4597,7 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
         <span>${emoji}</span>
         <span style="color: ${color}; font-weight: 600;">First Response:</span>
         <span style="color: #666;">${text}</span>
+        ${dateTime ? `<span style="color: #999; margin-left: auto;">${dateTime}</span>` : ''}
       </div>`;
     }
   }
@@ -4600,6 +4613,18 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
       let emoji = '';
       let color = '';
       let text = '';
+      let dateTime = '';
+      
+      // Formatar data/hora
+      if (cycle.startTime?.iso8601) {
+        const date = new Date(cycle.startTime.iso8601);
+        dateTime = date.toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      }
       
       if (sla.completedCycles && sla.completedCycles.length > 0) {
         if (sla.completedCycles[0].breached) {
@@ -4631,6 +4656,7 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
         <span>${emoji}</span>
         <span style="color: ${color}; font-weight: 600;">Resolution:</span>
         <span style="color: #666;">${text}</span>
+        ${dateTime ? `<span style="color: #999; margin-left: auto;">${dateTime}</span>` : ''}
       </div>`;
     }
   }
