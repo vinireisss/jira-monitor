@@ -293,7 +293,8 @@ window.confetti.fireworks()  // Fogos de artifício! 🎆
 
 Problemas ou sugestões?
 - Abra uma issue no repositório
-- Entre em contato com a equipe
+- Entre em contato com a equipe:
+  - **Slack**: @GABS SILVA | @ya (Yanka Dantas)
 - Consulte: `TROUBLESHOOTING.md`
 
 ---
@@ -301,6 +302,8 @@ Problemas ou sugestões?
 **Aproveite o Jira Monitor v1.6.0!** 🎉
 
 _Desenvolvido com ❤️ para melhorar sua produtividade_
+
+
 
 
 

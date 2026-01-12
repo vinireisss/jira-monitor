@@ -127,6 +127,8 @@ O dropdown possui:
 
 **Versão**: 1.7.0  
 **Data**: Janeiro 2026  
-**Autor**: Jira Monitor Team
+**Autores**: Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya) - Jira Monitor Team
+
+
 
 

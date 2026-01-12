@@ -108,24 +108,42 @@ if ! command -v node &> /dev/null; then
     fi
 else
     NODE_VERSION=$(node --version)
+    NODE_MAJOR_VERSION=$(echo "$NODE_VERSION" | cut -d'.' -f1 | sed 's/v//')
     echo -e "${GREEN}✅ Node.js instalado: $NODE_VERSION${NC}"
     
-    # Verificar se é versão 20
-    if [[ ! "$NODE_VERSION" =~ ^v20\. ]]; then
-        echo -e "${YELLOW}⚠️  Recomendado: Node.js v20.x${NC}"
-        echo -e "${YELLOW}Versão atual: $NODE_VERSION${NC}"
+    # Verificar se é versão 20 ou superior
+    if [ "$NODE_MAJOR_VERSION" -lt 20 ]; then
+        echo -e "${RED}❌ Node.js v20+ é necessário!${NC}"
+        echo -e "${RED}Versão atual: $NODE_VERSION (muito antiga)${NC}"
         echo ""
         echo -e "${YELLOW}Deseja instalar Node.js v20 via nvm? [s/N]${NC}"
         read -r response
         if [[ "$response" =~ ^([sS][iI][mM]|[sS])$ ]]; then
+            # Verificar se nvm está disponível
             if command -v nvm &> /dev/null; then
                 nvm install 20
                 nvm use 20
                 nvm alias default 20
                 echo -e "${GREEN}✅ Node.js 20 instalado e ativado${NC}"
             else
-                echo -e "${YELLOW}⚠️  nvm não encontrado. Continue com a versão atual.${NC}"
+                echo -e "${YELLOW}⚠️  nvm não encontrado. Instalando nvm primeiro...${NC}"
+                curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+                export NVM_DIR="$HOME/.nvm"
+                [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                nvm install 20
+                nvm use 20
+                nvm alias default 20
+                echo -e "${GREEN}✅ nvm e Node.js 20 instalados${NC}"
             fi
+        else
+            echo -e "${RED}❌ Node.js v20+ é obrigatório. Abortando.${NC}"
+            exit 1
+        fi
+    elif [ "$NODE_MAJOR_VERSION" -ge 20 ]; then
+        echo -e "${GREEN}✅ Versão do Node compatível (v20+)${NC}"
+        if [ "$NODE_MAJOR_VERSION" -gt 20 ]; then
+            echo -e "${BLUE}ℹ️  Você tem Node.js v$NODE_MAJOR_VERSION (mais recente que v20)${NC}"
+            echo -e "${BLUE}ℹ️  Isso é compatível e funcionará perfeitamente!${NC}"
         fi
     fi
 fi

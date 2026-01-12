@@ -48,6 +48,9 @@ npm run build
 ./install.sh
 ```
 
+### Precisa de ajuda?
+- 💬 **Slack**: @GABS SILVA | @ya (Yanka Dantas)
+
 ---
 
 ## ✅ **Status Atual:**

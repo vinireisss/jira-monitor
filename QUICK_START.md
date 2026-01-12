@@ -144,7 +144,9 @@ Pressione `Cmd+L` para alternar para o modo barra horizontal (ideal para deixar 
 
 ## Suporte
 
-Encontrou algum problema? Abra uma issue no repositório ou entre em contato com o time de desenvolvimento.
+Encontrou algum problema? Abra uma issue no repositório ou entre em contato com o time de desenvolvimento:
+
+- **Slack**: @GABS SILVA | @ya (Yanka Dantas)
 
 ---
 

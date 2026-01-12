@@ -305,7 +305,7 @@ curl -fsSL https://raw.githubusercontent.com/gabinubank/jira-monitor/main/instal
 
 ---
 
-**Implementado por:** Gabriel Silva  
+**Implementado por:** Gabriel Silva (@GABS SILVA) & Yanka Dantas (@ya)  
 **Data:** 07/01/2026  
 **Versão:** 1.6.2
 

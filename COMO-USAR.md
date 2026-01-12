@@ -98,6 +98,9 @@ Se tiver problemas, verifique:
 2. nvm está configurado: `nvm current`
 3. Electron instalado: `ls node_modules/electron`
 
+**Contato:**
+- 💬 **Slack**: @GABS SILVA | @ya (Yanka Dantas)
+
 ---
 
 **Desenvolvido para Nubank ITOps** 🚀
