@@ -1494,6 +1494,46 @@ class JiraService {
   }
 
 
+  async getTicketSla(ticketKey) {
+    try {
+      const slaResponse = await this._makeRequest(`${this.baseUrl}/rest/servicedeskapi/request/${ticketKey}/sla`);
+      const slaData = slaResponse?.values || [];
+      
+      if (slaData.length === 0) {
+        return null;
+      }
+      
+      const slaInfo = {};
+      
+      slaData.forEach(sla => {
+        const slaName = sla.name.toLowerCase();
+        
+        if (slaName.includes('time to resolution')) {
+          slaInfo.timeToResolution = {
+            name: sla.name,
+            ongoingCycle: sla.ongoingCycle || null,
+            completedCycles: sla.completedCycles || [],
+            _links: sla._links
+          };
+        }
+        
+        if (slaName.includes('time to first response')) {
+          slaInfo.timeToFirstResponse = {
+            name: sla.name,
+            ongoingCycle: sla.ongoingCycle || null,
+            completedCycles: sla.completedCycles || [],
+            _links: sla._links
+          };
+        }
+      });
+      
+      return slaInfo;
+    } catch (error) {
+      safeLog(`⚠️ Erro ao buscar SLA para ${ticketKey}:`, error.message);
+      return null;
+    }
+  }
+
   async getTicketDetails(ticketKey) {
     try {
       const endpoint = `/rest/api/3/issue/${ticketKey}`;

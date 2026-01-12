@@ -3136,6 +3136,9 @@ async function loadProjectTickets(projectKey, container) {
                 <span class="ticket-priority priority-${priority.toLowerCase().replace(/\s+/g, '-')}">${priority}</span>
                 <span class="ticket-updated">${updated}</span>
               </div>
+              <div class="ticket-sla-info" id="sla-${key}" style="margin-top: 8px; font-size: 11px; color: #888;">
+                <div class="sla-loading">⏳ Carregando SLAs...</div>
+              </div>
             </div>
           </div>
         `;
@@ -3149,6 +3152,25 @@ async function loadProjectTickets(projectKey, container) {
             openTicketPreview(ticketKey);
           }
         });
+      });
+      
+      // Carregar SLAs de forma assíncrona para cada ticket
+      tickets.issues.forEach(async (issue) => {
+        const key = issue.key;
+        const slaContainer = document.getElementById(`sla-${key}`);
+        if (slaContainer) {
+          try {
+            const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
+            if (slaData && slaData.success) {
+              updateTicketSlaDisplay(key, slaData.data);
+            } else {
+              slaContainer.innerHTML = '<div style="color: #999; font-style: italic;">SLA não disponível</div>';
+            }
+          } catch (err) {
+            console.error(`Erro ao buscar SLA para ${key}:`, err);
+            slaContainer.innerHTML = '';
+          }
+        }
       });
     } else {
       container.innerHTML = '<div class="no-tickets">Nenhum ticket encontrado</div>';
@@ -4459,6 +4481,113 @@ function formatDuration(milliseconds) {
   }
   
   return `${seconds}s`;
+}
+
+function updateTicketSlaDisplay(ticketKey, slaInfo) {
+  const slaContainer = document.getElementById(`sla-${ticketKey}`);
+  if (!slaContainer) return;
+  
+  if (!slaInfo || (!slaInfo.timeToFirstResponse && !slaInfo.timeToResolution)) {
+    slaContainer.innerHTML = '<div style="color: #999; font-style: italic; font-size: 10px;">SLA não configurado</div>';
+    return;
+  }
+  
+  let html = '<div style="display: flex; flex-direction: column; gap: 4px;">';
+  
+  // Time to First Response
+  if (slaInfo.timeToFirstResponse) {
+    const sla = slaInfo.timeToFirstResponse;
+    const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+    
+    if (cycle) {
+      const remainingTime = cycle.remainingTime?.millis;
+      const elapsedTime = cycle.elapsedTime?.millis;
+      let emoji = '';
+      let color = '';
+      let text = '';
+      
+      if (sla.completedCycles && sla.completedCycles.length > 0) {
+        if (sla.completedCycles[0].breached) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado: ${formatDuration(elapsedTime)}`;
+        } else {
+          emoji = '✅';
+          color = '#10b981';
+          text = `OK: ${formatDuration(elapsedTime)}`;
+        }
+      } else if (remainingTime) {
+        if (remainingTime < 0) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+        } else if (remainingTime < 3600000) {
+          emoji = '🟠';
+          color = '#f59e0b';
+          text = `${formatDuration(remainingTime)} restante`;
+        } else {
+          emoji = '🟢';
+          color = '#10b981';
+          text = `${formatDuration(remainingTime)} restante`;
+        }
+      }
+      
+      html += `<div style="display: flex; align-items: center; gap: 4px; font-size: 10px;">
+        <span>${emoji}</span>
+        <span style="color: ${color}; font-weight: 600;">First Response:</span>
+        <span style="color: #666;">${text}</span>
+      </div>`;
+    }
+  }
+  
+  // Time to Resolution
+  if (slaInfo.timeToResolution) {
+    const sla = slaInfo.timeToResolution;
+    const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+    
+    if (cycle) {
+      const remainingTime = cycle.remainingTime?.millis;
+      const elapsedTime = cycle.elapsedTime?.millis;
+      let emoji = '';
+      let color = '';
+      let text = '';
+      
+      if (sla.completedCycles && sla.completedCycles.length > 0) {
+        if (sla.completedCycles[0].breached) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado: ${formatDuration(elapsedTime)}`;
+        } else {
+          emoji = '✅';
+          color = '#10b981';
+          text = `OK: ${formatDuration(elapsedTime)}`;
+        }
+      } else if (remainingTime) {
+        if (remainingTime < 0) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+        } else if (remainingTime < 3600000) {
+          emoji = '🟠';
+          color = '#f59e0b';
+          text = `${formatDuration(remainingTime)} restante`;
+        } else {
+          emoji = '🟢';
+          color = '#10b981';
+          text = `${formatDuration(remainingTime)} restante`;
+        }
+      }
+      
+      html += `<div style="display: flex; align-items: center; gap: 4px; font-size: 10px;">
+        <span>${emoji}</span>
+        <span style="color: ${color}; font-weight: 600;">Resolution:</span>
+        <span style="color: #666;">${text}</span>
+      </div>`;
+    }
+  }
+  
+  html += '</div>';
+  slaContainer.innerHTML = html;
 }
 
 async function loadAttachmentPreview(attachmentId) {
