@@ -6,6 +6,9 @@ const FormData = require('form-data');
 // 🔥 V9.0 - FIX CRÍTICO: Extração rigorosa de ratings (estava classificando todos como 5★)
 const JIRA_SERVICE_VERSION = 'v9.0-strict-rating-validation';
 
+// 🎛️ CONTROLE DE DEBUG: Altere para true para ver logs detalhados
+const DEBUG_MODE = false;
+
 // 🛡️ PROTEÇÃO GLOBAL: Ignorar erros EPIPE em stdout/stderr
 if (process.stdout) {
   process.stdout.on('error', (err) => {
@@ -25,6 +28,11 @@ if (process.stderr) {
 
 // 🛡️ Wrapper seguro para logs que previne crashes EPIPE (NUNCA chama a si mesmo)
 const safeLog = (...args) => {
+  // 🎛️ Se DEBUG_MODE está desativado, não loga nada
+  if (!DEBUG_MODE) {
+    return;
+  }
+
   // Se stdout não está disponível, não faz nada
   if (!process.stdout || process.stdout.destroyed || !process.stdout.writable) {
     return;
@@ -463,6 +471,9 @@ class JiraService {
     const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
     const todayCreatedJql = `assignee = ${assignee} AND created >= "${todayStr}" ORDER BY created DESC`;
     
+    // 🎯 Query para tickets RESOLVIDOS hoje (independente de quando foram criados)
+    const todayResolvedJql = `assignee = ${assignee} AND resolved >= "${todayStr}" ORDER BY resolved DESC`;
+    
     // 🔥 Query para agrupar TODOS os projetos (não apenas IT)
     const allProjectsJql = `assignee = ${assignee} AND resolution = Unresolved AND status NOT IN ("Cancelled", "Canceled", "Cancelado", "Closed") ORDER BY updated DESC`;
 
@@ -472,12 +483,13 @@ class JiraService {
       const baseFields = ['status', 'summary', 'key', 'updated', 'created', 'project', 'duedate', 'resolutiondate', 'assignee'];
       const allFields = [...baseFields, ...slaFields];
       
-      const [totalData, supportData, customerData, pendingData, todayCreatedData, allProjectsData] = await Promise.all([
+      const [totalData, supportData, customerData, pendingData, todayCreatedData, todayResolvedData, allProjectsData] = await Promise.all([
         this._searchJql(totalJql, allFields),
         this._searchJql(supportJql, [...baseFields, ...slaFields]),
         this._searchJql(customerJql, [...baseFields, ...slaFields]),
         this._searchJql(pendingJql, [...baseFields, ...slaFields]),
-        this._searchJql(todayCreatedJql, ['status', 'summary', 'key', 'created', 'resolutiondate', 'customfield_10123', 'customfield_10124']),
+        this._searchJql(todayCreatedJql, ['status', 'summary', 'key', 'created', 'resolutiondate', 'resolved', 'customfield_10123', 'customfield_10124']),
+        this._searchJql(todayResolvedJql, ['status', 'summary', 'key', 'created', 'resolutiondate', 'resolved', 'customfield_10123', 'customfield_10124']),
         this._searchJql(allProjectsJql, [...baseFields, ...slaFields])
       ]);
 
@@ -487,6 +499,7 @@ class JiraService {
         customerData: { total: customerData.issues?.length },
         pendingData: { total: pendingData.issues?.length },
         todayCreatedData: { total: todayCreatedData.issues?.length },
+        todayResolvedData: { total: todayResolvedData.issues?.length },
         allProjectsData: { total: allProjectsData.issues?.length }
       });
 
@@ -555,33 +568,29 @@ class JiraService {
       // Tickets recebidos hoje = todos os tickets criados hoje (da query específica)
       const todayReceived = todayCreatedData.issues || [];
       
-      // Tickets fechados hoje = filtrar os que foram resolvidos hoje
-      // Combinar totalData (tickets abertos) + todayCreatedData (pode ter fechados de hoje)
-      const allTicketsToCheck = [
-        ...totalData.issues,
-        ...todayCreatedData.issues
-      ];
-      
-      // Remover duplicatas e filtrar apenas os fechados hoje
-      const uniqueTickets = new Map();
-      allTicketsToCheck.forEach(issue => {
-        if (!uniqueTickets.has(issue.key)) {
-          uniqueTickets.set(issue.key, issue);
-        }
-      });
-      
-      const todayResolved = Array.from(uniqueTickets.values()).filter(issue => {
+      // ✅ Tickets fechados hoje = usar query específica de resolvidos
+      // Filtrar apenas tickets realmente fechados com validação dupla
+      const todayResolvedFiltered = (todayResolvedData.issues || []).filter(issue => {
         const resolutionDate = issue.fields.resolutiondate ? new Date(issue.fields.resolutiondate) : null;
+        const resolvedDate = issue.fields.resolved ? new Date(issue.fields.resolved) : null;
         const status = issue.fields.status?.name || '';
         const closedStatuses = ['Fechado', 'Closed', 'Resolvido', 'Resolved', 'Concluído', 'Concluido', 'Done'];
-        return resolutionDate && resolutionDate >= startOfDay && closedStatuses.includes(status);
+        
+        // Verificar se foi resolvido hoje E status está fechado
+        const wasResolvedToday = (resolutionDate && resolutionDate >= startOfDay) || 
+                                (resolvedDate && resolvedDate >= startOfDay);
+        return wasResolvedToday && closedStatuses.includes(status);
       });
       
       safeLog('📊 Atividade diária calculada:', {
         recebidos: todayReceived.length,
-        fechados: todayResolved.length,
+        fechados: todayResolvedFiltered.length,
         ticketsRecebidos: todayReceived.map(t => ({ key: t.key, created: t.fields.created })),
-        ticketsFechados: todayResolved.map(t => ({ key: t.key, resolved: t.fields.resolutiondate }))
+        ticketsFechados: todayResolvedFiltered.map(t => ({ 
+          key: t.key, 
+          resolved: t.fields.resolutiondate || t.fields.resolved,
+          status: t.fields.status?.name
+        }))
       });
 
       // Dados de tendência (implementaremos histórico real)
@@ -670,7 +679,7 @@ class JiraService {
         evaluatedTickets,
         // Dados de atividade diária (calculados dos tickets existentes)
         todayReceived: todayReceived,
-        todayResolved: todayResolved,
+        todayResolved: todayResolvedFiltered,
         todayComments: todayComments
       };
     } catch (error) {
