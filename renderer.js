@@ -4541,7 +4541,7 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
     return;
   }
   
-  let html = '<div style="display: flex; flex-direction: column; gap: 4px;">';
+  let html = '<div class="sla-container">';
   
   // Time to First Response
   if (slaInfo.timeToFirstResponse) {
@@ -4605,11 +4605,11 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
         }
       }
       
-      html += `<div style="display: flex; align-items: center; gap: 4px; font-size: 10px;">
-        <span>${emoji}</span>
-        <span style="color: ${color}; font-weight: 600;">First Response:</span>
-        <span style="color: #666;">${text}</span>
-        ${dateTime ? `<span style="color: #999; margin-left: auto;">${dateTime}</span>` : ''}
+      html += `<div class="sla-row">
+        <span class="sla-emoji">${emoji}</span>
+        <span class="sla-label" style="color: ${color}; font-weight: 600;">First Response:</span>
+        <span class="sla-status" style="color: #666;">${text}</span>
+        ${dateTime ? `<span class="sla-datetime" style="margin-left: auto;">${dateTime}</span>` : ''}
       </div>`;
     }
   }
@@ -4676,11 +4676,11 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
         }
       }
       
-      html += `<div style="display: flex; align-items: center; gap: 4px; font-size: 10px;">
-        <span>${emoji}</span>
-        <span style="color: ${color}; font-weight: 600;">Resolution:</span>
-        <span style="color: #666;">${text}</span>
-        ${dateTime ? `<span style="color: #999; margin-left: auto;">${dateTime}</span>` : ''}
+      html += `<div class="sla-row">
+        <span class="sla-emoji">${emoji}</span>
+        <span class="sla-label" style="color: ${color}; font-weight: 600;">Resolution:</span>
+        <span class="sla-status" style="color: #666;">${text}</span>
+        ${dateTime ? `<span class="sla-datetime" style="margin-left: auto;">${dateTime}</span>` : ''}
       </div>`;
     }
   }

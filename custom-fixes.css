@@ -3,6 +3,124 @@
    ======================================== */
 
 /* ========================================
+   📊 SLA DISPLAY - UX/UI MELHORADO
+   ======================================== */
+
+/* Container principal do SLA */
+.ticket-sla-info {
+  margin-top: 10px !important;
+  padding: 10px 12px !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%) !important;
+  border-radius: 8px !important;
+  border-left: 3px solid rgba(99, 102, 241, 0.4) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Container interno dos SLAs */
+.sla-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+/* Cada linha de SLA */
+.sla-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+  padding: 6px 8px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.sla-row:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  transform: translateX(2px) !important;
+}
+
+.sla-row:not(:last-child) {
+  margin-bottom: 4px !important;
+}
+
+/* Emoji do SLA */
+.sla-emoji {
+  font-size: 16px !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* Label do SLA (First Response / Resolution) */
+.sla-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  flex-shrink: 0 !important;
+  min-width: 100px !important;
+}
+
+/* Status do SLA (OK, Estourado, restante) */
+.sla-status {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  flex-grow: 1 !important;
+}
+
+/* Data/Hora do SLA */
+.sla-datetime {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Melhorar contraste das cores dos status */
+.sla-label[style*="color: #10b981"],
+.sla-label[style*="color: rgb(16, 185, 129)"] {
+  color: #34d399 !important; /* Verde mais vibrante */
+  text-shadow: 0 0 10px rgba(52, 211, 153, 0.5) !important;
+}
+
+.sla-label[style*="color: #f59e0b"],
+.sla-label[style*="color: rgb(245, 158, 11)"] {
+  color: #fbbf24 !important; /* Amarelo mais vibrante */
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5) !important;
+}
+
+.sla-label[style*="color: #ef4444"],
+.sla-label[style*="color: rgb(239, 68, 68)"] {
+  color: #f87171 !important; /* Vermelho mais vibrante */
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.5) !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .sla-label {
+    min-width: 80px !important;
+    font-size: 10px !important;
+  }
+  
+  .sla-datetime {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+  }
+  
+  .sla-status {
+    font-size: 11px !important;
+  }
+}
+
+/* ========================================
    🔧 FIX CRÍTICO - Garantir clicabilidade dos botões do header
    ======================================== */
 
