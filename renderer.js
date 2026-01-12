@@ -3696,6 +3696,9 @@ function loadTicketsList(cardId) {
           <div class="ticket-key">${key}</div>
           <div class="ticket-summary">${summary}</div>
           <div class="ticket-status">${status}</div>
+          <div class="ticket-sla-info" id="sla-${key}" style="margin-top: 8px; font-size: 11px; color: #888;">
+            <div class="sla-loading">⏳ Carregando SLAs...</div>
+          </div>
         </div>
       </div>
     `;
@@ -3717,6 +3720,25 @@ function loadTicketsList(cardId) {
       const ticketKey = item.getAttribute('data-ticket-key');
       openTicketPreview(ticketKey);
     });
+  });
+  
+  // Carregar SLAs de forma assíncrona para cada ticket
+  ticketsToRender.forEach(async (ticket) => {
+    const key = ticket.key;
+    const slaContainer = document.getElementById(`sla-${key}`);
+    if (slaContainer) {
+      try {
+        const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
+        if (slaData && slaData.success) {
+          updateTicketSlaDisplay(key, slaData.data);
+        } else {
+          slaContainer.innerHTML = '<div style="color: rgba(255, 255, 255, 0.3); font-style: italic; font-size: 10px;">SLA não disponível</div>';
+        }
+      } catch (err) {
+        console.error(`Erro ao buscar SLA para ${key}:`, err);
+        slaContainer.innerHTML = '';
+      }
+    }
   });
 }
 
@@ -3820,6 +3842,9 @@ function loadSimCardsTicketsList() {
         <div class="ticket-key">${ticket.key}</div>
         <div class="ticket-summary">${ticket.summary}</div>
         <div class="ticket-status">${ticket.status}</div>
+        <div class="ticket-sla-info" id="sla-${ticket.key}" style="margin-top: 8px; font-size: 11px; color: #888;">
+          <div class="sla-loading">⏳ Carregando SLAs...</div>
+        </div>
       </div>
     `;
   }).join('');
@@ -3831,6 +3856,25 @@ function loadSimCardsTicketsList() {
       const ticketKey = item.getAttribute('data-ticket-key');
       openTicketPreview(ticketKey);
     });
+  });
+  
+  // Carregar SLAs de forma assíncrona para cada ticket
+  tickets.forEach(async (ticket) => {
+    const key = ticket.key;
+    const slaContainer = document.getElementById(`sla-${key}`);
+    if (slaContainer) {
+      try {
+        const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
+        if (slaData && slaData.success) {
+          updateTicketSlaDisplay(key, slaData.data);
+        } else {
+          slaContainer.innerHTML = '<div style="color: rgba(255, 255, 255, 0.3); font-style: italic; font-size: 10px;">SLA não disponível</div>';
+        }
+      } catch (err) {
+        console.error(`Erro ao buscar SLA para ${key}:`, err);
+        slaContainer.innerHTML = '';
+      }
+    }
   });
 }
 
