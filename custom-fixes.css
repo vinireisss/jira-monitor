@@ -3,6 +3,94 @@
    ======================================== */
 
 /* ========================================
+   🎨 SELETOR DE COR PERSONALIZADA
+   ======================================== */
+
+.custom-color-picker-wrapper {
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.custom-color-label {
+  display: block !important;
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  margin-bottom: 10px !important;
+  font-weight: 500 !important;
+}
+
+.custom-color-input-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.custom-color-input {
+  width: 60px !important;
+  height: 40px !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  transition: all 0.3s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.custom-color-input:hover {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2) !important;
+}
+
+.custom-color-input::-webkit-color-swatch-wrapper {
+  padding: 4px !important;
+  border-radius: 6px !important;
+}
+
+.custom-color-input::-webkit-color-swatch {
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+.custom-color-input::-moz-color-swatch {
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+.apply-custom-color-btn {
+  flex: 1 !important;
+  padding: 10px 16px !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
+  border: 1px solid rgba(99, 102, 241, 0.4) !important;
+  border-radius: 8px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.apply-custom-color-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%) !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+.apply-custom-color-btn:active {
+  transform: translateY(0) !important;
+}
+
+.apply-custom-color-btn span {
+  letter-spacing: 0.5px !important;
+}
+
+/* ========================================
    📊 SLA DISPLAY - UX/UI MELHORADO
    ======================================== */
 

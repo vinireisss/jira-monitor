@@ -6403,6 +6403,20 @@ function applyAccentColor(color, showNotification = false) {
   }
 }
 
+// Função para aplicar cor personalizada do color picker
+function applyCustomColor() {
+  const colorInput = document.getElementById('customColorPicker');
+  if (colorInput && colorInput.value) {
+    const customColor = colorInput.value;
+    console.log('🎨 Aplicando cor personalizada:', customColor);
+    applyAccentColor(customColor, true);
+  }
+}
+
+// Expor para uso global
+window.applyCustomColor = applyCustomColor;
+window.applyAccentColor = applyAccentColor;
+
 function applyThemePreset(theme, showNotification = false) {
   console.log('🎨 Aplicando tema preset:', theme);
   
