@@ -47,3 +47,34 @@ release/
 # Lock files (manter apenas package-lock.json)
 yarn.lock
 pnpm-lock.yaml
+
+# Arquivos de teste e debug
+test-*.js
+*-result.json
+diagnostico-*.js
+inspect-*.js
+forensic-*.log
+
+# Backups
+*.backup
+*.bak
+*.bak2
+*.bak3
+*-before-*
+
+# Scripts temporários
+patch-*.js
+fix-*.js
+force-*.sh
+restart-*.sh
+substituir-*.js
+substituir-*.sh
+quick-test.sh
+hard-restart.sh
+start-nocache.sh
+evaluated-tickets-fix.js
+find-first-3-or-4.js
+
+# Arquivos auxiliares temporários
+_*.js
+config.example-tickets-avaliados.json

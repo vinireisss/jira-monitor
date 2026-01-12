@@ -678,6 +678,18 @@ ipcMain.handle('get-ticket-details', async (event, ticketKey) => {
   }
 });
 
+// Buscar SLA do ticket
+ipcMain.handle('get-ticket-sla', async (event, ticketKey) => {
+  try {
+    const service = getJiraService();
+    const slaData = await service.getTicketSla(ticketKey);
+    return { success: true, data: slaData };
+  } catch (error) {
+    console.error(`❌ [IPC] Erro ao buscar SLA do ticket ${ticketKey}:`, error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Atualizar campo do ticket
 ipcMain.handle('update-ticket-field', async (event, { ticketKey, fieldName, value }) => {
   try {

@@ -3,6 +3,236 @@
    ======================================== */
 
 /* ========================================
+   🎨 SELETOR DE COR PERSONALIZADA
+   ======================================== */
+
+.custom-color-picker-wrapper {
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.custom-color-label {
+  display: block !important;
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  margin-bottom: 10px !important;
+  font-weight: 500 !important;
+}
+
+.custom-color-input-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.custom-color-input {
+  width: 60px !important;
+  height: 40px !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  transition: all 0.3s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.custom-color-input:hover {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2) !important;
+}
+
+.custom-color-input::-webkit-color-swatch-wrapper {
+  padding: 4px !important;
+  border-radius: 6px !important;
+}
+
+.custom-color-input::-webkit-color-swatch {
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+.custom-color-input::-moz-color-swatch {
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+.apply-custom-color-btn {
+  flex: 1 !important;
+  padding: 10px 16px !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
+  border: 1px solid rgba(99, 102, 241, 0.4) !important;
+  border-radius: 8px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.apply-custom-color-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%) !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+.apply-custom-color-btn:active {
+  transform: translateY(0) !important;
+}
+
+.apply-custom-color-btn span {
+  letter-spacing: 0.5px !important;
+}
+
+/* ========================================
+   📊 SLA DISPLAY - UX/UI MELHORADO
+   ======================================== */
+
+/* Container principal do SLA */
+.ticket-sla-info {
+  margin-top: 10px !important;
+  padding: 10px 12px !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%) !important;
+  border-radius: 8px !important;
+  border-left: 3px solid rgba(99, 102, 241, 0.4) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Container interno dos SLAs */
+.sla-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+/* Cada linha de SLA */
+.sla-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+  padding: 6px 8px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.sla-row:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  transform: translateX(2px) !important;
+}
+
+.sla-row:not(:last-child) {
+  margin-bottom: 4px !important;
+}
+
+/* Emoji do SLA */
+.sla-emoji {
+  font-size: 16px !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* Label do SLA (First Response / Resolution) */
+.sla-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  flex-shrink: 0 !important;
+  min-width: 100px !important;
+}
+
+/* Status do SLA (OK, Estourado, restante) */
+.sla-status {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  flex-grow: 1 !important;
+}
+
+/* Data/Hora do SLA */
+.sla-datetime {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Melhorar contraste das cores dos status */
+.sla-label[style*="color: #10b981"],
+.sla-label[style*="color: rgb(16, 185, 129)"] {
+  color: #34d399 !important; /* Verde mais vibrante */
+  text-shadow: 0 0 10px rgba(52, 211, 153, 0.5) !important;
+}
+
+.sla-label[style*="color: #f59e0b"],
+.sla-label[style*="color: rgb(245, 158, 11)"] {
+  color: #fbbf24 !important; /* Amarelo mais vibrante */
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5) !important;
+}
+
+.sla-label[style*="color: #ef4444"],
+.sla-label[style*="color: rgb(239, 68, 68)"] {
+  color: #f87171 !important; /* Vermelho mais vibrante */
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.5) !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .sla-label {
+    min-width: 80px !important;
+    font-size: 10px !important;
+  }
+  
+  .sla-datetime {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+  }
+  
+  .sla-status {
+    font-size: 11px !important;
+  }
+}
+
+/* ========================================
+   🔧 FIX CRÍTICO - Garantir clicabilidade dos botões do header
+   ======================================== */
+
+/* Garantir que o glassmorphism overlay não bloqueie cliques */
+.app-container::before {
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Header deve ficar acima do glassmorphism */
+.header {
+  z-index: 1001 !important;
+  position: relative !important;
+}
+
+/* Todos os botões devem ser clicáveis */
+.header-btn {
+  position: relative !important;
+  z-index: 1003 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* ========================================
    HIDE SCROLLBARS (manter funcionalidade)
    ======================================== */
 
@@ -303,12 +533,36 @@
 
 .header {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible !important; /* CRÍTICO: Permitir dropdowns saírem do header */
+  z-index: 1001 !important; /* Garantir que fique acima do glassmorphism */
 }
 
 .header-left, .header-right {
   min-width: 0;
   flex-shrink: 1;
+  z-index: 1002 !important; /* Garantir que os botões sejam clicáveis */
+  position: relative;
+}
+
+/* CRÍTICO: Garantir que todos os botões do header sejam clicáveis */
+.header-btn {
+  position: relative !important;
+  z-index: 1003 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Garantir que SVGs dentro dos botões não bloqueiem cliques */
+.header-btn svg {
+  pointer-events: none !important;
+}
+
+/* Dropdowns devem ter z-index alto */
+.menu-dropdown,
+.user-monitor-dropdown,
+.notifications-preview,
+.docs-dropdown {
+  z-index: 2000 !important;
 }
 
 /* Quando a tela começa a ficar apertada */
@@ -367,5 +621,203 @@
   #toggle-layout-btn {
     display: none !important;
   }
+}
+
+/* ========================================
+   📊 SLA STATUS COLORS
+   ======================================== */
+
+.sla-item {
+  border-left: 3px solid transparent;
+  padding-left: 12px !important;
+  transition: all 0.2s ease;
+}
+
+.sla-ok {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-ok) {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.sla-warning {
+  color: #f59e0b !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-warning) {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.sla-breached {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-breached) {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.sla-met {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-met) {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Dark theme adjustments */
+.app-container[data-theme="dark"] .sla-item:has(.sla-ok),
+.app-container[data-theme="dark"] .sla-item:has(.sla-met) {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.app-container[data-theme="dark"] .sla-item:has(.sla-warning) {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.app-container[data-theme="dark"] .sla-item:has(.sla-breached) {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ========================================
+   🎨 FIX - Estilos do Preview de Ticket
+   ======================================== */
+
+/* Mudar fundo dos campos CRIADO e ATUALIZADO para estilo do STATUS */
+.ticket-info-item {
+  background: rgba(102, 126, 234, 0.08) !important;
+  border: 1px solid rgba(102, 126, 234, 0.15) !important;
+  transition: all 0.2s ease;
+}
+
+.ticket-info-item:hover {
+  background: rgba(102, 126, 234, 0.12) !important;
+  border-color: rgba(102, 126, 234, 0.25) !important;
+}
+
+.ticket-info-label {
+  color: #667eea !important;
+  font-weight: 700 !important;
+}
+
+.ticket-info-value {
+  color: var(--modal-text) !important;
+}
+
+/* Dark theme adjustments para ticket-info-item */
+.app-container[data-theme="dark"] .ticket-info-item {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+.app-container[data-theme="dark"] .ticket-info-item:hover {
+  background: rgba(139, 92, 246, 0.18) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
+.app-container[data-theme="dark"] .ticket-info-label {
+  color: #c4b5fd !important;
+}
+
+/* Campo de comentário com fundo cinza claro */
+.comment-textarea {
+  background: #f5f5f5 !important;
+  border: 1px solid #e0e0e0 !important;
+  color: #333 !important;
+  transition: all 0.2s ease;
+}
+
+.comment-textarea:focus {
+  background: #fafafa !important;
+  border-color: #667eea !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Dark theme para comment-textarea */
+.app-container[data-theme="dark"] .comment-textarea {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e0e0e0 !important;
+}
+
+.app-container[data-theme="dark"] .comment-textarea:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* Ajustar layout do comment-actions para não cobrir o checkbox */
+.comment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch !important;
+  margin-top: 12px !important;
+}
+
+.comment-checkbox {
+  order: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--modal-text-secondary);
+  padding: 8px 12px;
+  background: var(--modal-section-bg);
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.comment-checkbox:hover {
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.comment-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.comment-actions .btn-primary {
+  order: 2;
+  width: 100%;
+  padding: 12px 20px !important;
+  font-size: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.comment-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.comment-actions .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Dark theme para comment-actions */
+.app-container[data-theme="dark"] .comment-actions .btn-primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
+.app-container[data-theme="dark"] .comment-actions .btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5);
 }
 

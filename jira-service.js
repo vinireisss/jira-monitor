@@ -1551,6 +1551,46 @@ class JiraService {
   }
 
 
+  async getTicketSla(ticketKey) {
+    try {
+      const slaResponse = await this._makeRequest(`/rest/servicedeskapi/request/${ticketKey}/sla`);
+      const slaData = slaResponse?.values || [];
+      
+      if (slaData.length === 0) {
+        return null;
+      }
+      
+      const slaInfo = {};
+      
+      slaData.forEach(sla => {
+        const slaName = sla.name.toLowerCase();
+        
+        if (slaName.includes('time to resolution')) {
+          slaInfo.timeToResolution = {
+            name: sla.name,
+            ongoingCycle: sla.ongoingCycle || null,
+            completedCycles: sla.completedCycles || [],
+            _links: sla._links
+          };
+        }
+        
+        if (slaName.includes('time to first response')) {
+          slaInfo.timeToFirstResponse = {
+            name: sla.name,
+            ongoingCycle: sla.ongoingCycle || null,
+            completedCycles: sla.completedCycles || [],
+            _links: sla._links
+          };
+        }
+      });
+      
+      return Object.keys(slaInfo).length > 0 ? slaInfo : null;
+    } catch (error) {
+      safeLog(`⚠️ Erro ao buscar SLA para ${ticketKey}:`, error.message);
+      return null;
+    }
+  }
+
   async getTicketDetails(ticketKey) {
     try {
       const endpoint = `/rest/api/3/issue/${ticketKey}`;
@@ -1561,6 +1601,16 @@ class JiraService {
         this._makeRequest(`${endpoint}/editmeta`),
         this._makeRequest(`${endpoint}/transitions`)
       ]);
+      
+      // Buscar dados de SLA (Service Level Agreement)
+      let slaData = null;
+      try {
+        const slaResponse = await this._makeRequest(`${this.baseUrl}/rest/servicedeskapi/request/${ticketKey}/sla`);
+        slaData = slaResponse?.values || [];
+        safeLog(`📊 SLA data for ${ticketKey}:`, slaData);
+      } catch (slaError) {
+        safeLog(`⚠️ Não foi possível buscar SLA para ${ticketKey}:`, slaError.message);
+      }
 
       const issue = ticketData.fields;
       
@@ -1653,6 +1703,36 @@ class JiraService {
         to: t.to
       }));
       
+      // Processar dados de SLA
+      let slaInfo = null;
+      if (slaData && slaData.length > 0) {
+        slaInfo = {};
+        
+        slaData.forEach(sla => {
+          const slaName = sla.name.toLowerCase();
+          
+          if (slaName.includes('time to resolution')) {
+            slaInfo.timeToResolution = {
+              name: sla.name,
+              ongoingCycle: sla.ongoingCycle || null,
+              completedCycles: sla.completedCycles || [],
+              _links: sla._links
+            };
+          }
+          
+          if (slaName.includes('time to first response')) {
+            slaInfo.timeToFirstResponse = {
+              name: sla.name,
+              ongoingCycle: sla.ongoingCycle || null,
+              completedCycles: sla.completedCycles || [],
+              _links: sla._links
+            };
+          }
+        });
+        
+        safeLog(`📊 SLA processado:`, slaInfo);
+      }
+      
       const ticketDetails = {
         key: ticketKey,
         summary: issue.summary,
@@ -1681,7 +1761,8 @@ class JiraService {
         availableTransitions,
         project: issue.project.key,
         supportLevel: supportLevel,
-        team: team
+        team: team,
+        sla: slaInfo
       };
       
       safeLog(`✅ Ticket ${ticketKey} processado:`, {

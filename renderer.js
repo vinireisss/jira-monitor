@@ -764,7 +764,10 @@ function updateMiniStats(stats) {
 // Event Listeners
 function setupEventListeners() {
   // Header buttons
-  document.getElementById('menu-btn').addEventListener('click', toggleMenu);
+  document.getElementById('menu-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu();
+  });
   document.getElementById('user-monitor-btn').addEventListener('click', toggleUserMonitorDropdown);
   document.getElementById('notifications-btn').addEventListener('click', toggleNotifications);
   document.getElementById('docs-btn').addEventListener('click', toggleDocsDropdown);
@@ -1099,6 +1102,19 @@ function setupEventListeners() {
     btn.addEventListener('click', () => switchTimerMode(btn.dataset.mode));
   });
   
+  // Fechar menu ao clicar fora
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('menu-dropdown');
+    const menuBtn = document.getElementById('menu-btn');
+    
+    if (menu && menuBtn && 
+        !menu.contains(e.target) && 
+        !menuBtn.contains(e.target) &&
+        menu.style.display === 'block') {
+      hideMenu();
+    }
+  });
+  
   console.log('✅ Event listeners v1.5.0 configurados');
 }
 
@@ -1170,8 +1186,16 @@ function setupKeyboardShortcuts() {
 
 // Menu
 function toggleMenu() {
+  console.log('🍔 toggleMenu chamado');
   const menu = document.getElementById('menu-dropdown');
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  if (!menu) {
+    console.error('❌ Elemento menu-dropdown não encontrado!');
+    return;
+  }
+  
+  const isHidden = menu.style.display === 'none' || menu.style.display === '';
+  menu.style.display = isHidden ? 'block' : 'none';
+  console.log(`📋 Menu agora está: ${menu.style.display}`);
 }
 
 function hideMenu() {
@@ -3165,6 +3189,9 @@ async function loadProjectTickets(projectKey, container) {
                 <span class="ticket-priority priority-${priority.toLowerCase().replace(/\s+/g, '-')}">${priority}</span>
                 <span class="ticket-updated">${updated}</span>
               </div>
+              <div class="ticket-sla-info" id="sla-${key}" style="margin-top: 8px; font-size: 11px; color: #888;">
+                <div class="sla-loading">⏳ Carregando SLAs...</div>
+              </div>
             </div>
           </div>
         `;
@@ -3178,6 +3205,26 @@ async function loadProjectTickets(projectKey, container) {
             openTicketPreview(ticketKey);
           }
         });
+      });
+      
+      // Carregar SLAs de forma assíncrona para cada ticket
+      tickets.issues.forEach(async (issue) => {
+        const key = issue.key;
+        const slaContainer = document.getElementById(`sla-${key}`);
+        if (slaContainer) {
+          try {
+            const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
+            if (slaData && slaData.success) {
+              updateTicketSlaDisplay(key, slaData.data);
+            } else {
+              slaContainer.innerHTML = '';
+          slaContainer.style.display = 'none';
+            }
+          } catch (err) {
+            console.error(`Erro ao buscar SLA para ${key}:`, err);
+            slaContainer.innerHTML = '';
+          }
+        }
       });
     } else {
       container.innerHTML = '<div class="no-tickets">Nenhum ticket encontrado</div>';
@@ -3703,6 +3750,9 @@ function loadTicketsList(cardId) {
           <div class="ticket-key">${key}</div>
           <div class="ticket-summary">${summary}</div>
           <div class="ticket-status">${status}</div>
+          <div class="ticket-sla-info" id="sla-${key}" style="margin-top: 8px; font-size: 11px; color: #888;">
+            <div class="sla-loading">⏳ Carregando SLAs...</div>
+          </div>
         </div>
       </div>
     `;
@@ -3724,6 +3774,26 @@ function loadTicketsList(cardId) {
       const ticketKey = item.getAttribute('data-ticket-key');
       openTicketPreview(ticketKey);
     });
+  });
+  
+  // Carregar SLAs de forma assíncrona para cada ticket
+  ticketsToRender.forEach(async (ticket) => {
+    const key = ticket.key;
+    const slaContainer = document.getElementById(`sla-${key}`);
+    if (slaContainer) {
+      try {
+        const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
+        if (slaData && slaData.success) {
+          updateTicketSlaDisplay(key, slaData.data);
+        } else {
+          slaContainer.innerHTML = '';
+          slaContainer.style.display = 'none';
+        }
+      } catch (err) {
+        console.error(`Erro ao buscar SLA para ${key}:`, err);
+        slaContainer.innerHTML = '';
+      }
+    }
   });
 }
 
@@ -3827,6 +3897,9 @@ function loadSimCardsTicketsList() {
         <div class="ticket-key">${ticket.key}</div>
         <div class="ticket-summary">${ticket.summary}</div>
         <div class="ticket-status">${ticket.status}</div>
+        <div class="ticket-sla-info" id="sla-${ticket.key}" style="margin-top: 8px; font-size: 11px; color: #888;">
+          <div class="sla-loading">⏳ Carregando SLAs...</div>
+        </div>
       </div>
     `;
   }).join('');
@@ -3838,6 +3911,26 @@ function loadSimCardsTicketsList() {
       const ticketKey = item.getAttribute('data-ticket-key');
       openTicketPreview(ticketKey);
     });
+  });
+  
+  // Carregar SLAs de forma assíncrona para cada ticket
+  tickets.forEach(async (ticket) => {
+    const key = ticket.key;
+    const slaContainer = document.getElementById(`sla-${key}`);
+    if (slaContainer) {
+      try {
+        const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
+        if (slaData && slaData.success) {
+          updateTicketSlaDisplay(key, slaData.data);
+        } else {
+          slaContainer.innerHTML = '';
+          slaContainer.style.display = 'none';
+        }
+      } catch (err) {
+        console.error(`Erro ao buscar SLA para ${key}:`, err);
+        slaContainer.innerHTML = '';
+      }
+    }
   });
 }
 
@@ -4224,6 +4317,132 @@ function displayTicketPreview(ticket) {
         <div class="ticket-info-label">Atualizado</div>
         <div class="ticket-info-value">${new Date(ticket.updated).toLocaleString('pt-BR')}</div>
       </div>
+      
+      ${ticket.sla ? `
+        <!-- Time to First Response -->
+        ${ticket.sla.timeToFirstResponse ? (() => {
+          const sla = ticket.sla.timeToFirstResponse;
+          const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+          
+          if (!cycle) return '';
+          
+          const goalDuration = cycle.goalDuration?.millis;
+          const elapsedTime = cycle.elapsedTime?.millis;
+          const remainingTime = cycle.remainingTime?.millis;
+          const breachTime = cycle.breachTime?.epochMillis;
+          
+          let displayValue = '';
+          let statusClass = '';
+          let statusEmoji = '';
+          
+          if (sla.completedCycles && sla.completedCycles.length > 0) {
+            // SLA já foi completado
+            const completedTime = elapsedTime;
+            const wasBreached = sla.completedCycles[0].breached;
+            
+            if (wasBreached) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado em ${formatDuration(completedTime)}`;
+            } else {
+              statusEmoji = '✅';
+              statusClass = 'sla-met';
+              displayValue = `Respondido em ${formatDuration(completedTime)}`;
+            }
+          } else if (remainingTime) {
+            // SLA em andamento
+            if (remainingTime < 0) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+            } else if (remainingTime < 3600000) { // menos de 1h
+              statusEmoji = '🟠';
+              statusClass = 'sla-warning';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            } else {
+              statusEmoji = '🟢';
+              statusClass = 'sla-ok';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            }
+          } else if (goalDuration) {
+            displayValue = `Meta: ${formatDuration(goalDuration)}`;
+          }
+          
+          return `
+            <div class="ticket-info-item sla-item">
+              <div class="ticket-info-label">
+                ${statusEmoji} Time to First Response
+              </div>
+              <div class="ticket-info-value ${statusClass}">
+                ${displayValue}
+                ${breachTime ? `<div style="font-size: 11px; color: #999; margin-top: 4px;">Meta: ${new Date(breachTime).toLocaleString('pt-BR')}</div>` : ''}
+              </div>
+            </div>
+          `;
+        })() : ''}
+        
+        <!-- Time to Resolution -->
+        ${ticket.sla.timeToResolution ? (() => {
+          const sla = ticket.sla.timeToResolution;
+          const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+          
+          if (!cycle) return '';
+          
+          const goalDuration = cycle.goalDuration?.millis;
+          const elapsedTime = cycle.elapsedTime?.millis;
+          const remainingTime = cycle.remainingTime?.millis;
+          const breachTime = cycle.breachTime?.epochMillis;
+          
+          let displayValue = '';
+          let statusClass = '';
+          let statusEmoji = '';
+          
+          if (sla.completedCycles && sla.completedCycles.length > 0) {
+            // SLA já foi completado
+            const completedTime = elapsedTime;
+            const wasBreached = sla.completedCycles[0].breached;
+            
+            if (wasBreached) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado em ${formatDuration(completedTime)}`;
+            } else {
+              statusEmoji = '✅';
+              statusClass = 'sla-met';
+              displayValue = `Resolvido em ${formatDuration(completedTime)}`;
+            }
+          } else if (remainingTime) {
+            // SLA em andamento
+            if (remainingTime < 0) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+            } else if (remainingTime < 3600000) { // menos de 1h
+              statusEmoji = '🟠';
+              statusClass = 'sla-warning';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            } else {
+              statusEmoji = '🟢';
+              statusClass = 'sla-ok';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            }
+          } else if (goalDuration) {
+            displayValue = `Meta: ${formatDuration(goalDuration)}`;
+          }
+          
+          return `
+            <div class="ticket-info-item sla-item">
+              <div class="ticket-info-label">
+                ${statusEmoji} Time to Resolution
+              </div>
+              <div class="ticket-info-value ${statusClass}">
+                ${displayValue}
+                ${breachTime ? `<div style="font-size: 11px; color: #999; margin-top: 4px;">Meta: ${new Date(breachTime).toLocaleString('pt-BR')}</div>` : ''}
+              </div>
+            </div>
+          `;
+        })() : ''}
+      ` : ''}
     </div>
     
     <div class="ticket-section">
@@ -4337,6 +4556,190 @@ function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function formatDuration(milliseconds) {
+  if (!milliseconds || milliseconds === 0) return '0m';
+  
+  const seconds = Math.floor(Math.abs(milliseconds) / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  }
+  
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+  
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+  
+  return `${seconds}s`;
+}
+
+function updateTicketSlaDisplay(ticketKey, slaInfo) {
+  const slaContainer = document.getElementById(`sla-${ticketKey}`);
+  if (!slaContainer) return;
+  
+  // Se não houver SLA, esconder completamente a seção
+  if (!slaInfo || (!slaInfo.timeToFirstResponse && !slaInfo.timeToResolution)) {
+    slaContainer.innerHTML = '';
+    slaContainer.style.display = 'none';
+    return;
+  }
+  
+  let html = '<div class="sla-container">';
+  
+  // Time to First Response
+  if (slaInfo.timeToFirstResponse) {
+    const sla = slaInfo.timeToFirstResponse;
+    const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+    
+    if (cycle) {
+      const remainingTime = cycle.remainingTime?.millis;
+      const elapsedTime = cycle.elapsedTime?.millis;
+      let emoji = '';
+      let color = '';
+      let text = '';
+      let dateTime = '';
+      
+      // Formatar data/hora - usar breachTime (quando vai estourar) ou stopTime (quando foi completado)
+      if (sla.completedCycles && sla.completedCycles.length > 0) {
+        // SLA completado - mostrar quando foi resolvido
+        if (cycle.stopTime?.iso8601) {
+          const date = new Date(cycle.stopTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
+        if (sla.completedCycles[0].breached) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado: ${formatDuration(elapsedTime)}`;
+        } else {
+          emoji = '✅';
+          color = '#10b981';
+          text = `OK: ${formatDuration(elapsedTime)}`;
+        }
+      } else if (remainingTime) {
+        // SLA em andamento - mostrar quando vai estourar (breachTime)
+        if (cycle.breachTime?.iso8601) {
+          const date = new Date(cycle.breachTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
+        if (remainingTime < 0) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+        } else if (remainingTime < 3600000) {
+          emoji = '🟠';
+          color = '#f59e0b';
+          text = `${formatDuration(remainingTime)} restante`;
+        } else {
+          emoji = '🟢';
+          color = '#10b981';
+          text = `${formatDuration(remainingTime)} restante`;
+        }
+      }
+      
+      html += `<div class="sla-row">
+        <span class="sla-emoji">${emoji}</span>
+        <span class="sla-label" style="color: ${color}; font-weight: 600;">First Response:</span>
+        <span class="sla-status" style="color: #666;">${text}</span>
+        ${dateTime ? `<span class="sla-datetime" style="margin-left: auto;">${dateTime}</span>` : ''}
+      </div>`;
+    }
+  }
+  
+  // Time to Resolution
+  if (slaInfo.timeToResolution) {
+    const sla = slaInfo.timeToResolution;
+    const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+    
+    if (cycle) {
+      const remainingTime = cycle.remainingTime?.millis;
+      const elapsedTime = cycle.elapsedTime?.millis;
+      let emoji = '';
+      let color = '';
+      let text = '';
+      let dateTime = '';
+      
+      // Formatar data/hora - usar breachTime (quando vai estourar) ou stopTime (quando foi completado)
+      if (sla.completedCycles && sla.completedCycles.length > 0) {
+        // SLA completado - mostrar quando foi resolvido
+        if (cycle.stopTime?.iso8601) {
+          const date = new Date(cycle.stopTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
+        if (sla.completedCycles[0].breached) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado: ${formatDuration(elapsedTime)}`;
+        } else {
+          emoji = '✅';
+          color = '#10b981';
+          text = `OK: ${formatDuration(elapsedTime)}`;
+        }
+      } else if (remainingTime) {
+        // SLA em andamento - mostrar quando vai estourar (breachTime)
+        if (cycle.breachTime?.iso8601) {
+          const date = new Date(cycle.breachTime.iso8601);
+          dateTime = date.toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+        
+        if (remainingTime < 0) {
+          emoji = '🔴';
+          color = '#ef4444';
+          text = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+        } else if (remainingTime < 3600000) {
+          emoji = '🟠';
+          color = '#f59e0b';
+          text = `${formatDuration(remainingTime)} restante`;
+        } else {
+          emoji = '🟢';
+          color = '#10b981';
+          text = `${formatDuration(remainingTime)} restante`;
+        }
+      }
+      
+      html += `<div class="sla-row">
+        <span class="sla-emoji">${emoji}</span>
+        <span class="sla-label" style="color: ${color}; font-weight: 600;">Resolution:</span>
+        <span class="sla-status" style="color: #666;">${text}</span>
+        ${dateTime ? `<span class="sla-datetime" style="margin-left: auto;">${dateTime}</span>` : ''}
+      </div>`;
+    }
+  }
+  
+  html += '</div>';
+  slaContainer.innerHTML = html;
 }
 
 async function loadAttachmentPreview(attachmentId) {
@@ -6052,6 +6455,20 @@ function applyAccentColor(color, showNotification = false) {
     showToast('Tema', 'Cor de acento atualizada', 'success');
   }
 }
+
+// Função para aplicar cor personalizada do color picker
+function applyCustomColor() {
+  const colorInput = document.getElementById('customColorPicker');
+  if (colorInput && colorInput.value) {
+    const customColor = colorInput.value;
+    console.log('🎨 Aplicando cor personalizada:', customColor);
+    applyAccentColor(customColor, true);
+  }
+}
+
+// Expor para uso global
+window.applyCustomColor = applyCustomColor;
+window.applyAccentColor = applyAccentColor;
 
 function applyThemePreset(theme, showNotification = false) {
   console.log('🎨 Aplicando tema preset:', theme);
