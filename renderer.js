@@ -762,7 +762,10 @@ function updateMiniStats(stats) {
 // Event Listeners
 function setupEventListeners() {
   // Header buttons
-  document.getElementById('menu-btn').addEventListener('click', toggleMenu);
+  document.getElementById('menu-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu();
+  });
   document.getElementById('user-monitor-btn').addEventListener('click', toggleUserMonitorDropdown);
   document.getElementById('notifications-btn').addEventListener('click', toggleNotifications);
   document.getElementById('docs-btn').addEventListener('click', toggleDocsDropdown);
@@ -1097,6 +1100,19 @@ function setupEventListeners() {
     btn.addEventListener('click', () => switchTimerMode(btn.dataset.mode));
   });
   
+  // Fechar menu ao clicar fora
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('menu-dropdown');
+    const menuBtn = document.getElementById('menu-btn');
+    
+    if (menu && menuBtn && 
+        !menu.contains(e.target) && 
+        !menuBtn.contains(e.target) &&
+        menu.style.display === 'block') {
+      hideMenu();
+    }
+  });
+  
   console.log('✅ Event listeners v1.5.0 configurados');
 }
 
@@ -1168,8 +1184,16 @@ function setupKeyboardShortcuts() {
 
 // Menu
 function toggleMenu() {
+  console.log('🍔 toggleMenu chamado');
   const menu = document.getElementById('menu-dropdown');
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  if (!menu) {
+    console.error('❌ Elemento menu-dropdown não encontrado!');
+    return;
+  }
+  
+  const isHidden = menu.style.display === 'none' || menu.style.display === '';
+  menu.style.display = isHidden ? 'block' : 'none';
+  console.log(`📋 Menu agora está: ${menu.style.display}`);
 }
 
 function hideMenu() {
