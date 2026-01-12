@@ -4195,6 +4195,132 @@ function displayTicketPreview(ticket) {
         <div class="ticket-info-label">Atualizado</div>
         <div class="ticket-info-value">${new Date(ticket.updated).toLocaleString('pt-BR')}</div>
       </div>
+      
+      ${ticket.sla ? `
+        <!-- Time to First Response -->
+        ${ticket.sla.timeToFirstResponse ? (() => {
+          const sla = ticket.sla.timeToFirstResponse;
+          const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+          
+          if (!cycle) return '';
+          
+          const goalDuration = cycle.goalDuration?.millis;
+          const elapsedTime = cycle.elapsedTime?.millis;
+          const remainingTime = cycle.remainingTime?.millis;
+          const breachTime = cycle.breachTime?.epochMillis;
+          
+          let displayValue = '';
+          let statusClass = '';
+          let statusEmoji = '';
+          
+          if (sla.completedCycles && sla.completedCycles.length > 0) {
+            // SLA já foi completado
+            const completedTime = elapsedTime;
+            const wasBreached = sla.completedCycles[0].breached;
+            
+            if (wasBreached) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado em ${formatDuration(completedTime)}`;
+            } else {
+              statusEmoji = '✅';
+              statusClass = 'sla-met';
+              displayValue = `Respondido em ${formatDuration(completedTime)}`;
+            }
+          } else if (remainingTime) {
+            // SLA em andamento
+            if (remainingTime < 0) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+            } else if (remainingTime < 3600000) { // menos de 1h
+              statusEmoji = '🟠';
+              statusClass = 'sla-warning';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            } else {
+              statusEmoji = '🟢';
+              statusClass = 'sla-ok';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            }
+          } else if (goalDuration) {
+            displayValue = `Meta: ${formatDuration(goalDuration)}`;
+          }
+          
+          return `
+            <div class="ticket-info-item sla-item">
+              <div class="ticket-info-label">
+                ${statusEmoji} Time to First Response
+              </div>
+              <div class="ticket-info-value ${statusClass}">
+                ${displayValue}
+                ${breachTime ? `<div style="font-size: 11px; color: #999; margin-top: 4px;">Meta: ${new Date(breachTime).toLocaleString('pt-BR')}</div>` : ''}
+              </div>
+            </div>
+          `;
+        })() : ''}
+        
+        <!-- Time to Resolution -->
+        ${ticket.sla.timeToResolution ? (() => {
+          const sla = ticket.sla.timeToResolution;
+          const cycle = sla.completedCycles?.[0] || sla.ongoingCycle;
+          
+          if (!cycle) return '';
+          
+          const goalDuration = cycle.goalDuration?.millis;
+          const elapsedTime = cycle.elapsedTime?.millis;
+          const remainingTime = cycle.remainingTime?.millis;
+          const breachTime = cycle.breachTime?.epochMillis;
+          
+          let displayValue = '';
+          let statusClass = '';
+          let statusEmoji = '';
+          
+          if (sla.completedCycles && sla.completedCycles.length > 0) {
+            // SLA já foi completado
+            const completedTime = elapsedTime;
+            const wasBreached = sla.completedCycles[0].breached;
+            
+            if (wasBreached) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado em ${formatDuration(completedTime)}`;
+            } else {
+              statusEmoji = '✅';
+              statusClass = 'sla-met';
+              displayValue = `Resolvido em ${formatDuration(completedTime)}`;
+            }
+          } else if (remainingTime) {
+            // SLA em andamento
+            if (remainingTime < 0) {
+              statusEmoji = '🔴';
+              statusClass = 'sla-breached';
+              displayValue = `Estourado há ${formatDuration(Math.abs(remainingTime))}`;
+            } else if (remainingTime < 3600000) { // menos de 1h
+              statusEmoji = '🟠';
+              statusClass = 'sla-warning';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            } else {
+              statusEmoji = '🟢';
+              statusClass = 'sla-ok';
+              displayValue = `${formatDuration(remainingTime)} restante`;
+            }
+          } else if (goalDuration) {
+            displayValue = `Meta: ${formatDuration(goalDuration)}`;
+          }
+          
+          return `
+            <div class="ticket-info-item sla-item">
+              <div class="ticket-info-label">
+                ${statusEmoji} Time to Resolution
+              </div>
+              <div class="ticket-info-value ${statusClass}">
+                ${displayValue}
+                ${breachTime ? `<div style="font-size: 11px; color: #999; margin-top: 4px;">Meta: ${new Date(breachTime).toLocaleString('pt-BR')}</div>` : ''}
+              </div>
+            </div>
+          `;
+        })() : ''}
+      ` : ''}
     </div>
     
     <div class="ticket-section">
@@ -4308,6 +4434,31 @@ function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function formatDuration(milliseconds) {
+  if (!milliseconds || milliseconds === 0) return '0m';
+  
+  const seconds = Math.floor(Math.abs(milliseconds) / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  }
+  
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+  
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+  
+  return `${seconds}s`;
 }
 
 async function loadAttachmentPreview(attachmentId) {

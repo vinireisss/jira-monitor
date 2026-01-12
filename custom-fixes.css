@@ -417,3 +417,67 @@
   }
 }
 
+/* ========================================
+   📊 SLA STATUS COLORS
+   ======================================== */
+
+.sla-item {
+  border-left: 3px solid transparent;
+  padding-left: 12px !important;
+  transition: all 0.2s ease;
+}
+
+.sla-ok {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-ok) {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.sla-warning {
+  color: #f59e0b !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-warning) {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.sla-breached {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-breached) {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.sla-met {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-met) {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Dark theme adjustments */
+.app-container[data-theme="dark"] .sla-item:has(.sla-ok),
+.app-container[data-theme="dark"] .sla-item:has(.sla-met) {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.app-container[data-theme="dark"] .sla-item:has(.sla-warning) {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.app-container[data-theme="dark"] .sla-item:has(.sla-breached) {
+  background: rgba(239, 68, 68, 0.1);
+}
+
