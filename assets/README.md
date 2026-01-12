@@ -198,9 +198,7 @@ Durante a execução:
 
 ```markdown
 # Ícone principal
-![Jira Monitor](assets/icon.png)
-
-# Ícones de status
+![Jira Monitor](assets/icon.png)# Ícones de status
 ![Status Verde](assets/tray-icons/green.png) SLA OK
 ![Status Amarelo](assets/tray-icons/yellow.png) Atenção
 ![Status Vermelho](assets/tray-icons/red.png) Crítico

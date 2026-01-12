@@ -3,10 +3,12 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, shell, scr
 const path = require('path');
 const Store = require('electron-store');
 const fs = require('fs');
+const TrayManager = require('./tray-manager');
 
 const store = new Store();
 let mainWindow;
 let tray;
+let trayManager;
 
 // Criar janela principal
 function createWindow() {
@@ -211,75 +213,15 @@ function createWindow() {
   }
 }
 
-// Criar ícone na bandeja do sistema
+// Criar ícone na bandeja do sistema usando TrayManager
 function createTray() {
-  // Usar o ícone customizado para o tray
-  const trayIconPath = path.join(__dirname, 'icon-tray.png');
-  let trayIcon;
-  
-  if (fs.existsSync(trayIconPath)) {
-    trayIcon = nativeImage.createFromPath(trayIconPath);
-  } else {
-    // Fallback para ícone padrão se não encontrar
-    trayIcon = nativeImage.createFromDataURL(
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKcSURBVFhH7ZfPaxNBFMe/u5vdJLttmqYxadMfQVGLVRS0Xrx4ELx68OJF/wLxD/DiSfDgQRAv3kREUEQQxIOgIh5ERPBg8aAeVLDVNjZNm83u7szszvjebkqbtDG7iQdB/MDHZmfevPd9M2/e7AYALrjgggv+b2ia9kZRlJdarVZX13Xd0HV9QNf1QU3TBur1+n1FUd5qmvZGAIA8APzer7Karuu5SqXydXR09MH6+vq9ZrP5tNls3lxfX7+7urp6f2xs7F6pVPqq6/pAu90e0HU9D0BeAIBCoZAtl8ufJiYmnmxsbNxtNBqfAXwHUG8CawCW2u3289nZ2ffFYjELAHkBAFKp1MhsNvthamrqRaPR+Nxut+sANLs9tRbAEoBPy8vLd6ampj7kcrmRdDo9IgBAJpN5PTU19aJWq33pdDoNwzBMAEZ3bZlGo/FpYWHh9dTU1NuRkZHXAgB4vd7xYrH4fnl5+U6r1foeQA6A74B/4u5/Xn555/Ly8u1isfje7/ePCwCQTqffzc3NvavVahV7LvSzVqvN2ft/l06n3wkA4Ha7R4vF4vvl5eVbaZpmV/8LmqY53O73QqHgEgAgkUi8mp+ff1WtVr8xxuxOj+E4jrPPv0wkEq8EAIhGo28XFxffVCqVH4wxv/8R9t5SqfQmGo2+FQAgGo2+XVhYeF0ul38ahlGxvyXHcQr7HrH33r8DAABYXFx8U6lUvhmGsQZABrDk8Xjm3G73nDOXy+WKxWKvBABIJBKv5ufnn1er1R+GYawCKHs8njmv1zvXL5fLFY/HXwkAEI/HX87Pzz+vVqs/DcNYBVByu93zXq933ilnv4/H4y8FAIhEIm/m5uae1mq1z4ZhrABYcrlcc16vd84pl8sVi8VeCADg9/uf2Oe1Wu2zYRgrAJZcLlec1+ud+5uyH/4PAAAAAElFTkSuQmCC'
-    );
+  try {
+    trayManager = new TrayManager(mainWindow, createWindow);
+    trayManager.create();
+    console.log('✅ Tray Manager inicializado com sucesso');
+  } catch (error) {
+    console.error('❌ Erro ao criar Tray Manager:', error);
   }
-  
-  tray = new Tray(trayIcon);
-  
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Abrir Jira Monitor',
-      click: () => {
-        // Se a janela principal foi fechada, recriar
-        if (!mainWindow || mainWindow.isDestroyed()) {
-          createWindow();
-        } else {
-          if (mainWindow.isMinimized()) {
-            mainWindow.restore();
-          }
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      }
-    },
-    {
-      label: 'Atualizar',
-      click: () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('manual-refresh');
-        }
-      }
-    },
-    { type: 'separator' },
-    {
-      label: 'Sair Completamente',
-      click: () => {
-        // Fechar todas as janelas e sair do app
-        BrowserWindow.getAllWindows().forEach(window => {
-          if (!window.isDestroyed()) {
-            window.destroy();
-          }
-        });
-        app.quit();
-      }
-    }
-  ]);
-  
-  tray.setToolTip('Jira Monitor');
-  tray.setContextMenu(contextMenu);
-  
-  // Mostrar janela ao clicar no ícone
-  tray.on('click', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
 }
 
 // Criar janela de webview para o Jira
@@ -539,6 +481,28 @@ ipcMain.on('save-config-sync', (event, config) => {
   console.log('💾 Modo Pro salvo:', config.proMode);
   console.log('💾 Localização:', store.path);
   console.log('💾 ========================================');
+});
+
+// Atualizar tray com dados de tickets
+ipcMain.on('update-tray-tickets', (event, ticketsData) => {
+  if (trayManager) {
+    try {
+      trayManager.updateTickets(ticketsData);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar tray com tickets:', error);
+    }
+  }
+});
+
+// Atualizar tray com dados de estatísticas
+ipcMain.on('update-tray-stats', (event, stats) => {
+  if (trayManager) {
+    try {
+      trayManager.update(stats);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar tray:', error);
+    }
+  }
 });
 
 // Abrir nova janela para monitorar outro usuário
@@ -1235,7 +1199,7 @@ if (!gotTheLock) {
     }
     
     createWindow();
-    // createTray(); // Desabilitado - ícone do tray removido
+    createTray(); // Ícone do tray no menu bar
   });
 }
 
