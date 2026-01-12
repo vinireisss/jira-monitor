@@ -445,11 +445,47 @@ class JiraService {
         allProjectsData: { total: allProjectsData.issues?.length }
       });
 
+      // 🔥 FILTRO DO LADO DO CLIENTE: Garantir que apenas tickets com status correto sejam contados
+      // (bug da API Jira que retorna tickets com status diferentes)
+      
+      const supportTicketsFiltered = (supportData.issues || []).filter(issue => {
+        const status = issue.fields.status?.name || '';
+        const isCorrectStatus = ['Waiting for Support', 'Aguardando Suporte'].includes(status);
+        if (!isCorrectStatus) {
+          console.warn(`⚠️ Ticket ${issue.key} tem status "${status}" mas foi retornado na query de Support`);
+        }
+        return isCorrectStatus;
+      });
+      
+      const customerTicketsFiltered = (customerData.issues || []).filter(issue => {
+        const status = issue.fields.status?.name || '';
+        const isCorrectStatus = ['Waiting for Customer', 'Aguardando Cliente'].includes(status);
+        if (!isCorrectStatus) {
+          console.warn(`⚠️ Ticket ${issue.key} tem status "${status}" mas foi retornado na query de Customer`);
+        }
+        return isCorrectStatus;
+      });
+      
+      const pendingTicketsFiltered = (pendingData.issues || []).filter(issue => {
+        const status = issue.fields.status?.name || '';
+        const isCorrectStatus = ['Pending', 'Pendente'].includes(status);
+        if (!isCorrectStatus) {
+          console.warn(`⚠️ Ticket ${issue.key} tem status "${status}" mas foi retornado na query de Pending`);
+        }
+        return isCorrectStatus;
+      });
+      
       // A API /search/jql não retorna 'total', então usamos issues.length
       const total = totalData.issues?.length || 0;
-      const waitingForSupport = supportData.issues?.length || 0;
-      const waitingForCustomer = customerData.issues?.length || 0;
-      const pending = pendingData.issues?.length || 0;
+      const waitingForSupport = supportTicketsFiltered.length;
+      const waitingForCustomer = customerTicketsFiltered.length;
+      const pending = pendingTicketsFiltered.length;
+      
+      console.log('🔍 Filtros aplicados:', {
+        support: { original: supportData.issues?.length || 0, filtrado: waitingForSupport },
+        customer: { original: customerData.issues?.length || 0, filtrado: waitingForCustomer },
+        pending: { original: pendingData.issues?.length || 0, filtrado: pending }
+      });
 
       // Calcular alertas de SLA e tickets antigos (apenas para IT)
       const slaAlerts = this._calculateSlaAlerts(totalData.issues);
@@ -529,19 +565,19 @@ class JiraService {
         slaTickets: slaAlerts,
         oldTicketsList: oldTickets,
         allTickets: totalData.issues,
-        supportTickets: supportData.issues.map(issue => ({
+        supportTickets: supportTicketsFiltered.map(issue => ({
           key: issue.key,
           summary: issue.fields.summary,
           status: issue.fields.status.name,
           fields: issue.fields  // 🎨 Incluir fields completo para SLA
         })),
-        customerTickets: customerData.issues.map(issue => ({
+        customerTickets: customerTicketsFiltered.map(issue => ({
           key: issue.key,
           summary: issue.fields.summary,
           status: issue.fields.status.name,
           fields: issue.fields  // 🎨 Incluir fields completo para SLA
         })),
-        pendingTickets: pendingData.issues.map(issue => ({
+        pendingTickets: pendingTicketsFiltered.map(issue => ({
           key: issue.key,
           summary: issue.fields.summary,
           status: issue.fields.status.name,
@@ -814,16 +850,37 @@ class JiraService {
       
       const data = await this._searchJql(jql, ['status', 'summary', 'key', 'duedate', 'updated', 'project', 'customfield_10123', 'customfield_10124']);
       
+      // 🔥 FILTRO: Garantir que apenas tickets com status válido sejam contados
+      // (similar ao filtro aplicado em fetchStats)
+      const validStatuses = [
+        'Waiting for Support', 'Aguardando Suporte',
+        'Waiting for Customer', 'Aguardando Cliente',
+        'Pending', 'Pendente',
+        'In Progress', 'Em Progresso',
+        'Open', 'Aberto',
+        'Waiting for approval', 'Aguardando Aprovação'
+      ];
+      
+      const filteredIssues = (data.issues || []).filter(issue => {
+        const status = issue.fields.status?.name || '';
+        const isValid = validStatuses.includes(status);
+        if (!isValid && status !== 'Resolved' && status !== 'Closed' && status !== 'Canceled') {
+          console.warn(`⚠️ [SIM Cards] Ticket ${issue.key} tem status incomum: "${status}"`);
+        }
+        return isValid;
+      });
+      
       return {
-        count: data.issues?.length || 0,
-        tickets: (data.issues || []).map(issue => ({
+        count: filteredIssues.length,
+        tickets: filteredIssues.map(issue => ({
           key: issue.key,
           summary: issue.fields.summary,
           status: issue.fields.status.name,
           duedate: issue.fields.duedate,
           updated: issue.fields.updated
         })),
-        jql: jql
+        jql: jql,
+        originalCount: data.issues?.length || 0
       };
     } catch (error) {
       console.error('Erro ao buscar tickets de SIM cards:', error);

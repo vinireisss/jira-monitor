@@ -40,6 +40,8 @@ let viewedTickets = new Set(); // Tickets que o usuário já visualizou
 let windowOpacity = 1.0; // Opacidade da janela (0.2 - 1.0)
 let internalNotifications = []; // Notificações internas (sino)
 let isFocusMode = false; // Modo focus ativo
+let isUpdatingUI = false; // Flag para prevenir múltiplas atualizações simultâneas
+let pendingUpdate = null; // Guardar update pendente se houver
 let dailyActivity = {
   received: 0,      // Tickets recebidos hoje
   resolved: 0,      // Tickets resolvidos/fechados hoje
@@ -2217,10 +2219,16 @@ async function fetchAndUpdateStats() {
     // Verificar se precisa resetar contadores diários
     checkDailyReset();
     
+    console.log('🚀 === INICIANDO FETCH DE STATS ===');
     const result = await ipcRenderer.invoke('fetch-jira-stats', currentConfig);
     
     if (result.success) {
-      console.log('📊 Dados recebidos do Jira:', result.data);
+      console.log('📊 Dados recebidos do Jira:', {
+        total: result.data.total,
+        waitingForSupport: result.data.waitingForSupport,
+        waitingForCustomer: result.data.waitingForCustomer,
+        pending: result.data.pending
+      });
       
       // Usar dados específicos de atividade diária do backend
       if (result.data.todayReceived || result.data.todayResolved || result.data.todayComments) {
@@ -2272,9 +2280,15 @@ async function fetchAndUpdateStats() {
         });
       }
       
+      // 🔥 ATUALIZAÇÃO ATÔMICA: Atualizar TUDO de uma vez para evitar estados intermediários
+      console.log('💾 Salvando stats globalmente...');
       currentStats = result.data;
       searchTickets = result.data.allTickets || [];
+      
+      console.log('🎨 Chamando updateUI() com dados finais...');
       updateUI(result.data);
+      
+      console.log('📋 Atualizando listas expandidas...');
       updateExpandedTicketsLists();
       
       // Atualizar display de atividade diária
@@ -2483,13 +2497,29 @@ function extractSLAInfo(ticket) {
 }
 
 function updateUI(stats) {
-  // Debug: verificar os dados recebidos
-  console.log('🔢 Atualizando contadores:', {
-    total: stats.total,
-    support: stats.waitingForSupport,
-    customer: stats.waitingForCustomer,
-    pending: stats.pending
-  });
+  // 🔒 LOCK: Prevenir múltiplas atualizações simultâneas
+  if (isUpdatingUI) {
+    console.warn('⚠️ updateUI() já está em execução, salvando update pendente...');
+    pendingUpdate = stats;
+    return;
+  }
+  
+  isUpdatingUI = true;
+  
+  try {
+    // Debug: verificar os dados recebidos
+    console.log('🔢 === UPDATEUI CHAMADO ===');
+    console.log('🔢 Contadores recebidos:', {
+      total: stats.total,
+      support: stats.waitingForSupport,
+      customer: stats.waitingForCustomer,
+      pending: stats.pending
+    });
+    console.log('📋 Listas de tickets recebidas:', {
+      supportTickets: stats.supportTickets?.length || 0,
+      customerTickets: stats.customerTickets?.length || 0,
+      pendingTickets: stats.pendingTickets?.length || 0
+    });
   
   // Detectar novos tickets e enviar notificações
   if (currentConfig.desktopNotifications !== false && stats.allTickets) {
@@ -2506,10 +2536,18 @@ function updateUI(stats) {
   updateTrayWithTickets(stats);
   
   // Atualizar contadores com animação
+  console.log('🎬 Animando números:');
+  console.log('   Total:', stats.total || 0);
+  console.log('   Support:', stats.waitingForSupport || 0);
+  console.log('   Customer:', stats.waitingForCustomer || 0);
+  console.log('   Pending:', stats.pending || 0);
+  
   animateNumber('stat-total', stats.total || 0);
   animateNumber('stat-support', stats.waitingForSupport || 0);
   animateNumber('stat-customer', stats.waitingForCustomer || 0);
   animateNumber('stat-pending', stats.pending || 0);
+  
+  console.log('✅ Números animados com sucesso');
   
   // Atualizar badges
   const slaBadge = document.getElementById('badge-sla');
@@ -2537,13 +2575,30 @@ function updateUI(stats) {
     oldBadge.style.display = 'none';
   }
   
-  // Atualizar Modo Pro
-  if (isProMode) {
-    updateProModeSection(stats);
+    // Atualizar Modo Pro
+    if (isProMode) {
+      updateProModeSection(stats);
+    }
+    
+    // Atualizar última atualização
+    document.getElementById('last-update').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+    
+    console.log('✅ === UPDATEUI CONCLUÍDO ===');
+    
+  } finally {
+    // 🔓 UNLOCK: Liberar flag
+    isUpdatingUI = false;
+    
+    // Se houver update pendente, processar agora
+    if (pendingUpdate) {
+      console.log('🔄 Processando update pendente...');
+      const nextUpdate = pendingUpdate;
+      pendingUpdate = null;
+      
+      // Usar setTimeout para evitar stack overflow em caso de loop
+      setTimeout(() => updateUI(nextUpdate), 0);
+    }
   }
-  
-  // Atualizar última atualização
-  document.getElementById('last-update').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
 }
 
 // Detectar novos tickets e mudanças

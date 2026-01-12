@@ -213,8 +213,8 @@ function createWindow() {
   // Atualizar referência no trayManager se ele existir
   if (trayManager) {
     trayManager.mainWindow = mainWindow;
-  }
-  
+}
+
   return mainWindow;
 }
 
