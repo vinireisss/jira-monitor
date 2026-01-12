@@ -2276,6 +2276,17 @@ async function fetchAndUpdateStats() {
         pending: result.data.pending
       });
       
+      console.log('🔥🔥🔥 ATIVIDADE DIÁRIA RECEBIDA:', {
+        recebidos: result.data.todayReceived || 0,
+        fechados: result.data.todayResolved || 0,
+        comentarios: result.data.todayComments || 0
+      });
+      
+      // Alerta temporário para debug
+      if (window.DEBUG_TICKETS_FECHADOS) {
+        alert(`DEBUG: Tickets Fechados Hoje = ${result.data.todayResolved || 0}`);
+      }
+      
       // Usar dados específicos de atividade diária do backend
       if (result.data.todayReceived || result.data.todayResolved || result.data.todayComments) {
         console.log('📊 Atualizando atividade diária com dados do Jira...');
