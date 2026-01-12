@@ -1497,7 +1497,7 @@ class JiraService {
   async getTicketSla(ticketKey) {
     try {
       safeLog(`📊 Buscando SLA para ticket: ${ticketKey}`);
-      const slaResponse = await this._makeRequest(`${this.baseUrl}/rest/servicedeskapi/request/${ticketKey}/sla`);
+      const slaResponse = await this._makeRequest(`/rest/servicedeskapi/request/${ticketKey}/sla`);
       safeLog(`📊 Resposta SLA para ${ticketKey}:`, JSON.stringify(slaResponse, null, 2));
       
       const slaData = slaResponse?.values || [];

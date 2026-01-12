@@ -3164,7 +3164,8 @@ async function loadProjectTickets(projectKey, container) {
             if (slaData && slaData.success) {
               updateTicketSlaDisplay(key, slaData.data);
             } else {
-              slaContainer.style.display = 'none';
+              slaContainer.innerHTML = '';
+          slaContainer.style.display = 'none';
             }
           } catch (err) {
             console.error(`Erro ao buscar SLA para ${key}:`, err);
@@ -3732,6 +3733,7 @@ function loadTicketsList(cardId) {
         if (slaData && slaData.success) {
           updateTicketSlaDisplay(key, slaData.data);
         } else {
+          slaContainer.innerHTML = '';
           slaContainer.style.display = 'none';
         }
       } catch (err) {
@@ -3868,6 +3870,7 @@ function loadSimCardsTicketsList() {
         if (slaData && slaData.success) {
           updateTicketSlaDisplay(key, slaData.data);
         } else {
+          slaContainer.innerHTML = '';
           slaContainer.style.display = 'none';
         }
       } catch (err) {
@@ -4533,6 +4536,7 @@ function updateTicketSlaDisplay(ticketKey, slaInfo) {
   
   // Se não houver SLA, esconder completamente a seção
   if (!slaInfo || (!slaInfo.timeToFirstResponse && !slaInfo.timeToResolution)) {
+    slaContainer.innerHTML = '';
     slaContainer.style.display = 'none';
     return;
   }
