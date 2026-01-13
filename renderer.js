@@ -43,6 +43,7 @@ let connectionStatus = 'offline'; // online, offline, loading
 let progressInterval = null;
 let lastUpdateTime = null;
 let densityMode = 'default'; // default, compact, comfortable
+let isMicroMode = false; // Modo micro (visualização ultra compacta)
 let isSecondaryWindow = false; // Se esta é uma janela secundária de monitoramento
 let previousTicketKeys = new Set(); // Para detectar novos tickets
 let previousTicketStates = new Map(); // Para detectar mudanças de status { key: { status, assignee } }
@@ -2733,16 +2734,10 @@ function updateUI(stats) {
   animateNumber('stat-customer', stats.waitingForCustomer || 0);
   animateNumber('stat-pending', stats.pending || 0);
   
-  // 🆕 NOVOS CARDS - Atualizar contadores
-  debugLog('📊 Stats para Novos Cards:', {
-    simcard: stats.simcardPendingTickets?.count,
-    l0bot: stats.l0BotTickets?.count,
-    l1open: stats.l1OpenTickets?.count
-  });
-  
-  animateNumber('stat-simcard', stats.simcardPendingTickets?.count || 0);
-  animateNumber('stat-l0bot', stats.l0BotTickets?.count || 0);
-  animateNumber('stat-l1open', stats.l1OpenTickets?.count || 0);
+  // 🔬 Atualizar modo micro se ativo
+  if (isMicroMode) {
+    updateMicroStats();
+  }
   
   // Atualizar badges
   const slaBadge = document.getElementById('badge-sla');
@@ -3639,8 +3634,66 @@ let resizeTimeout;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimeout);
   resizeTimeout = setTimeout(() => {
+    checkMicroMode();
     optimizeGridLayout();
   }, 150); // Debounce de 150ms
+});
+
+// 🔬 MODO MICRO - Visualização ultra compacta
+// Ativado automaticamente quando a janela é menor que 250px de largura ou 150px de altura
+const MICRO_MODE_WIDTH_THRESHOLD = 250;
+const MICRO_MODE_HEIGHT_THRESHOLD = 150;
+
+function checkMicroMode() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const shouldBeMicro = width < MICRO_MODE_WIDTH_THRESHOLD || height < MICRO_MODE_HEIGHT_THRESHOLD;
+  
+  if (shouldBeMicro !== isMicroMode) {
+    isMicroMode = shouldBeMicro;
+    const container = document.querySelector('.app-container');
+    
+    if (isMicroMode) {
+      container.classList.add('micro-view');
+      console.log('🔬 Modo Micro ativado:', { width, height });
+      
+      // Atualizar stats no modo micro
+      updateMicroStats();
+    } else {
+      container.classList.remove('micro-view');
+      console.log('📊 Modo Normal restaurado:', { width, height });
+    }
+  }
+}
+
+function updateMicroStats() {
+  if (!currentStats) return;
+  
+  const microTotal = document.getElementById('micro-total');
+  const microSupport = document.getElementById('micro-support');
+  const microCustomer = document.getElementById('micro-customer');
+  const microPending = document.getElementById('micro-pending');
+  const microStatusDot = document.getElementById('micro-status-dot');
+  
+  if (microTotal) microTotal.textContent = currentStats.total || 0;
+  if (microSupport) microSupport.textContent = currentStats.waitingForSupport || 0;
+  if (microCustomer) microCustomer.textContent = currentStats.waitingForCustomer || 0;
+  if (microPending) microPending.textContent = currentStats.pending || 0;
+  
+  // Atualizar status de conexão
+  if (microStatusDot) {
+    microStatusDot.classList.remove('offline', 'loading');
+    if (connectionStatus === 'offline') {
+      microStatusDot.classList.add('offline');
+    } else if (connectionStatus === 'loading') {
+      microStatusDot.classList.add('loading');
+    }
+  }
+}
+
+// Inicializar verificação de modo micro
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(checkMicroMode, 100);
 });
 
 // 🔔 Função para verificar mudança de status de SLA e notificar

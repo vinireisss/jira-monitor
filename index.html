@@ -13,6 +13,33 @@
 </head>
 <body>
   <div class="app-container">
+    <!-- 🔬 MODO MICRO - Visualização ultra compacta (192x78) -->
+    <div class="micro-mode" id="micro-mode" style="display: none;">
+      <div class="micro-mode-content">
+        <div class="micro-stats">
+          <div class="micro-stat micro-stat-total" title="Total de Tickets">
+            <span class="micro-stat-icon">📊</span>
+            <span class="micro-stat-value" id="micro-total">0</span>
+          </div>
+          <div class="micro-stat micro-stat-support" title="Waiting for Support">
+            <span class="micro-stat-icon">🔧</span>
+            <span class="micro-stat-value" id="micro-support">0</span>
+          </div>
+          <div class="micro-stat micro-stat-customer" title="Waiting for Customer">
+            <span class="micro-stat-icon">👤</span>
+            <span class="micro-stat-value" id="micro-customer">0</span>
+          </div>
+          <div class="micro-stat micro-stat-pending" title="Pending">
+            <span class="micro-stat-icon">⏸️</span>
+            <span class="micro-stat-value" id="micro-pending">0</span>
+          </div>
+        </div>
+        <div class="micro-status">
+          <span class="micro-status-dot" id="micro-status-dot"></span>
+        </div>
+      </div>
+    </div>
+
     <!-- Header -->
     <div class="header" id="header">
       <div class="header-left">
