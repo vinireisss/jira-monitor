@@ -20,9 +20,9 @@ Se preferir instalar manualmente:
 cat >> ~/.zshrc << 'EOF'
 
 # 🎯 Jira Monitor - Comandos Rápidos
-alias j="cd ~/dev/nu/jira-monitor && npm start"
+alias j="cd ~/dev/nu/jira-monitor && npm start > /dev/null 2>&1 &"
 alias jira-update="cd ~/dev/nu/jira-monitor && git pull origin main && npm install"
-alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -9 -f 'electron.*jira-monitor' 2>/dev/null; sleep 1; pkill -9 Electron 2>/dev/null; sleep 0.5; npm start"
+alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -9 -f 'electron.*jira-monitor' 2>/dev/null; sleep 1; pkill -9 Electron 2>/dev/null; sleep 0.5; npm start > /dev/null 2>&1 &"
 alias jira-status="cd ~/dev/nu/jira-monitor && git status"
 alias jira-log="cd ~/dev/nu/jira-monitor && git log --oneline -10"
 EOF
