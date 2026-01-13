@@ -121,7 +121,6 @@ function addI18nAttributes() {
     'menu-search': 'menu.search',
     'menu-shortcuts': 'menu.shortcuts',
     'menu-templates': 'menu.templates',
-    'menu-focus-mode': 'menu.focusMode',
     'menu-themes': 'menu.themes',
     'menu-export': 'menu.export'
   };
@@ -844,10 +843,6 @@ function setupEventListeners() {
   
   document.getElementById('menu-timer')?.addEventListener('click', () => {
     showTimerWidget();
-    hideMenu();
-  });
-  document.getElementById('menu-focus-mode').addEventListener('click', () => {
-    toggleFocusMode();
     hideMenu();
   });
   // Opacity slider
