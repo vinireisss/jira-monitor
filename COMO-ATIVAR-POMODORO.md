@@ -4,13 +4,17 @@
 
 ### 1️⃣ Abrir o Timer
 
-Existem duas formas de abrir o widget de timer:
+Existem três formas de abrir o widget de timer:
 
-**Opção A - Atalho de Teclado:**
+**Opção A - Atalho de Teclado (Mais Rápido):**
 - **macOS**: `Cmd + T`
 - **Windows/Linux**: `Ctrl + T`
 
-**Opção B - Interface Visual:**
+**Opção B - Menu Hambúrguer:**
+- Clique no botão de **menu** (☰) no canto superior direito
+- Selecione **"⏱️ Timer / Pomodoro"**
+
+**Opção C - Interface Visual:**
 - Abra um ticket (clique em qualquer ticket da lista)
 - Procure pelo botão **"⏱️ Timer"** nos controles do ticket
 

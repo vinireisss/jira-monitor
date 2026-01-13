@@ -831,6 +831,11 @@ function setupEventListeners() {
     showTemplatesModal();
     hideMenu();
   });
+  
+  document.getElementById('menu-timer')?.addEventListener('click', () => {
+    showTimerWidget();
+    hideMenu();
+  });
   document.getElementById('menu-focus-mode').addEventListener('click', () => {
     toggleFocusMode();
     hideMenu();
