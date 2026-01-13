@@ -1240,9 +1240,14 @@ app.on('window-all-closed', () => {
   debugLog('📌 Todas as janelas fechadas, mas app continua no tray');
 });
 
-// Recriar janela no macOS quando o ícone do tray for clicado
+// Recriar ou mostrar janela no macOS quando o ícone do dock for clicado
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    // Se a janela existe, mostrar e focar
+    mainWindow.show();
+    mainWindow.focus();
+  } else if (BrowserWindow.getAllWindows().length === 0) {
+    // Se não há janelas, criar uma nova
     createWindow();
   }
 });
