@@ -370,13 +370,37 @@
   min-width: 0;
 }
 
-/* Ajuste para telas pequenas */
-@media (max-width: 400px) {
+/* ========================================
+   📱 RESPONSIVIDADE DOS AVATARES
+   ======================================== */
+
+/* Ajuste para tablets e telas médias */
+@media (max-width: 768px) {
   .ticket-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 10px;
-    margin-right: 6px;
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 11px !important;
+    margin-right: 6px !important;
+  }
+}
+
+/* Ajuste para telas pequenas */
+@media (max-width: 480px) {
+  .ticket-avatar {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 10px !important;
+    margin-right: 4px !important;
+  }
+}
+
+/* Ajuste para telas muito pequenas */
+@media (max-width: 360px) {
+  .ticket-avatar {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 9px !important;
+    margin-right: 4px !important;
   }
 }
 
@@ -819,5 +843,118 @@
 
 .app-container[data-theme="dark"] .comment-actions .btn-primary:hover {
   box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5);
+}
+
+/* ========================================
+   👤 ÍCONE DO USUÁRIO - CANTO SUPERIOR DIREITO
+   ======================================== */
+
+/* Reposicionar o botão de usuário para o final do header */
+.user-monitor-btn {
+  order: 999 !important; /* Força o botão para o final */
+  margin-left: auto !important; /* Empurra para a direita */
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
+  border: 1.5px solid rgba(102, 126, 234, 0.4) !important;
+  padding: 6px 12px !important;
+  height: 36px !important;
+  width: auto !important;
+  gap: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  border-radius: 10px !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15) !important;
+}
+
+.user-monitor-btn:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%) !important;
+  border-color: rgba(102, 126, 234, 0.6) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3) !important;
+}
+
+.user-monitor-btn svg {
+  color: #c4b5fd !important;
+  flex-shrink: 0 !important;
+}
+
+.user-monitor-label {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.3px !important;
+}
+
+.user-monitor-btn .dropdown-arrow {
+  color: rgba(255, 255, 255, 0.7) !important;
+  transition: transform 0.3s ease !important;
+}
+
+.user-monitor-btn:hover .dropdown-arrow {
+  transform: translateY(2px) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Badge de destaque quando um usuário específico está sendo monitorado */
+.user-monitor-btn[data-monitoring="true"]::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  border: 2px solid var(--header-bg);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.8);
+  }
+}
+
+/* Ajustes responsivos para o botão de usuário */
+@media (max-width: 768px) {
+  .user-monitor-label {
+    max-width: 80px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .user-monitor-btn {
+    padding: 6px 10px !important;
+    height: 32px !important;
+  }
+  
+  .user-monitor-label {
+    font-size: 12px !important;
+    max-width: 60px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-monitor-label {
+    display: none !important; /* Esconde o texto, mantém apenas o ícone */
+  }
+  
+  .user-monitor-btn {
+    width: 32px !important;
+    padding: 6px !important;
+    justify-content: center !important;
+  }
+  
+  .user-monitor-btn .dropdown-arrow {
+    display: none !important;
+  }
 }
 
