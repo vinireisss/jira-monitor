@@ -226,11 +226,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyAccentColor(currentConfig.accentColor);
   }
   
-  // Aplicar modo focus se estava ativo
-  if (currentConfig.focusMode) {
-    isFocusMode = true;
-    document.body.classList.add('focus-mode');
-  }
+  // Forçar desativar modo focus (sempre inicia normal)
+  isFocusMode = false;
+  document.body.classList.remove('focus-mode');
   
   // Inicializar status de conexão
   updateConnectionStatus('offline');
