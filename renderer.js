@@ -1182,9 +1182,6 @@ function setupKeyboardShortcuts() {
     } else if (isCmdOrCtrl && e.key === ',') {
       e.preventDefault();
       showConfigPanel();
-    } else if (isCmdOrCtrl && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
-      e.preventDefault();
-      toggleFocusMode();
     } else if (isCmdOrCtrl && e.key === 'e') {
       e.preventDefault();
       showExportModal();
