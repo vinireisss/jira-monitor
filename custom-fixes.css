@@ -915,19 +915,7 @@
   animation: zoom-pulse 0.4s ease-out !important;
 }
 
-/* Ajustes para o app-container quando zoom está aplicado */
-.app-container {
-  transition: transform 0.3s ease !important;
-}
-
-/* Prevenir overflow quando zoom está aplicado */
-body {
-  overflow: auto !important;
-}
-
-body:has(.app-container[style*="scale"]) {
-  overflow: hidden !important;
-}
+/* Zoom é aplicado via webFrame.setZoomFactor() do Electron - nativo e sem interferências */
 
 /* Responsividade dos botões de zoom */
 @media (max-width: 600px) {

@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, webFrame } = require('electron');
 
 // Estado Global
 let currentConfig = {};
@@ -374,11 +374,10 @@ async function loadConfig() {
         currentZoomIndex = 5; // Default 100%
       }
       currentZoom = zoomLevels[currentZoomIndex];
-      const appContainer = document.querySelector('.app-container');
-      if (appContainer && currentZoom !== 1.0) {
-        appContainer.style.transform = `scale(${currentZoom})`;
-        appContainer.style.transformOrigin = 'center center';
-        document.body.style.overflow = 'hidden';
+      
+      // Aplicar zoom usando webFrame (nativo do Electron)
+      if (webFrame) {
+        webFrame.setZoomFactor(currentZoom);
       }
     }
     
@@ -1879,19 +1878,10 @@ function resetZoom() {
 
 function applyZoom() {
   currentZoom = zoomLevels[currentZoomIndex];
-  const appContainer = document.querySelector('.app-container');
   
-  if (appContainer) {
-    // Usar transform scale em vez de zoom para não interferir com redimensionamento
-    appContainer.style.transform = `scale(${currentZoom})`;
-    appContainer.style.transformOrigin = 'center center';
-    
-    // Ajustar overflow do body para evitar problemas de scroll
-    if (currentZoom !== 1.0) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+  // Usar webFrame do Electron - forma nativa que NÃO interfere com redimensionamento
+  if (webFrame) {
+    webFrame.setZoomFactor(currentZoom);
   }
   
   // Feedback visual
