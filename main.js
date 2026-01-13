@@ -23,8 +23,9 @@ function createWindow() {
   let { x, y, width, height } = savedBounds;
   
   // Validar largura e altura mínimas
-  width = Math.max(350, width || 420);
-  height = Math.max(500, height || 700);
+  // Permitir modo micro (150x60) mas usar padrão maior se indefinido
+  width = Math.max(150, width || 420);
+  height = Math.max(60, height || 700);
   
   // Verificar se a posição está em algum display conectado
   let isPositionValid = false;
@@ -58,6 +59,8 @@ function createWindow() {
     height,
     x,
     y,
+    minWidth: 150,  // 🔬 Permite modo micro
+    minHeight: 60,  // 🔬 Permite modo micro
     title: 'Jira Monitor',
     icon: windowIcon,
     frame: false,

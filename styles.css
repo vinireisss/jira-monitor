@@ -6078,3 +6078,270 @@ body {
   animation: sla-overdue-pulse 2s ease-in-out infinite !important;
 }
 
+/* ========================================
+   🔬 MODO MICRO - Visualização Ultra Compacta
+   Ativado automaticamente quando janela < 250px largura
+   
+   ⚠️ IMPORTANTE: Usa variáveis CSS do tema ativo para manter consistência
+======================================== */
+
+.micro-mode {
+  display: none;
+  width: 100%;
+  height: 100%;
+  /* Usa variáveis CSS do tema - herda automaticamente o tema selecionado */
+  background: linear-gradient(135deg, 
+    var(--accent-color, #667eea) 0%, 
+    color-mix(in srgb, var(--accent-color, #667eea) 70%, var(--bg-primary, #1a1d2e)) 100%
+  );
+  border-radius: 16px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  cursor: move;
+  -webkit-app-region: drag;
+  user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.micro-mode.active {
+  display: flex !important;
+}
+
+.micro-mode-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  gap: 8px;
+}
+
+.micro-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.micro-stat {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+  cursor: pointer;
+}
+
+.micro-stat:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.05);
+}
+
+.micro-stat-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.micro-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  line-height: 1;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+/* Cores específicas para cada stat */
+.micro-stat-total {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.micro-stat-support {
+  background: rgba(243, 156, 18, 0.5);
+}
+
+.micro-stat-support:hover {
+  background: rgba(243, 156, 18, 0.7);
+}
+
+.micro-stat-customer {
+  background: rgba(52, 152, 219, 0.5);
+}
+
+.micro-stat-customer:hover {
+  background: rgba(52, 152, 219, 0.7);
+}
+
+.micro-stat-pending {
+  background: rgba(155, 89, 182, 0.5);
+}
+
+.micro-stat-pending:hover {
+  background: rgba(155, 89, 182, 0.7);
+}
+
+/* Status indicator */
+.micro-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.micro-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2ecc71;
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+  transition: all 0.3s ease;
+}
+
+.micro-status-dot.offline {
+  background: #e74c3c;
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.6);
+}
+
+.micro-status-dot.loading {
+  background: #f39c12;
+  box-shadow: 0 0 8px rgba(243, 156, 18, 0.6);
+  animation: pulse-loading 1s ease-in-out infinite;
+}
+
+@keyframes pulse-loading {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+/* Quando o app está em modo micro, esconder tudo exceto .micro-mode */
+.app-container.micro-view .header,
+.app-container.micro-view .content,
+.app-container.micro-view .footer,
+.app-container.micro-view .config-panel,
+.app-container.micro-view .shortcuts-modal,
+.app-container.micro-view .ticket-preview-modal,
+.app-container.micro-view .quick-search-modal,
+.app-container.micro-view .templates-modal,
+.app-container.micro-view .export-modal,
+.app-container.micro-view .theme-customizer-modal,
+.app-container.micro-view .language-modal,
+.app-container.micro-view .add-user-modal,
+.app-container.micro-view .notifications-preview,
+.app-container.micro-view .docs-dropdown,
+.app-container.micro-view .menu-dropdown,
+.app-container.micro-view .user-monitor-dropdown,
+.app-container.micro-view .toast-container,
+.app-container.micro-view .resize-handle {
+  display: none !important;
+}
+
+.app-container.micro-view {
+  min-width: 100px;
+  min-height: 50px;
+  background: transparent;
+  border-radius: 16px;
+  padding: 0;
+}
+
+.app-container.micro-view .micro-mode {
+  display: flex !important;
+}
+
+/* Animação de entrada do modo micro */
+.micro-mode {
+  animation: micro-slide-in 0.3s ease-out;
+}
+
+@keyframes micro-slide-in {
+  0% { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Responsivo para telas ainda menores */
+@media (max-width: 180px) {
+  .micro-stat-icon {
+    display: none;
+  }
+  
+  .micro-stat {
+    padding: 4px 6px;
+  }
+  
+  .micro-stat-value {
+    font-size: 14px;
+  }
+}
+
+/* ========================================
+   🎨 TEMAS ESPECÍFICOS PARA MODO MICRO
+   Herda cores do tema selecionado via variáveis CSS
+======================================== */
+
+/* Tema Light */
+.app-container[data-theme="light"] .micro-mode {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.app-container[data-theme="light"] .micro-stat-value {
+  color: #2c3e50;
+  text-shadow: none;
+}
+
+.app-container[data-theme="light"] .micro-stat {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.app-container[data-theme="light"] .micro-stat:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.app-container[data-theme="light"] .micro-stat-total {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+.app-container[data-theme="light"] .micro-stat-support {
+  background: rgba(243, 156, 18, 0.25);
+}
+
+.app-container[data-theme="light"] .micro-stat-customer {
+  background: rgba(52, 152, 219, 0.25);
+}
+
+.app-container[data-theme="light"] .micro-stat-pending {
+  background: rgba(155, 89, 182, 0.25);
+}
+
+/* Tema Dark */
+.app-container[data-theme="dark"] .micro-mode {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Tema Cyberpunk (preset especial) */
+:root[style*="--accent-color: #ff00ff"] .micro-mode,
+.micro-mode[data-preset="cyberpunk"] {
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+  border: 1px solid #00ffff;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+:root[style*="--accent-color: #ff00ff"] .micro-stat-value {
+  color: #00ffff;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+}
+
+/* Tema Nord (preset especial) */
+:root[style*="--accent-color: #88c0d0"] .micro-mode {
+  background: linear-gradient(135deg, #4c566a 0%, #3b4252 100%);
+  border: 1px solid rgba(136, 192, 208, 0.3);
+}
+
+/* Tema Dracula (preset especial) */
+:root[style*="--accent-color: #bd93f9"] .micro-mode {
+  background: linear-gradient(135deg, #282a36 0%, #44475a 100%);
+  border: 1px solid rgba(189, 147, 249, 0.3);
+}
+
