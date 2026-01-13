@@ -95,27 +95,50 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
+  // Função para garantir que a janela apareça
+  const forceShowWindow = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      // Centralizar na tela primária se estiver escondida
+      if (!mainWindow.isVisible()) {
+        const { screen } = require('electron');
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+        const windowBounds = mainWindow.getBounds();
+        
+        // Centralizar
+        mainWindow.setPosition(
+          Math.floor((screenWidth - windowBounds.width) / 2),
+          Math.floor((screenHeight - windowBounds.height) / 2)
+        );
+      }
+      
+      // Forçar janela a aparecer
+      mainWindow.restore(); // Restaurar se estiver minimizada
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.moveTop(); // Trazer para frente
+      
+      // No macOS, forçar app em primeiro plano
+      if (process.platform === 'darwin') {
+        app.focus({ steal: true });
+        mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+        mainWindow.setVisibleOnAllWorkspaces(false); // Resetar para comportamento normal
+      }
+    }
+  };
+  
   // Mostrar janela quando estiver pronta
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    mainWindow.focus();
-    // Garantir que o app fique em primeiro plano no macOS
-    if (process.platform === 'darwin') {
-      app.focus({ steal: true });
-    }
+    forceShowWindow();
   });
   
   // Fallback: garantir que a janela apareça mesmo se ready-to-show demorar
   setTimeout(() => {
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
-      debugLog('⚠️ Forçando janela a aparecer (timeout)');
-      mainWindow.show();
-      mainWindow.focus();
-      if (process.platform === 'darwin') {
-        app.focus({ steal: true });
-      }
+      console.log('⚠️ Forçando janela a aparecer (timeout)');
+      forceShowWindow();
     }
-  }, 2000);
+  }, 1500);
 
   // Salvar posição e tamanho quando a janela for movida ou redimensionada
   let saveTimeout;
@@ -1265,9 +1288,26 @@ app.on('window-all-closed', () => {
 // Recriar ou mostrar janela no macOS quando o ícone do dock for clicado
 app.on('activate', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    // Se a janela existe, mostrar e focar
+    // Se a janela existe, forçar aparecer
+    const { screen } = require('electron');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+    const windowBounds = mainWindow.getBounds();
+    
+    // Centralizar na tela primária
+    mainWindow.setPosition(
+      Math.floor((screenWidth - windowBounds.width) / 2),
+      Math.floor((screenHeight - windowBounds.height) / 2)
+    );
+    
+    mainWindow.restore(); // Restaurar se estiver minimizada
     mainWindow.show();
     mainWindow.focus();
+    mainWindow.moveTop(); // Trazer para frente
+    
+    if (process.platform === 'darwin') {
+      app.focus({ steal: true });
+    }
   } else if (BrowserWindow.getAllWindows().length === 0) {
     // Se não há janelas, criar uma nova
     createWindow();
