@@ -6,6 +6,7 @@
   "scripts": {
     "start": "./start.sh",
     "dev": "./start.sh --dev",
+    "test": "node verify-app.js",
     "build": "electron-builder --mac",
     "install:fresh": "rm -rf node_modules package-lock.json && npm install",
     "clean": "rm -rf dist build"
