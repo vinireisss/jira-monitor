@@ -846,6 +846,89 @@
 }
 
 /* ========================================
+   🔍 BOTÕES DE ZOOM
+   ======================================== */
+
+.zoom-btn {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%) !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.3) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease !important;
+}
+
+.zoom-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+.zoom-btn:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.25) 100%) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3) !important;
+}
+
+.zoom-btn:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.zoom-btn:active {
+  transform: translateY(0) scale(0.98) !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
+}
+
+.zoom-btn svg {
+  position: relative;
+  z-index: 1;
+  color: rgba(147, 197, 253, 0.9) !important;
+  transition: color 0.2s ease !important;
+}
+
+.zoom-btn:hover svg {
+  color: rgba(191, 219, 254, 1) !important;
+}
+
+/* Efeito de pulso ao clicar */
+@keyframes zoom-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.zoom-btn:active {
+  animation: zoom-pulse 0.4s ease-out !important;
+}
+
+/* Responsividade dos botões de zoom */
+@media (max-width: 600px) {
+  .zoom-btn {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  
+  .zoom-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
+/* ========================================
    👤 ÍCONE DO USUÁRIO - CANTO SUPERIOR DIREITO
    ======================================== */
 

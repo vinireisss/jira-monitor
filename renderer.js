@@ -771,7 +771,8 @@ function setupEventListeners() {
   document.getElementById('user-monitor-btn').addEventListener('click', toggleUserMonitorDropdown);
   document.getElementById('notifications-btn').addEventListener('click', toggleNotifications);
   document.getElementById('docs-btn').addEventListener('click', toggleDocsDropdown);
-  document.getElementById('toggle-layout-btn').addEventListener('click', toggleLayout);
+  document.getElementById('zoom-in-btn').addEventListener('click', zoomIn);
+  document.getElementById('zoom-out-btn').addEventListener('click', zoomOut);
   document.getElementById('toggle-density-btn').addEventListener('click', toggleDensityMode);
   document.getElementById('minimize-btn').addEventListener('click', () => ipcRenderer.invoke('minimize-window'));
   document.getElementById('close-btn').addEventListener('click', () => ipcRenderer.invoke('close-window'));
@@ -830,6 +831,10 @@ function setupEventListeners() {
   }
   document.getElementById('menu-themes').addEventListener('click', () => {
     showThemeCustomizer();
+    hideMenu();
+  });
+  document.getElementById('menu-toggle-layout').addEventListener('click', () => {
+    toggleLayout();
     hideMenu();
   });
   document.getElementById('menu-language').addEventListener('click', () => {
@@ -1135,6 +1140,15 @@ function setupKeyboardShortcuts() {
     } else if (isCmdOrCtrl && e.key === 'l') {
       e.preventDefault();
       toggleLayout();
+    } else if (isCmdOrCtrl && (e.key === '=' || e.key === '+')) {
+      e.preventDefault();
+      zoomIn();
+    } else if (isCmdOrCtrl && (e.key === '-' || e.key === '_')) {
+      e.preventDefault();
+      zoomOut();
+    } else if (isCmdOrCtrl && e.key === '0') {
+      e.preventDefault();
+      resetZoom();
     } else if (isCmdOrCtrl && e.key === 'r') {
       e.preventDefault();
       fetchAndUpdateStats();
@@ -1819,6 +1833,103 @@ function toggleLayout() {
   } else {
     container.classList.remove('horizontal-layout');
   }
+}
+
+// Zoom
+let currentZoom = 1.0;
+const zoomLevels = [0.5, 0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0];
+let currentZoomIndex = 5; // Começa em 1.0 (100%)
+
+function zoomIn() {
+  if (currentZoomIndex < zoomLevels.length - 1) {
+    currentZoomIndex++;
+    applyZoom();
+  }
+}
+
+function zoomOut() {
+  if (currentZoomIndex > 0) {
+    currentZoomIndex--;
+    applyZoom();
+  }
+}
+
+function resetZoom() {
+  currentZoomIndex = 5; // Reset para 100%
+  applyZoom();
+}
+
+function applyZoom() {
+  currentZoom = zoomLevels[currentZoomIndex];
+  document.body.style.zoom = currentZoom;
+  
+  // Feedback visual
+  showZoomIndicator();
+}
+
+function showZoomIndicator() {
+  // Remove indicador anterior se existir
+  const existingIndicator = document.getElementById('zoom-indicator');
+  if (existingIndicator) {
+    existingIndicator.remove();
+  }
+  
+  // Criar novo indicador
+  const indicator = document.createElement('div');
+  indicator.id = 'zoom-indicator';
+  indicator.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 30, 0.95);
+    backdrop-filter: blur(10px);
+    color: white;
+    padding: 20px 40px;
+    border-radius: 16px;
+    font-size: 32px;
+    font-weight: 600;
+    z-index: 10000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(102, 126, 234, 0.5);
+    pointer-events: none;
+    animation: zoomFadeIn 0.2s ease-out;
+  `;
+  indicator.textContent = `${Math.round(currentZoom * 100)}%`;
+  
+  // Adicionar animação
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes zoomFadeIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+    @keyframes zoomFadeOut {
+      from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  document.body.appendChild(indicator);
+  
+  // Remover após 1 segundo
+  setTimeout(() => {
+    indicator.style.animation = 'zoomFadeOut 0.2s ease-out';
+    setTimeout(() => indicator.remove(), 200);
+  }, 800);
 }
 
 // Salvar configurações atuais automaticamente (sem UI)
