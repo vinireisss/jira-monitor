@@ -95,24 +95,10 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  // Função para garantir que a janela apareça
+  // Função para garantir que a janela apareça (SEM alterar posição)
   const forceShowWindow = () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      // Centralizar na tela primária se estiver escondida
-      if (!mainWindow.isVisible()) {
-        const { screen } = require('electron');
-        const primaryDisplay = screen.getPrimaryDisplay();
-        const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-        const windowBounds = mainWindow.getBounds();
-        
-        // Centralizar
-        mainWindow.setPosition(
-          Math.floor((screenWidth - windowBounds.width) / 2),
-          Math.floor((screenHeight - windowBounds.height) / 2)
-        );
-      }
-      
-      // Forçar janela a aparecer
+      // Forçar janela a aparecer na posição atual
       mainWindow.restore(); // Restaurar se estiver minimizada
       mainWindow.show();
       mainWindow.focus();
@@ -127,9 +113,13 @@ function createWindow() {
     }
   };
   
-  // Mostrar janela quando estiver pronta
+  // Mostrar janela quando estiver pronta (mantém posição salva)
   mainWindow.once('ready-to-show', () => {
-    forceShowWindow();
+    mainWindow.show();
+    mainWindow.focus();
+    if (process.platform === 'darwin') {
+      app.focus({ steal: true });
+    }
   });
   
   // Fallback: garantir que a janela apareça mesmo se ready-to-show demorar
@@ -1288,18 +1278,7 @@ app.on('window-all-closed', () => {
 // Recriar ou mostrar janela no macOS quando o ícone do dock for clicado
 app.on('activate', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    // Se a janela existe, forçar aparecer
-    const { screen } = require('electron');
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-    const windowBounds = mainWindow.getBounds();
-    
-    // Centralizar na tela primária
-    mainWindow.setPosition(
-      Math.floor((screenWidth - windowBounds.width) / 2),
-      Math.floor((screenHeight - windowBounds.height) / 2)
-    );
-    
+    // Se a janela existe, mostrar e focar (mantém posição)
     mainWindow.restore(); // Restaurar se estiver minimizada
     mainWindow.show();
     mainWindow.focus();
