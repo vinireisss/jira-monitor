@@ -11,11 +11,29 @@ const DEBUG_MODE = false;
 // 🛡️ Função auxiliar para logs condicionais
 const debugLog = (...args) => {
   if (DEBUG_MODE) {
-    debugLog(...args);
+    console.log(...args);
   }
 };
 
-const store = new Store();
+// 🛡️ Inicializar store com tratamento de erro para arquivo corrompido
+let store;
+try {
+  store = new Store();
+} catch (error) {
+  console.error('⚠️ Arquivo de configuração corrompido. Criando novo...');
+  // Tentar limpar o arquivo corrompido
+  const configPath = path.join(app.getPath('userData'), 'config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      fs.unlinkSync(configPath);
+      console.log('✅ Arquivo corrompido removido');
+    } catch (unlinkError) {
+      console.error('Erro ao remover arquivo corrompido:', unlinkError);
+    }
+  }
+  // Criar novo store limpo
+  store = new Store();
+}
 let mainWindow;
 let tray;
 let trayManager;
