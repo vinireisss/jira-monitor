@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="ux-enhancements.css">
   <link rel="stylesheet" href="performance-optimizations.css">
+  <link rel="stylesheet" href="custom-fixes.css">
   <script src="confetti.js"></script>
   <script src="i18n.js"></script>
 </head>
@@ -124,6 +125,12 @@
             </svg>
             <span data-i18n="menu.templates">Templates</span>
           </div>
+          <div class="menu-item" id="menu-timer" title="Abrir Timer/Pomodoro (Cmd+T)">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+            </svg>
+            <span data-i18n="menu.timer">Timer / Pomodoro</span>
+          </div>
           
           <div class="menu-divider"></div>
           
@@ -134,17 +141,17 @@
             </svg>
             <span data-i18n="menu.themes">Temas</span>
           </div>
+          <div class="menu-item" id="menu-toggle-layout" title="Alternar Layout (Cmd+L)">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
+            </svg>
+            <span>Layout</span>
+          </div>
           <div class="menu-item" id="menu-language" title="Idioma / Language / Idioma">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
             </svg>
             <span data-i18n="menu.language">🌍 Idioma</span>
-          </div>
-          <div class="menu-item" id="menu-focus-mode" title="Ativar modo focus (Cmd+Shift+F)">
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            <span data-i18n="menu.focusMode">Modo Focus</span>
           </div>
           <div class="menu-item-slider" id="menu-opacity-container" title="Ajustar transparência da janela">
             <div class="menu-item-slider-header">
@@ -170,37 +177,6 @@
         <!-- Indicador de Status de Conexão -->
         <div class="connection-status" id="connection-status" title="Status da conexão">
           <span class="status-dot" id="status-dot"></span>
-        </div>
-        
-        <!-- Botão de Usuário Monitorado -->
-        <button class="header-btn user-monitor-btn" id="user-monitor-btn" title="Usuário Monitorado">
-          <svg viewBox="0 0 24 24" width="18" height="18">
-            <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
-          <span class="user-monitor-label" id="user-monitor-label">Você</span>
-          <svg viewBox="0 0 24 24" width="14" height="14" class="dropdown-arrow">
-            <path fill="currentColor" d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-        
-        <!-- Dropdown de Usuário Monitorado -->
-        <div class="user-monitor-dropdown" id="user-monitor-dropdown" style="display: none;">
-          <div class="user-monitor-dropdown-header">
-            <h3>👤 Monitorar Usuário</h3>
-            <button class="close-preview-btn" id="close-user-monitor-dropdown">✕</button>
-          </div>
-          <div class="user-monitor-dropdown-body">
-            <div class="user-list" id="user-list">
-              <!-- Lista de usuários será inserida aqui -->
-            </div>
-            <div class="user-monitor-divider"></div>
-            <button class="add-user-btn" id="add-user-btn">
-              <svg viewBox="0 0 24 24" width="18" height="18">
-                <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
-              <span>Adicionar Outro Usuário...</span>
-            </button>
-          </div>
         </div>
         
         <!-- Botão de Notificações -->
@@ -256,9 +232,16 @@
           </div>
         </div>
         
-        <button class="header-btn" id="toggle-layout-btn" title="Alternar Layout (Cmd+L)">
+        <!-- Botões de Zoom -->
+        <button class="header-btn zoom-btn" id="zoom-out-btn" title="Diminuir Zoom (Cmd+-)">
           <svg viewBox="0 0 24 24" width="18" height="18">
-            <path fill="currentColor" d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
+            <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z"/>
+          </svg>
+        </button>
+        
+        <button class="header-btn zoom-btn" id="zoom-in-btn" title="Aumentar Zoom (Cmd++)">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm.5-7h-1v2H7v1h2v2h1v-2h2V9h-2z"/>
           </svg>
         </button>
         
@@ -267,6 +250,37 @@
             <path fill="currentColor" d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2zm0 4h18v2H3v-2zm0 4h18v2H3v-2z"/>
           </svg>
         </button>
+        
+        <!-- Botão de Usuário Monitorado (CANTO SUPERIOR DIREITO) -->
+        <button class="header-btn user-monitor-btn" id="user-monitor-btn" title="Usuário Monitorado">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+          <span class="user-monitor-label" id="user-monitor-label">Você</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" class="dropdown-arrow">
+            <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+          </svg>
+        </button>
+        
+        <!-- Dropdown de Usuário Monitorado -->
+        <div class="user-monitor-dropdown" id="user-monitor-dropdown" style="display: none;">
+          <div class="user-monitor-dropdown-header">
+            <h3>👤 Monitorar Usuário</h3>
+            <button class="close-preview-btn" id="close-user-monitor-dropdown">✕</button>
+          </div>
+          <div class="user-monitor-dropdown-body">
+            <div class="user-list" id="user-list">
+              <!-- Lista de usuários será inserida aqui -->
+            </div>
+            <div class="user-monitor-divider"></div>
+            <button class="add-user-btn" id="add-user-btn">
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <span>Adicionar Outro Usuário...</span>
+            </button>
+          </div>
+        </div>
         
         <button class="header-btn" id="minimize-btn" title="Minimizar (Esc)" data-i18n="header.minimize" data-i18n-title>
           <svg viewBox="0 0 24 24" width="18" height="18">
@@ -440,6 +454,75 @@
             <!-- Lista de tickets será inserida aqui -->
           </div>
         </div>
+
+        <!-- 📱 NOVA FILA: Tickets Pending SimCard (Filtro 52128) -->
+        <div class="stat-card stat-card-simcard" data-card-id="simcard" id="card-simcard">
+          <div class="stat-card-header">
+            <div class="stat-card-title-group">
+              <div class="stat-card-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path fill="currentColor" d="M19.5 6h-15C3.67 6 3 6.67 3 7.5v13c0 .83.67 1.5 1.5 1.5h15c.83 0 1.5-.67 1.5-1.5v-13c0-.83-.67-1.5-1.5-1.5zm-14 13h-1v-11h1v11zm2 0h-1v-11h1v11zm2 0h-1v-11h1v11zm2 0h-1v-11h1v11zm8 0h-7v-11h7v11z"/>
+                </svg>
+              </div>
+              <h3>Tickets Pending SimCard</h3>
+            </div>
+            <button class="expand-btn" data-card="simcard" title="Expandir">
+              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="stat-number" id="stat-simcard">0</div>
+          <div class="tickets-list" id="tickets-list-simcard" style="display: none;">
+            <!-- Lista de tickets será inserida aqui -->
+          </div>
+        </div>
+
+        <!-- 🤖 NOVA FILA: Tickets L0 Jira Bot (Queue 7631) -->
+        <div class="stat-card stat-card-l0bot" data-card-id="l0bot" id="card-l0bot">
+          <div class="stat-card-header">
+            <div class="stat-card-title-group">
+              <div class="stat-card-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path fill="currentColor" d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                </svg>
+              </div>
+              <h3>Tickets L0 Jira Bot</h3>
+            </div>
+            <button class="expand-btn" data-card="l0bot" title="Expandir">
+              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="stat-number" id="stat-l0bot">0</div>
+          <div class="tickets-list" id="tickets-list-l0bot" style="display: none;">
+            <!-- Lista de tickets será inserida aqui -->
+          </div>
+        </div>
+
+        <!-- 🎯 NOVA FILA: All L1 Open (Queue 3015) -->
+        <div class="stat-card stat-card-l1open" data-card-id="l1open" id="card-l1open">
+          <div class="stat-card-header">
+            <div class="stat-card-title-group">
+              <div class="stat-card-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                  <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
+              <h3>All L1 Open</h3>
+            </div>
+            <button class="expand-btn" data-card="l1open" title="Expandir">
+              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="stat-number" id="stat-l1open">0</div>
+          <div class="tickets-list" id="tickets-list-l1open" style="display: none;">
+            <!-- Lista de tickets será inserida aqui -->
+          </div>
+        </div>
       </div>
 
       <!-- Modo Pro -->
@@ -545,10 +628,32 @@
         <!-- Tickets Avaliados -->
         <div class="pro-section" id="evaluated-tickets-section">
           <h3 class="pro-section-title" data-i18n="pro.evaluated">✅ Tickets Avaliados</h3>
-          <div class="sim-cards-main">
-            <button class="custom-btn evaluated-tickets-count-btn" id="evaluated-tickets-count-btn">
-              <span class="btn-text" data-i18n="pro.lastEvaluated">Últimos Avaliados</span>
-              <span class="stat-number-inline" id="evaluated-tickets-count">0</span>
+          
+          <!-- Barra de Filtros por Estrelas -->
+          <div class="evaluated-filters" id="evaluated-filters">
+            <button class="filter-chip active" id="filter-all" data-rating="all" onclick="filterEvaluatedTicketsByRating(null)">
+              <span class="filter-label">Todos</span>
+              <span class="filter-count" id="count-all">0</span>
+            </button>
+            <button class="filter-chip" id="filter-5" data-rating="5" onclick="filterEvaluatedTicketsByRating(5)">
+              <span class="filter-label">⭐⭐⭐⭐⭐</span>
+              <span class="filter-count" id="count-5">0</span>
+            </button>
+            <button class="filter-chip" id="filter-4" data-rating="4" onclick="filterEvaluatedTicketsByRating(4)">
+              <span class="filter-label">⭐⭐⭐⭐</span>
+              <span class="filter-count" id="count-4">0</span>
+            </button>
+            <button class="filter-chip" id="filter-3" data-rating="3" onclick="filterEvaluatedTicketsByRating(3)">
+              <span class="filter-label">⭐⭐⭐</span>
+              <span class="filter-count" id="count-3">0</span>
+            </button>
+            <button class="filter-chip" id="filter-2" data-rating="2" onclick="filterEvaluatedTicketsByRating(2)">
+              <span class="filter-label">⭐⭐</span>
+              <span class="filter-count" id="count-2">0</span>
+            </button>
+            <button class="filter-chip" id="filter-1" data-rating="1" onclick="filterEvaluatedTicketsByRating(1)">
+              <span class="filter-label">⭐</span>
+              <span class="filter-count" id="count-1">0</span>
             </button>
             <button class="expand-btn-inline" id="expand-evaluated-tickets" title="Expandir">
               <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
@@ -556,6 +661,7 @@
               </svg>
             </button>
           </div>
+          
           <div class="tickets-list" id="tickets-list-evaluated-tickets" style="display: none;">
             <!-- Lista de tickets avaliados será inserida aqui -->
           </div>
@@ -1003,6 +1109,15 @@
               <button class="color-swatch" data-color="#ec4899" style="background: #ec4899;" onclick="window.applyAccentColor('#ec4899', true)"></button>
               <button class="color-swatch" data-color="#06b6d4" style="background: #06b6d4;" onclick="window.applyAccentColor('#06b6d4', true)"></button>
             </div>
+            <div class="custom-color-picker-wrapper">
+              <label class="custom-color-label">Ou escolha uma cor personalizada:</label>
+              <div class="custom-color-input-wrapper">
+                <input type="color" id="customColorPicker" class="custom-color-input" value="#667eea">
+                <button class="apply-custom-color-btn" onclick="window.applyCustomColor()">
+                  <span>Aplicar Cor Personalizada</span>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="theme-option">
             <label>Temas Especiais:</label>
@@ -1033,11 +1148,6 @@
             <span class="shortcut-action">Atualizar</span>
             <input type="text" class="shortcut-input" id="shortcut-refresh" value="Cmd+R" readonly>
             <button class="shortcut-edit-btn" data-action="refresh">Editar</button>
-          </div>
-          <div class="shortcut-row">
-            <span class="shortcut-action">Modo Focus</span>
-            <input type="text" class="shortcut-input" id="shortcut-focus" value="Cmd+Shift+F" readonly>
-            <button class="shortcut-edit-btn" data-action="focus">Editar</button>
           </div>
         </div>
         <div class="shortcuts-custom-footer">
@@ -1288,6 +1398,12 @@
             </div>
             <div class="shortcut-item">
               <div class="shortcut-keys">
+                <kbd>Cmd</kbd> + <kbd>T</kbd>
+              </div>
+              <div class="shortcut-description">⏱️ Abrir Timer / Pomodoro</div>
+            </div>
+            <div class="shortcut-item">
+              <div class="shortcut-keys">
                 <kbd>Esc</kbd>
               </div>
               <div class="shortcut-description">❌ Fechar modais ou minimizar</div>
@@ -1296,12 +1412,6 @@
 
           <div class="shortcuts-section">
             <h3>✨ Novos Recursos UX</h3>
-            <div class="shortcut-item">
-              <div class="shortcut-keys">
-                <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd>
-              </div>
-              <div class="shortcut-description">🎯 Ativar/desativar Modo Focus</div>
-            </div>
             <div class="shortcut-item">
               <div class="shortcut-keys">
                 <kbd>Cmd</kbd> + <kbd>E</kbd>
@@ -1353,7 +1463,6 @@
             <div class="shortcut-item" style="border: none; padding: 8px 0;">
               <div class="shortcut-description" style="color: #888; font-size: 12px;">
                 • Use <kbd>Cmd+K</kbd> para buscar tickets rapidamente<br>
-                • Modo Focus (<kbd>Cmd+Shift+F</kbd>) oculta tudo exceto os números<br>
                 • Arraste os cards principais para reordenar (Modo Pro)<br>
                 • Hover nos tickets mostra quick actions (copiar, abrir)<br>
                 • Click nos gráficos para ver detalhes interativos

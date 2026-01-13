@@ -1,0 +1,1113 @@
+/* ========================================
+   🎨 CUSTOMIZAÇÕES ADICIONAIS - Jira Monitor
+   ======================================== */
+
+/* ========================================
+   🎨 SELETOR DE COR PERSONALIZADA
+   ======================================== */
+
+.custom-color-picker-wrapper {
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.custom-color-label {
+  display: block !important;
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  margin-bottom: 10px !important;
+  font-weight: 500 !important;
+}
+
+.custom-color-input-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.custom-color-input {
+  width: 60px !important;
+  height: 40px !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  transition: all 0.3s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.custom-color-input:hover {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2) !important;
+}
+
+.custom-color-input::-webkit-color-swatch-wrapper {
+  padding: 4px !important;
+  border-radius: 6px !important;
+}
+
+.custom-color-input::-webkit-color-swatch {
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+.custom-color-input::-moz-color-swatch {
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+.apply-custom-color-btn {
+  flex: 1 !important;
+  padding: 10px 16px !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
+  border: 1px solid rgba(99, 102, 241, 0.4) !important;
+  border-radius: 8px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.apply-custom-color-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%) !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+.apply-custom-color-btn:active {
+  transform: translateY(0) !important;
+}
+
+.apply-custom-color-btn span {
+  letter-spacing: 0.5px !important;
+}
+
+/* ========================================
+   📊 SLA DISPLAY - UX/UI MELHORADO
+   ======================================== */
+
+/* Container principal do SLA */
+.ticket-sla-info {
+  margin-top: 10px !important;
+  padding: 10px 12px !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%) !important;
+  border-radius: 8px !important;
+  border-left: 3px solid rgba(99, 102, 241, 0.4) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Container interno dos SLAs */
+.sla-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+/* Cada linha de SLA */
+.sla-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+  padding: 6px 8px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.sla-row:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  transform: translateX(2px) !important;
+}
+
+.sla-row:not(:last-child) {
+  margin-bottom: 4px !important;
+}
+
+/* Emoji do SLA */
+.sla-emoji {
+  font-size: 16px !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* Label do SLA (First Response / Resolution) */
+.sla-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  flex-shrink: 0 !important;
+  min-width: 100px !important;
+}
+
+/* Status do SLA (OK, Estourado, restante) */
+.sla-status {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  flex-grow: 1 !important;
+}
+
+/* Data/Hora do SLA */
+.sla-datetime {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Melhorar contraste das cores dos status */
+.sla-label[style*="color: #10b981"],
+.sla-label[style*="color: rgb(16, 185, 129)"] {
+  color: #34d399 !important; /* Verde mais vibrante */
+  text-shadow: 0 0 10px rgba(52, 211, 153, 0.5) !important;
+}
+
+.sla-label[style*="color: #f59e0b"],
+.sla-label[style*="color: rgb(245, 158, 11)"] {
+  color: #fbbf24 !important; /* Amarelo mais vibrante */
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5) !important;
+}
+
+.sla-label[style*="color: #ef4444"],
+.sla-label[style*="color: rgb(239, 68, 68)"] {
+  color: #f87171 !important; /* Vermelho mais vibrante */
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.5) !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .sla-label {
+    min-width: 80px !important;
+    font-size: 10px !important;
+  }
+  
+  .sla-datetime {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+  }
+  
+  .sla-status {
+    font-size: 11px !important;
+  }
+}
+
+/* ========================================
+   🔧 FIX CRÍTICO - Garantir clicabilidade dos botões do header
+   ======================================== */
+
+/* Garantir que o glassmorphism overlay não bloqueie cliques */
+.app-container::before {
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Header deve ficar acima do glassmorphism */
+.header {
+  z-index: 1001 !important;
+  position: relative !important;
+}
+
+/* Todos os botões devem ser clicáveis */
+.header-btn {
+  position: relative !important;
+  z-index: 1003 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* ========================================
+   HIDE SCROLLBARS (manter funcionalidade)
+   ======================================== */
+
+/* Hide scrollbars nas listas de tickets */
+.tickets-list,
+.recent-tickets-list,
+.trend-chart,
+.activity-detail-list,
+.custom-buttons-container,
+.daily-activity-details,
+.proactive-alerts-container,
+.performance-details,
+.recent-resolved-list {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+.tickets-list::-webkit-scrollbar,
+.recent-tickets-list::-webkit-scrollbar,
+.trend-chart::-webkit-scrollbar,
+.activity-detail-list::-webkit-scrollbar,
+.custom-buttons-container::-webkit-scrollbar,
+.daily-activity-details::-webkit-scrollbar,
+.proactive-alerts-container::-webkit-scrollbar,
+.performance-details::-webkit-scrollbar,
+.recent-resolved-list::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+}
+
+/* ========================================
+   FIX CARD COLORS - Tickets Recentes & Tendência
+   ======================================== */
+
+/* Garantir que os cards sigam o tema (remover fundo branco) */
+.recent-ticket-item {
+  background: var(--card-bg) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.recent-ticket-item:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  transform: translateX(4px);
+}
+
+.trend-chart {
+  background: var(--card-bg) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme adjustments */
+.app-container[data-theme="dark"] .recent-ticket-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-container[data-theme="dark"] .recent-ticket-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.app-container[data-theme="dark"] .trend-chart {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ========================================
+   AVATAR COM INICIAIS
+   ======================================== */
+
+/* Container do avatar ao lado de cada ticket */
+.ticket-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  position: absolute !important;
+  top: 18px !important;
+  right: 45px !important;
+  transform: none !important;
+  z-index: 10 !important;
+  margin: 0 !important;
+  border: 2.5px solid rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+}
+
+.ticket-avatar:hover {
+  transform: scale(1.05) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), 0 3px 6px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Variações de cores para diferentes usuários (baseado em hash) */
+.ticket-avatar[data-color="blue"] {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.ticket-avatar[data-color="green"] {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.ticket-avatar[data-color="orange"] {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.ticket-avatar[data-color="red"] {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.ticket-avatar[data-color="purple"] {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.ticket-avatar[data-color="pink"] {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+
+.ticket-avatar[data-color="cyan"] {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+.ticket-avatar[data-color="gray"] {
+  background: linear-gradient(135deg, #9ca3af 0%, #4b5563 100%);
+}
+
+/* Layout dos itens de ticket com avatar */
+.ticket-item {
+  position: relative !important;
+  display: block !important;
+  padding: 14px 91px 14px 14px !important; /* Espaço à direita para o avatar */
+  transition: background 0.2s;
+}
+
+.ticket-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Layout para recent-ticket-item */
+.recent-ticket-item {
+  position: relative !important;
+  padding: 14px 91px 14px 14px !important; /* Espaço à direita para o avatar */
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE DOS AVATARES
+   ======================================== */
+
+/* Ajuste para tablets e telas médias */
+@media (max-width: 768px) {
+  .ticket-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 13px !important;
+    top: 16px !important;
+    right: 38px !important;
+    transform: none !important;
+  }
+  
+  .ticket-avatar:hover {
+    transform: scale(1.05) !important;
+  }
+  
+  .ticket-item,
+  .recent-ticket-item {
+    padding: 12px 82px 12px 12px !important;
+  }
+}
+
+/* Ajuste para telas pequenas */
+@media (max-width: 480px) {
+  .ticket-avatar {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 12px !important;
+    top: 14px !important;
+    right: 32px !important;
+    transform: none !important;
+  }
+  
+  .ticket-avatar:hover {
+    transform: scale(1.05) !important;
+  }
+  
+  .ticket-item,
+  .recent-ticket-item {
+    padding: 12px 72px 12px 12px !important;
+  }
+}
+
+/* Ajuste para telas muito pequenas */
+@media (max-width: 360px) {
+  .ticket-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 11px !important;
+    top: 12px !important;
+    right: 26px !important;
+    transform: none !important;
+  }
+  
+  .ticket-avatar:hover {
+    transform: scale(1.05) !important;
+  }
+  
+  .ticket-item,
+  .recent-ticket-item {
+    padding: 10px 64px 10px 10px !important;
+  }
+}
+
+/* ========================================
+   🆕 NOVOS CARDS DE FILAS DO JIRA
+   ======================================== */
+
+/* Card SimCard - 📱 Laranja/Âmbar */
+.stat-card-simcard {
+  border-left-color: #f59e0b;
+}
+
+.stat-card-simcard::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706) !important;
+}
+
+.stat-card-simcard .stat-card-icon {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.15)) !important;
+  color: #f59e0b !important;
+}
+
+.stat-card-simcard .stat-card-icon svg {
+  fill: currentColor !important;
+}
+
+.stat-card-simcard .stat-number {
+  color: #f59e0b;
+}
+
+/* Card L0 Jira Bot - 🤖 Roxo */
+.stat-card-l0bot {
+  border-left-color: #8b5cf6;
+}
+
+.stat-card-l0bot::before {
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed) !important;
+}
+
+.stat-card-l0bot .stat-card-icon {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.15)) !important;
+  color: #8b5cf6 !important;
+}
+
+.stat-card-l0bot .stat-card-icon svg {
+  fill: currentColor !important;
+}
+
+.stat-card-l0bot .stat-number {
+  color: #8b5cf6;
+}
+
+/* Card All L1 Open - 🎯 Verde */
+.stat-card-l1open {
+  border-left-color: #10b981;
+}
+
+.stat-card-l1open::before {
+  background: linear-gradient(90deg, #10b981, #059669) !important;
+}
+
+.stat-card-l1open .stat-card-icon {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.15)) !important;
+  color: #10b981 !important;
+}
+
+.stat-card-l1open .stat-card-icon svg {
+  fill: currentColor !important;
+}
+
+.stat-card-l1open .stat-number {
+  color: #10b981;
+}
+
+/* ========================================
+   🔧 FIX - Dropdown Monitorar Usuário
+   ======================================== */
+
+/* Corrigir posicionamento responsivo do dropdown */
+.user-monitor-dropdown {
+  position: absolute !important;
+  top: 50px !important;
+  right: 20px !important;
+  left: auto !important;
+  width: 320px !important;
+  max-width: calc(100vw - 40px) !important;
+  background: rgba(20, 20, 30, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  z-index: 1000 !important;
+  animation: slideDown 0.2s ease-out !important;
+}
+
+/* Ajuste responsivo para telas pequenas */
+@media (max-width: 450px) {
+  .user-monitor-dropdown {
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+/* Garantir que o dropdown não saia da tela */
+@media (max-width: 400px) {
+  .user-monitor-dropdown {
+    top: 48px !important;
+    left: 5px !important;
+    right: 5px !important;
+  }
+  
+  .user-monitor-dropdown-header h3 {
+    font-size: 14px !important;
+  }
+  
+  .user-item {
+    padding: 10px 12px !important;
+  }
+  
+  .add-user-btn {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* ========================================
+   🔧 FIX - Filtros de Tickets Avaliados (Remover fundo branco)
+   ======================================== */
+.filter-chip {
+  background: rgba(102, 126, 234, 0.15) !important;
+  border: 1px solid rgba(102, 126, 234, 0.3) !important;
+  color: #a3bffa !important;
+}
+
+.filter-chip .filter-count {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #a3bffa !important;
+}
+
+.filter-chip.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border-color: transparent !important;
+}
+
+.filter-chip.active .filter-count {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: white !important;
+}
+
+/* ========================================
+   📱 RESPONSIVIDADE DO HEADER (Ajuste Automático)
+   ======================================== */
+
+.header {
+  min-width: 0;
+  overflow: visible !important; /* CRÍTICO: Permitir dropdowns saírem do header */
+  z-index: 1001 !important; /* Garantir que fique acima do glassmorphism */
+}
+
+.header-left, .header-right {
+  min-width: 0;
+  flex-shrink: 1;
+  z-index: 1002 !important; /* Garantir que os botões sejam clicáveis */
+  position: relative;
+}
+
+/* CRÍTICO: Garantir que todos os botões do header sejam clicáveis */
+.header-btn {
+  position: relative !important;
+  z-index: 1003 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Garantir que SVGs dentro dos botões não bloqueiem cliques */
+.header-btn svg {
+  pointer-events: none !important;
+}
+
+/* Dropdowns devem ter z-index alto */
+.menu-dropdown,
+.user-monitor-dropdown,
+.notifications-preview,
+.docs-dropdown {
+  z-index: 2000 !important;
+}
+
+/* Quando a tela começa a ficar apertada */
+@media (max-width: 520px) {
+  .user-monitor-label {
+    max-width: 60px !important;
+  }
+}
+
+@media (max-width: 460px) {
+  .header {
+    padding: 8px 12px !important;
+  }
+  
+  .app-title {
+    font-size: 14px !important;
+  }
+
+  .user-monitor-btn {
+    min-width: 40px !important;
+    gap: 4px !important;
+  }
+
+  .user-monitor-label {
+    display: none !important;
+  }
+  
+  .header-right {
+    gap: 4px !important;
+  }
+
+  .connection-status {
+    margin-right: 4px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .app-title {
+    font-size: 0 !important; /* Esconde texto mas mantém ícone */
+  }
+  
+  .app-title svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .header-btn {
+    width: 30px !important;
+    height: 30px !important;
+  }
+}
+
+@media (max-width: 350px) {
+  /* Esconder botões secundários para não quebrar o layout */
+  #docs-btn, 
+  #toggle-layout-btn {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   📊 SLA STATUS COLORS
+   ======================================== */
+
+.sla-item {
+  border-left: 3px solid transparent;
+  padding-left: 12px !important;
+  transition: all 0.2s ease;
+}
+
+.sla-ok {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-ok) {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.sla-warning {
+  color: #f59e0b !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-warning) {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.sla-breached {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-breached) {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.sla-met {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.sla-item:has(.sla-met) {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Dark theme adjustments */
+.app-container[data-theme="dark"] .sla-item:has(.sla-ok),
+.app-container[data-theme="dark"] .sla-item:has(.sla-met) {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.app-container[data-theme="dark"] .sla-item:has(.sla-warning) {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.app-container[data-theme="dark"] .sla-item:has(.sla-breached) {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ========================================
+   🎨 FIX - Estilos do Preview de Ticket
+   ======================================== */
+
+/* Mudar fundo dos campos CRIADO e ATUALIZADO para estilo do STATUS */
+.ticket-info-item {
+  background: rgba(102, 126, 234, 0.08) !important;
+  border: 1px solid rgba(102, 126, 234, 0.15) !important;
+  transition: all 0.2s ease;
+}
+
+.ticket-info-item:hover {
+  background: rgba(102, 126, 234, 0.12) !important;
+  border-color: rgba(102, 126, 234, 0.25) !important;
+}
+
+.ticket-info-label {
+  color: #667eea !important;
+  font-weight: 700 !important;
+}
+
+.ticket-info-value {
+  color: var(--modal-text) !important;
+}
+
+/* Dark theme adjustments para ticket-info-item */
+.app-container[data-theme="dark"] .ticket-info-item {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+.app-container[data-theme="dark"] .ticket-info-item:hover {
+  background: rgba(139, 92, 246, 0.18) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
+.app-container[data-theme="dark"] .ticket-info-label {
+  color: #c4b5fd !important;
+}
+
+/* Campo de comentário com fundo cinza claro */
+.comment-textarea {
+  background: #f5f5f5 !important;
+  border: 1px solid #e0e0e0 !important;
+  color: #333 !important;
+  transition: all 0.2s ease;
+}
+
+.comment-textarea:focus {
+  background: #fafafa !important;
+  border-color: #667eea !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Dark theme para comment-textarea */
+.app-container[data-theme="dark"] .comment-textarea {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e0e0e0 !important;
+}
+
+.app-container[data-theme="dark"] .comment-textarea:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* Ajustar layout do comment-actions para não cobrir o checkbox */
+.comment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch !important;
+  margin-top: 12px !important;
+}
+
+.comment-checkbox {
+  order: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--modal-text-secondary);
+  padding: 8px 12px;
+  background: var(--modal-section-bg);
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.comment-checkbox:hover {
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.comment-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.comment-actions .btn-primary {
+  order: 2;
+  width: 100%;
+  padding: 12px 20px !important;
+  font-size: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.comment-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.comment-actions .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Dark theme para comment-actions */
+.app-container[data-theme="dark"] .comment-actions .btn-primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
+.app-container[data-theme="dark"] .comment-actions .btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5);
+}
+
+/* ========================================
+   🔍 BOTÕES DE ZOOM
+   ======================================== */
+
+.zoom-btn {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%) !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.3) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease !important;
+}
+
+.zoom-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+.zoom-btn:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.25) 100%) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3) !important;
+}
+
+.zoom-btn:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.zoom-btn:active {
+  transform: translateY(0) scale(0.98) !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
+}
+
+.zoom-btn svg {
+  position: relative;
+  z-index: 1;
+  color: rgba(147, 197, 253, 0.9) !important;
+  transition: color 0.2s ease !important;
+}
+
+.zoom-btn:hover svg {
+  color: rgba(191, 219, 254, 1) !important;
+}
+
+/* Efeito de pulso ao clicar */
+@keyframes zoom-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.zoom-btn:active {
+  animation: zoom-pulse 0.4s ease-out !important;
+}
+
+/* Zoom é aplicado via webFrame.setZoomFactor() do Electron - nativo e sem interferências */
+
+/* Responsividade dos botões de zoom */
+@media (max-width: 600px) {
+  .zoom-btn {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  
+  .zoom-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
+/* ========================================
+   👤 ÍCONE DO USUÁRIO - CANTO SUPERIOR DIREITO
+   ======================================== */
+
+/* Botão de usuário estilizado no canto superior direito */
+.user-monitor-btn {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
+  border: 1.5px solid rgba(102, 126, 234, 0.4) !important;
+  padding: 6px 12px !important;
+  height: 36px !important;
+  width: auto !important;
+  gap: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  border-radius: 10px !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15) !important;
+  margin-left: 8px !important;
+}
+
+.user-monitor-btn:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%) !important;
+  border-color: rgba(102, 126, 234, 0.6) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3) !important;
+}
+
+.user-monitor-btn svg {
+  color: #c4b5fd !important;
+  flex-shrink: 0 !important;
+}
+
+.user-monitor-label {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.3px !important;
+}
+
+.user-monitor-btn .dropdown-arrow {
+  color: rgba(255, 255, 255, 0.7) !important;
+  transition: transform 0.3s ease !important;
+}
+
+.user-monitor-btn:hover .dropdown-arrow {
+  transform: translateY(2px) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Badge de destaque quando um usuário específico está sendo monitorado */
+.user-monitor-btn[data-monitoring="true"]::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 50%;
+  border: 2px solid var(--header-bg);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.8);
+  }
+}
+
+/* Separador visual antes do botão de minimize para destacar o botão de usuário */
+#minimize-btn {
+  margin-left: 12px !important;
+  position: relative !important;
+}
+
+#minimize-btn::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Ajustes responsivos para o botão de usuário */
+@media (max-width: 768px) {
+  .user-monitor-label {
+    max-width: 80px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  
+  #minimize-btn::before {
+    display: none; /* Esconde separador em telas pequenas */
+  }
+}
+
+@media (max-width: 600px) {
+  .user-monitor-btn {
+    padding: 6px 10px !important;
+    height: 32px !important;
+  }
+  
+  .user-monitor-label {
+    font-size: 12px !important;
+    max-width: 60px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-monitor-label {
+    display: none !important; /* Esconde o texto, mantém apenas o ícone */
+  }
+  
+  .user-monitor-btn {
+    width: 32px !important;
+    padding: 6px !important;
+    justify-content: center !important;
+  }
+  
+  .user-monitor-btn .dropdown-arrow {
+    display: none !important;
+  }
+}
+

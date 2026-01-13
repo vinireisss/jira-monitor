@@ -364,7 +364,7 @@ tail -f ~/Library/Logs/com.nubank.jiramonitor.error.log
 # Substituir EMAIL e API_TOKEN
 curl -u "EMAIL:API_TOKEN" \
   -H "Accept: application/json" \
-  "https://nubank.atlassian.net/rest/api/3/search?jql=assignee=currentUser()&maxResults=1"
+  "https://nubank.atlassian.net/rest/api/3/search/jql" (POST com body: {"jql": "assignee=currentUser()", "maxResults": 1})
 ```
 
 ---
