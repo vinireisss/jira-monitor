@@ -22,7 +22,7 @@ cat >> ~/.zshrc << 'EOF'
 # 🎯 Jira Monitor - Comandos Rápidos
 alias j="cd ~/dev/nu/jira-monitor && npm start"
 alias jira-update="cd ~/dev/nu/jira-monitor && git pull origin main && npm install"
-alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -f 'electron.*jira-monitor' && npm start"
+alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -f 'electron.*jira-monitor' || true; npm start"
 alias jira-status="cd ~/dev/nu/jira-monitor && git status"
 alias jira-log="cd ~/dev/nu/jira-monitor && git log --oneline -10"
 EOF
