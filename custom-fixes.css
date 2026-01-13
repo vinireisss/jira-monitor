@@ -632,7 +632,7 @@
 }
 
 .filter-chip .filter-count {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: transparent !important;
   color: #a3bffa !important;
   text-decoration: none !important;
 }
@@ -644,7 +644,7 @@
 }
 
 .filter-chip.active .filter-count {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: transparent !important;
   color: white !important;
 }
 

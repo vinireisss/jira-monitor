@@ -1712,9 +1712,12 @@ body {
 .expand-btn-inline .expand-icon {
   transition: all 0.3s ease;
   color: var(--expand-btn-color);
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   filter: drop-shadow(0 1px 2px var(--expand-btn-shadow));
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .expand-btn-inline.expanded {
