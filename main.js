@@ -5,6 +5,16 @@ const Store = require('electron-store');
 const fs = require('fs');
 const TrayManager = require('./tray-manager');
 
+// 🎛️ CONTROLE DE DEBUG: Altere para true para ver logs detalhados
+const DEBUG_MODE = false;
+
+// 🛡️ Função auxiliar para logs condicionais
+const debugLog = (...args) => {
+  if (DEBUG_MODE) {
+    debugLog(...args);
+  }
+};
+
 const store = new Store();
 let mainWindow;
 let tray;
@@ -25,7 +35,7 @@ function createWindow() {
   const defaultBounds = projectConfig.windowBounds || { width: 420, height: 700, x: undefined, y: undefined };
   const savedBounds = store.get('windowBounds', defaultBounds);
   
-  console.log('📍 Posição carregada final:', savedBounds);
+  debugLog('📍 Posição carregada final:', savedBounds);
   
   const { screen } = require('electron');
   const displays = screen.getAllDisplays();
@@ -54,7 +64,7 @@ function createWindow() {
   
   // Se a posição não for válida (monitor desconectado), usar posição padrão
   if (!isPositionValid) {
-    console.log('⚠️ Posição inválida, usando padrão na tela primária');
+    debugLog('⚠️ Posição inválida, usando padrão na tela primária');
     const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
     x = screenWidth - width - 20;
     y = 20;
@@ -98,7 +108,7 @@ function createWindow() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         const bounds = mainWindow.getBounds();
         store.set('windowBounds', bounds);
-        console.log('💾 Posição salva (debounce):', bounds);
+        debugLog('💾 Posição salva (debounce):', bounds);
       }
     }, 300); // Debounce de 300ms (reduzido para salvar mais rápido)
   };
@@ -111,7 +121,7 @@ function createWindow() {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const bounds = mainWindow.getBounds();
       store.set('windowBounds', bounds);
-      console.log('💾 Posição salva (blur):', bounds);
+      debugLog('💾 Posição salva (blur):', bounds);
     }
   });
 
@@ -120,13 +130,13 @@ function createWindow() {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const bounds = mainWindow.getBounds();
       store.set('windowBounds', bounds);
-      console.log('💾 Posição salva (close):', bounds);
+      debugLog('💾 Posição salva (close):', bounds);
     }
   });
   
   // Log quando a janela for fechada
   mainWindow.on('closed', () => {
-    console.log('🔴 Janela principal fechada');
+    debugLog('🔴 Janela principal fechada');
     mainWindow = null;
   });
 
@@ -175,6 +185,14 @@ function createWindow() {
       },
       { type: 'separator' },
       {
+        label: '🎯 Modo Focus',
+        type: 'checkbox',
+        click: () => {
+          mainWindow.webContents.send('toggle-focus-mode');
+        }
+      },
+      { type: 'separator' },
+      {
         label: '🔗 Copiar Link',
         visible: params.linkURL.length > 0,
         click: () => {
@@ -218,7 +236,7 @@ function createTray() {
   try {
     trayManager = new TrayManager(mainWindow, createWindow);
     trayManager.create();
-    console.log('✅ Tray Manager inicializado com sucesso');
+    debugLog('✅ Tray Manager inicializado com sucesso');
   } catch (error) {
     console.error('❌ Erro ao criar Tray Manager:', error);
   }
@@ -428,7 +446,7 @@ ipcMain.handle('get-config', () => {
     try {
       const fileContent = fs.readFileSync(projectConfigPath, 'utf8');
       projectConfig = JSON.parse(fileContent);
-      console.log('✅ Config lida do config.json do projeto');
+      debugLog('✅ Config lida do config.json do projeto');
     } catch (err) {
       console.error('❌ Erro ao ler config.json:', err.message);
     }
@@ -441,15 +459,15 @@ ipcMain.handle('get-config', () => {
     ...electronConfig // ✅ Electron Store sobrescreve config.json (preserva alterações do usuário)
   };
   
-  console.log('📂 ========================================');
-  console.log('📂 CONFIG MESCLADA (projeto + electron-store)');
-  console.log('📂 evaluatedTicketsSatisfactionField:', mergedConfig.evaluatedTicketsSatisfactionField);
-  console.log('📂 evaluatedTicketsMaxPages:', mergedConfig.evaluatedTicketsMaxPages);
-  console.log('📂 Tipo:', typeof mergedConfig.evaluatedTicketsSatisfactionField);
-  console.log('📂 É array?', Array.isArray(mergedConfig.evaluatedTicketsSatisfactionField));
-  console.log('📂 Modo Pro:', mergedConfig.proMode);
-  console.log('📂 Localização Electron Store:', store.path);
-  console.log('📂 ========================================');
+  debugLog('📂 ========================================');
+  debugLog('📂 CONFIG MESCLADA (projeto + electron-store)');
+  debugLog('📂 evaluatedTicketsSatisfactionField:', mergedConfig.evaluatedTicketsSatisfactionField);
+  debugLog('📂 evaluatedTicketsMaxPages:', mergedConfig.evaluatedTicketsMaxPages);
+  debugLog('📂 Tipo:', typeof mergedConfig.evaluatedTicketsSatisfactionField);
+  debugLog('📂 É array?', Array.isArray(mergedConfig.evaluatedTicketsSatisfactionField));
+  debugLog('📂 Modo Pro:', mergedConfig.proMode);
+  debugLog('📂 Localização Electron Store:', store.path);
+  debugLog('📂 ========================================');
   
   return mergedConfig;
 });
@@ -476,11 +494,11 @@ ipcMain.on('save-config-sync', (event, config) => {
       store.set(key, value);
     }
   });
-  console.log('💾 ========================================');
-  console.log('💾 CONFIG SALVA NO DISCO (electron-store)');
-  console.log('💾 Modo Pro salvo:', config.proMode);
-  console.log('💾 Localização:', store.path);
-  console.log('💾 ========================================');
+  debugLog('💾 ========================================');
+  debugLog('💾 CONFIG SALVA NO DISCO (electron-store)');
+  debugLog('💾 Modo Pro salvo:', config.proMode);
+  debugLog('💾 Localização:', store.path);
+  debugLog('💾 ========================================');
 });
 
 // Atualizar tray com dados de tickets
@@ -535,13 +553,13 @@ ipcMain.handle('close-window', (event) => {
   
   // Se for a janela principal, sair completamente do app
   if (window === mainWindow) {
-    console.log('🔴 Fechando aplicação completamente...');
+    debugLog('🔴 Fechando aplicação completamente...');
     
     // Salvar posição da janela antes de fechar
     if (mainWindow && !mainWindow.isDestroyed()) {
       const bounds = mainWindow.getBounds();
       store.set('windowBounds', bounds);
-      console.log('💾 Posição final salva:', bounds);
+      debugLog('💾 Posição final salva:', bounds);
     }
     
     // Destruir todas as janelas
@@ -627,10 +645,10 @@ ipcMain.handle('fetch-mentions', async (event) => {
 
 ipcMain.handle('get-ticket-details', async (event, ticketKey) => {
   try {
-    console.log(`🎫 [IPC] Recebida solicitação de detalhes para: ${ticketKey}`);
+    debugLog(`🎫 [IPC] Recebida solicitação de detalhes para: ${ticketKey}`);
     const service = getJiraService();
     const details = await service.getTicketDetails(ticketKey);
-    console.log(`✅ [IPC] Detalhes obtidos para ${ticketKey}:`, {
+    debugLog(`✅ [IPC] Detalhes obtidos para ${ticketKey}:`, {
       key: details.key,
       hasComments: !!details.comments,
       commentsLength: details.comments?.length
@@ -1168,12 +1186,12 @@ const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   // Se já existe uma instância, não criar nova - apenas sair
-  console.log('⚠️ Aplicação já está em execução. Encerrando esta instância...');
+  debugLog('⚠️ Aplicação já está em execução. Encerrando esta instância...');
   app.quit();
 } else {
   // Quando alguém tentar abrir uma segunda instância, focar na primeira
   app.on('second-instance', () => {
-    console.log('🔍 Tentativa de abrir segunda instância - focando na janela principal');
+    debugLog('🔍 Tentativa de abrir segunda instância - focando na janela principal');
     if (mainWindow) {
       if (mainWindow.isMinimized()) {
         mainWindow.restore();
@@ -1194,7 +1212,7 @@ if (!gotTheLock) {
       if (fs.existsSync(dockIconPath)) {
         const dockIcon = nativeImage.createFromPath(dockIconPath);
         app.dock.setIcon(dockIcon);
-        console.log('✅ Ícone do Dock configurado:', dockIconPath);
+        debugLog('✅ Ícone do Dock configurado:', dockIconPath);
       }
     }
     
@@ -1209,7 +1227,7 @@ app.on('before-quit', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
     const bounds = mainWindow.getBounds();
     store.set('windowBounds', bounds);
-    console.log('💾 Posição salva antes de fechar:', bounds);
+    debugLog('💾 Posição salva antes de fechar:', bounds);
   }
 });
 
@@ -1219,7 +1237,7 @@ app.on('window-all-closed', () => {
   // O usuário pode sair pelo menu do tray ou pelo botão de fechar
   
   // Não fazer nada - app continua rodando no tray
-  console.log('📌 Todas as janelas fechadas, mas app continua no tray');
+  debugLog('📌 Todas as janelas fechadas, mas app continua no tray');
 });
 
 // Recriar janela no macOS quando o ícone do tray for clicado
