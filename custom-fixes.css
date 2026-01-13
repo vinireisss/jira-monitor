@@ -263,6 +263,29 @@
 }
 
 /* ========================================
+   FIX PARA TICKETS NÃO CORTAREM
+   ======================================== */
+
+/* Garantir que a lista de tickets não corte conteúdo */
+.tickets-list {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+/* Garantir que os cards se ajustem */
+.stat-card {
+  overflow: visible !important;
+}
+
+/* Quando expandido, o card deve ter largura suficiente */
+.stat-card:has(.tickets-list:not([style*="display: none"])) {
+  min-width: 100% !important;
+}
+
+/* ========================================
    FIX CARD COLORS - Tickets Recentes & Tendência
    ======================================== */
 
@@ -372,11 +395,34 @@
   display: block !important;
   padding: 14px 91px 14px 14px !important; /* Espaço à direita para o avatar */
   transition: background 0.2s;
+  overflow: visible !important;
 }
 
 .ticket-item-content {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+}
+
+/* Garantir que o conteúdo interno não seja cortado */
+.ticket-item .ticket-info,
+.ticket-item .sla-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: calc(100% - 60px); /* Espaço para o avatar */
+}
+
+/* Melhorar layout dos horários */
+.ticket-item .ticket-meta,
+.ticket-item [style*="margin-top"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  overflow: visible;
 }
 
 /* Layout para recent-ticket-item */
@@ -1111,3 +1157,29 @@
   }
 }
 
+
+/* Ajuste adicional para horários e textos não cortarem */
+.ticket-item * {
+  box-sizing: border-box !important;
+}
+
+.ticket-item [style*="display: flex"] {
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+}
+
+/* Horários devem ser visíveis */
+.ticket-item [style*="margin-top"],
+.ticket-item [style*="font-size: 11px"],
+.ticket-item [style*="font-size: 12px"] {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+/* Status badges não devem ultrapassar */
+.ticket-item [style*="padding: 3px"],
+.ticket-item [style*="border-radius"] {
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+}
