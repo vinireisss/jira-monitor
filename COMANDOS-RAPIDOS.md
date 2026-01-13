@@ -2,12 +2,24 @@
 
 ## 📦 Instalação dos Aliases
 
-Cole esses comandos no seu terminal (apenas uma vez):
+### **Opção 1: Script Automático (RECOMENDADO)** ✨
+
+Funciona em **qualquer terminal** (macOS Terminal, iTerm, Cursor, etc.):
+
+```bash
+cd ~/dev/nu/jira-monitor
+./install-aliases.sh
+source ~/.zshrc  # ou source ~/.bashrc
+```
+
+### **Opção 2: Instalação Manual**
+
+Se preferir instalar manualmente:
 
 ```bash
 cat >> ~/.zshrc << 'EOF'
 
-# Jira Monitor - Aliases úteis
+# 🎯 Jira Monitor - Comandos Rápidos
 alias j="cd ~/dev/nu/jira-monitor && npm start"
 alias jira-update="cd ~/dev/nu/jira-monitor && git pull origin main && npm install"
 alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -f 'electron.*jira-monitor' && npm start"
@@ -17,6 +29,8 @@ EOF
 
 source ~/.zshrc
 ```
+
+**Para Bash** (adicione também ao `~/.bashrc` e `~/.bash_profile`)
 
 ---
 
