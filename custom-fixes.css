@@ -634,6 +634,7 @@
 .filter-chip .filter-count {
   background: rgba(255, 255, 255, 0.1) !important;
   color: #a3bffa !important;
+  text-decoration: none !important;
 }
 
 .filter-chip.active {
@@ -645,6 +646,12 @@
 .filter-chip.active .filter-count {
   background: rgba(255, 255, 255, 0.25) !important;
   color: white !important;
+}
+
+/* Posicionar seta de expandir à direita dos filtros */
+.evaluated-filters .expand-btn-inline {
+  margin-left: auto !important;
+  order: 999 !important;
 }
 
 /* ========================================
