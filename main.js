@@ -98,7 +98,24 @@ function createWindow() {
   // Mostrar janela quando estiver pronta
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    mainWindow.focus();
+    // Garantir que o app fique em primeiro plano no macOS
+    if (process.platform === 'darwin') {
+      app.focus({ steal: true });
+    }
   });
+  
+  // Fallback: garantir que a janela apareça mesmo se ready-to-show demorar
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      debugLog('⚠️ Forçando janela a aparecer (timeout)');
+      mainWindow.show();
+      mainWindow.focus();
+      if (process.platform === 'darwin') {
+        app.focus({ steal: true });
+      }
+    }
+  }, 2000);
 
   // Salvar posição e tamanho quando a janela for movida ou redimensionada
   let saveTimeout;
@@ -1218,6 +1235,11 @@ if (!gotTheLock) {
     
     createWindow();
     createTray(); // Ícone do tray no menu bar
+    
+    // Forçar app a ficar em primeiro plano no macOS
+    if (process.platform === 'darwin') {
+      app.focus({ steal: true });
+    }
   });
 }
 
