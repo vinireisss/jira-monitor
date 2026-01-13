@@ -2089,6 +2089,9 @@ function updateDailyActivityDisplay() {
   if (receivedEl) receivedEl.textContent = dailyActivity.received;
   if (resolvedEl) resolvedEl.textContent = dailyActivity.resolved;
   if (commentedEl) commentedEl.textContent = dailyActivity.commented;
+  
+  // Manter o widget compacto em sincronia com os cards
+  updateDailyActivityUI();
 }
 
 // Calcular atividade do dia baseada nos tickets atuais
@@ -2935,9 +2938,7 @@ function checkForNewTickets(allTickets) {
       debugLog('⚠️ Mudanças detectadas, mas notificações desktop desabilitadas para estes tipos');
     }
     
-    // Atualizar atividade do dia
-    dailyActivity.new += newTickets.length;
-    dailyActivity.updated += changedTickets.length;
+    // Atualizar atividade do dia (widget usa os mesmos contadores dos cards)
     updateDailyActivityUI();
     
     // 🔄 IMPORTANTE: Forçar atualização dos cards expandidos após mudanças
@@ -6408,14 +6409,22 @@ function toggleSearch() {
 
 // 📊 HISTÓRICO DE ATIVIDADE DO DIA
 function updateDailyActivityUI() {
-  document.getElementById('daily-new-count').textContent = dailyActivity.new;
-  document.getElementById('daily-closed-count').textContent = dailyActivity.closed;
-  document.getElementById('daily-updated-count').textContent = dailyActivity.updated;
+  const widget = document.getElementById('daily-activity-widget');
+  const newEl = document.getElementById('daily-new-count');
+  const closedEl = document.getElementById('daily-closed-count');
+  const updatedEl = document.getElementById('daily-updated-count');
+  
+  if (newEl) newEl.textContent = dailyActivity.received || 0;
+  if (closedEl) closedEl.textContent = dailyActivity.resolved || 0;
+  if (updatedEl) updatedEl.textContent = dailyActivity.commented || 0;
   
   // Mostrar widget se houver atividade
-  const widget = document.getElementById('daily-activity-widget');
-  if (dailyActivity.new > 0 || dailyActivity.closed > 0 || dailyActivity.updated > 0) {
+  if (!widget) return;
+  
+  if (dailyActivity.received > 0 || dailyActivity.resolved > 0 || dailyActivity.commented > 0) {
     widget.style.display = 'block';
+  } else {
+    widget.style.display = 'none';
   }
 }
 
