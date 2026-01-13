@@ -1,5 +1,15 @@
 const { ipcRenderer, webFrame } = require('electron');
 
+// 🎛️ CONTROLE DE DEBUG: Altere para true para ver logs detalhados
+const DEBUG_MODE = false;
+
+// 🛡️ Função auxiliar para logs condicionais
+const debugLog = (...args) => {
+  if (DEBUG_MODE) {
+    debugLog(...args);
+  }
+};
+
 // Estado Global
 let currentConfig = {};
 let currentStats = null;
@@ -27,7 +37,7 @@ setInterval(() => {
     }
   }
   
-  console.log(`🧹 Cache de SLA limpo: ${slaStatusCache.size} tickets mantidos`);
+  debugLog(`🧹 Cache de SLA limpo: ${slaStatusCache.size} tickets mantidos`);
 }, 600000); // 10 minutos
 let connectionStatus = 'offline'; // online, offline, loading
 let progressInterval = null;
@@ -63,7 +73,7 @@ let currentLanguage = 'pt-BR'; // Idioma atual
  * Aplica as traduções em toda a interface
  */
 function applyLanguage(lang = 'pt-BR') {
-  console.log(`🌍 Aplicando idioma: ${lang}`);
+  debugLog(`🌍 Aplicando idioma: ${lang}`);
   
   currentLanguage = lang;
   
@@ -93,7 +103,7 @@ function applyLanguage(lang = 'pt-BR') {
   // Salvar preferência de idioma
   localStorage.setItem('language', lang);
   
-  console.log(`✅ Idioma ${lang} aplicado com sucesso`);
+  debugLog(`✅ Idioma ${lang} aplicado com sucesso`);
 }
 
 /**
@@ -182,11 +192,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       densityMode: densityMode,
       zoomLevel: zoomLevels[currentZoomIndex] // Salvar nível de zoom
     };
-    console.log('🚪 ========================================');
-    console.log('🚪 FECHANDO APP - SALVANDO ESTADO FINAL');
-    console.log('🚪 Modo Pro ao fechar:', isProMode);
-    console.log('🚪 Zoom ao fechar:', zoomLevels[currentZoomIndex]);
-    console.log('🚪 ========================================');
+    debugLog('🚪 ========================================');
+    debugLog('🚪 FECHANDO APP - SALVANDO ESTADO FINAL');
+    debugLog('🚪 Modo Pro ao fechar:', isProMode);
+    debugLog('🚪 Zoom ao fechar:', zoomLevels[currentZoomIndex]);
+    debugLog('🚪 ========================================');
     ipcRenderer.send('save-config-sync', stateToSave);
   });
   
@@ -194,9 +204,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if ('Notification' in window) {
     if (Notification.permission === 'default') {
       const permission = await Notification.requestPermission();
-      console.log('🔔 Permissão de notificações:', permission);
+      debugLog('🔔 Permissão de notificações:', permission);
     } else {
-      console.log('🔔 Permissão de notificações atual:', Notification.permission);
+      debugLog('🔔 Permissão de notificações atual:', Notification.permission);
     }
   } else {
     console.warn('⚠️ Notificações desktop não suportadas neste navegador');
@@ -209,10 +219,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Aplicar tema customizado
   if (currentConfig.themePreset && currentConfig.themePreset !== 'default') {
-    console.log('🎨 Aplicando tema preset:', currentConfig.themePreset);
+    debugLog('🎨 Aplicando tema preset:', currentConfig.themePreset);
     applyThemePreset(currentConfig.themePreset);
   } else if (currentConfig.accentColor) {
-    console.log('🎨 Aplicando cor de acento:', currentConfig.accentColor);
+    debugLog('🎨 Aplicando cor de acento:', currentConfig.accentColor);
     applyAccentColor(currentConfig.accentColor);
   }
   
@@ -264,7 +274,7 @@ ipcRenderer.on('toggle-focus-mode', () => {
 
 // Listener para focar em um ticket específico (do menu bar / tray)
 ipcRenderer.on('focus-ticket', (event, ticketKey) => {
-  console.log(`📨 Evento focus-ticket recebido para: ${ticketKey}`);
+  debugLog(`📨 Evento focus-ticket recebido para: ${ticketKey}`);
   focusAndHighlightTicket(ticketKey);
 });
 
@@ -283,7 +293,7 @@ async function loadConfig() {
     const config = await ipcRenderer.invoke('get-config');
     currentConfig = config;
     
-    console.log('📥 Config carregada:', {
+    debugLog('📥 Config carregada:', {
       monitorOtherUser: config.monitorOtherUser,
       otherUserEmail: config.otherUserEmail,
       jiraEmail: config.jiraEmail
@@ -330,14 +340,14 @@ async function loadConfig() {
     }
     
     // Aplicar Modo Pro
-    console.log('📥 ========================================');
-    console.log('📥 CARREGANDO MODO PRO DA CONFIGURAÇÃO');
-    console.log('📥 config.proMode:', config.proMode);
-    console.log('📥 tipo:', typeof config.proMode);
-    console.log('📥 ========================================');
+    debugLog('📥 ========================================');
+    debugLog('📥 CARREGANDO MODO PRO DA CONFIGURAÇÃO');
+    debugLog('📥 config.proMode:', config.proMode);
+    debugLog('📥 tipo:', typeof config.proMode);
+    debugLog('📥 ========================================');
     isProMode = config.proMode === true;
-    console.log('✅ MODO PRO DEFINIDO COMO:', isProMode);
-    console.log('📥 ========================================');
+    debugLog('✅ MODO PRO DEFINIDO COMO:', isProMode);
+    debugLog('📥 ========================================');
     updateProModeUI();
     
     // Restaurar layout horizontal
@@ -355,9 +365,9 @@ async function loadConfig() {
     // Restaurar atividade diária
     if (config.dailyActivity && config.dailyActivity.lastReset === new Date().toDateString()) {
       dailyActivity = config.dailyActivity;
-      console.log('📥 Atividade diária restaurada:', dailyActivity);
+      debugLog('📥 Atividade diária restaurada:', dailyActivity);
     } else {
-      console.log('🔄 Reset de atividade diária (nova data)');
+      debugLog('🔄 Reset de atividade diária (nova data)');
       dailyActivity.lastReset = new Date().toDateString();
     }
     
@@ -526,21 +536,21 @@ async function addUserToHistory(email) {
 async function removeUserFromHistory(email) {
   if (!email) return;
   
-  console.log('🗑️ Removendo usuário do histórico:', email);
+  debugLog('🗑️ Removendo usuário do histórico:', email);
   
   let history = getUserHistory();
   const historyBefore = [...history];
   history = history.filter(e => e.toLowerCase() !== email.toLowerCase());
   
-  console.log('📋 Histórico antes:', historyBefore);
-  console.log('📋 Histórico depois:', history);
+  debugLog('📋 Histórico antes:', historyBefore);
+  debugLog('📋 Histórico depois:', history);
   
   await saveUserHistory(history);
-  console.log('💾 Histórico salvo no disco');
+  debugLog('💾 Histórico salvo no disco');
   
   // Se estava monitorando esse usuário, voltar para "você"
   if (currentConfig.otherUserEmail === email) {
-    console.log('⚠️ Estava monitorando este usuário, voltando para "você"');
+    debugLog('⚠️ Estava monitorando este usuário, voltando para "você"');
     await switchMonitoredUser('');
   }
   
@@ -655,19 +665,19 @@ function updateUserListDropdown() {
 
 // Trocar Usuário Monitorado
 async function switchMonitoredUser(email) {
-  console.log('🔄 Trocando usuário monitorado:', email || 'você');
+  debugLog('🔄 Trocando usuário monitorado:', email || 'você');
   
   if (!email || email === '') {
     // Monitorar "você"
     currentConfig.monitorOtherUser = false;
     currentConfig.otherUserEmail = '';
-    console.log('✅ Configurado para monitorar você');
+    debugLog('✅ Configurado para monitorar você');
   } else {
     // Monitorar outro usuário
     currentConfig.monitorOtherUser = true;
     currentConfig.otherUserEmail = email;
     await addUserToHistory(email);
-    console.log('✅ Configurado para monitorar:', email);
+    debugLog('✅ Configurado para monitorar:', email);
   }
   
   // Salvar config completa
@@ -678,7 +688,7 @@ async function switchMonitoredUser(email) {
   };
   await ipcRenderer.invoke('save-config', configToSave);
   
-  console.log('💾 Config salva:', {
+  debugLog('💾 Config salva:', {
     monitorOtherUser: configToSave.monitorOtherUser,
     otherUserEmail: configToSave.otherUserEmail
   });
@@ -689,12 +699,12 @@ async function switchMonitoredUser(email) {
   
   // Limpar notificações internas do usuário anterior
   internalNotifications = [];
-  console.log('🗑️ Notificações internas limpas ao trocar usuário');
+  debugLog('🗑️ Notificações internas limpas ao trocar usuário');
   
   // Limpar estados de tickets anteriores para o novo usuário
   previousTicketKeys = new Set();
   previousTicketStates = new Map();
-  console.log('🗑️ Estados de tickets resetados ao trocar usuário');
+  debugLog('🗑️ Estados de tickets resetados ao trocar usuário');
   
   // Recarregar stats e notificações do usuário selecionado
   showToast('Sucesso!', `Agora monitorando ${email || 'você'}`, 'success');
@@ -703,7 +713,7 @@ async function switchMonitoredUser(email) {
   // Sempre recarregar notificações ao trocar usuário
   await loadNotifications();
   
-  console.log('✅ Stats e notificações atualizadas para:', email || 'você');
+  debugLog('✅ Stats e notificações atualizadas para:', email || 'você');
 }
 
 // Aplicar Tema
@@ -711,7 +721,7 @@ function applyTheme(theme) {
   const container = document.querySelector('.app-container');
   container.setAttribute('data-theme', theme);
   
-  console.log('🎨 Tema aplicado:', theme);
+  debugLog('🎨 Tema aplicado:', theme);
 }
 
 // Modo de Densidade
@@ -751,7 +761,7 @@ function applyDensityMode(mode, showNotification = true) {
     showToast('Modo de Densidade', `Modo ${modeNames[mode] || mode} ativado`, 'info');
   }
   
-  console.log('📐 Modo de densidade aplicado:', mode);
+  debugLog('📐 Modo de densidade aplicado:', mode);
 }
 
 // Atualizar Mini Stats
@@ -1142,7 +1152,7 @@ function setupEventListeners() {
     }
   });
   
-  console.log('✅ Event listeners v1.5.0 configurados');
+  debugLog('✅ Event listeners v1.5.0 configurados');
 }
 
 // Atalhos de Teclado
@@ -1222,7 +1232,7 @@ function setupKeyboardShortcuts() {
 
 // Menu
 function toggleMenu() {
-  console.log('🍔 toggleMenu chamado');
+  debugLog('🍔 toggleMenu chamado');
   const menu = document.getElementById('menu-dropdown');
   if (!menu) {
     console.error('❌ Elemento menu-dropdown não encontrado!');
@@ -1231,7 +1241,7 @@ function toggleMenu() {
   
   const isHidden = menu.style.display === 'none' || menu.style.display === '';
   menu.style.display = isHidden ? 'block' : 'none';
-  console.log(`📋 Menu agora está: ${menu.style.display}`);
+  debugLog(`📋 Menu agora está: ${menu.style.display}`);
 }
 
 function hideMenu() {
@@ -1269,7 +1279,7 @@ async function resetNotificationHistory() {
 }
 
 async function testDesktopNotification() {
-  console.log('🧪 Testando notificação desktop...');
+  debugLog('🧪 Testando notificação desktop...');
   
   // Verificar se notificações estão habilitadas
   if (!Notification) {
@@ -1286,7 +1296,7 @@ async function testDesktopNotification() {
   // Solicitar permissão se necessário
   if (Notification.permission !== 'granted') {
     const permission = await Notification.requestPermission();
-    console.log('🔔 Permissão solicitada:', permission);
+    debugLog('🔔 Permissão solicitada:', permission);
     
     if (permission !== 'granted') {
       showToast('Erro', 'Permissão de notificações negada', 'error');
@@ -1303,7 +1313,7 @@ async function testDesktopNotification() {
     });
     
     notification.onclick = () => {
-      console.log('🖱️ Notificação de teste clicada');
+      debugLog('🖱️ Notificação de teste clicada');
       notification.close();
     };
     
@@ -1318,7 +1328,7 @@ async function testDesktopNotification() {
     }
     
     showToast('Sucesso', 'Notificação de teste enviada! Verifique seu sistema.', 'success');
-    console.log('✅ Notificação de teste enviada com sucesso');
+    debugLog('✅ Notificação de teste enviada com sucesso');
   } catch (error) {
     console.error('❌ Erro ao criar notificação:', error);
     showToast('Erro', `Erro ao criar notificação: ${error.message}`, 'error');
@@ -1469,7 +1479,7 @@ async function confirmAddUser() {
 
 async function loadNotifications() {
   try {
-    console.log('🔔 Carregando notificações para:', {
+    debugLog('🔔 Carregando notificações para:', {
       monitorOtherUser: currentConfig.monitorOtherUser,
       otherUserEmail: currentConfig.otherUserEmail,
       jiraEmail: currentConfig.jiraEmail
@@ -1480,12 +1490,12 @@ async function loadNotifications() {
     
     if (result.success) {
       allNotifications = result.data;
-      console.log('✅ Notificações do Jira:', allNotifications.length);
+      debugLog('✅ Notificações do Jira:', allNotifications.length);
     }
     
     // Adicionar notificações internas (mudanças de tickets)
     allNotifications = [...internalNotifications, ...allNotifications];
-    console.log('✅ Total (Jira + Internas):', allNotifications.length, '(Internas:', internalNotifications.length, ')');
+    debugLog('✅ Total (Jira + Internas):', allNotifications.length, '(Internas:', internalNotifications.length, ')');
     
     // Carregar notificações limpas do config
     const config = await ipcRenderer.invoke('get-config');
@@ -1497,7 +1507,7 @@ async function loadNotifications() {
       return !clearedNotifications.includes(notifId);
     });
     
-    console.log('✅ Notificações após filtrar limpas:', filteredNotifications.length);
+    debugLog('✅ Notificações após filtrar limpas:', filteredNotifications.length);
     
     displayNotifications(filteredNotifications);
   } catch (error) {
@@ -1530,7 +1540,7 @@ function addInternalNotification(ticket, changeType, changeDescription) {
   );
   
   if (exists) {
-    console.log('⚠️ Notificação duplicada ignorada:', notif);
+    debugLog('⚠️ Notificação duplicada ignorada:', notif);
     return;
   }
   
@@ -1543,7 +1553,7 @@ function addInternalNotification(ticket, changeType, changeDescription) {
   // Atualizar o sino
   updateNotificationBadge();
   
-  console.log('🔔 Notificação interna adicionada:', notif);
+  debugLog('🔔 Notificação interna adicionada:', notif);
 }
 
 // Atualizar badge do sino
@@ -1973,7 +1983,7 @@ async function saveCurrentState() {
     };
     
     await ipcRenderer.invoke('save-config', stateToSave);
-    console.log('💾 Estado salvo automaticamente:', {
+    debugLog('💾 Estado salvo automaticamente:', {
       proMode: stateToSave.proMode,
       focusMode: stateToSave.focusMode,
       windowOpacity: stateToSave.windowOpacity,
@@ -1989,12 +1999,12 @@ async function toggleProMode() {
   isProMode = !isProMode;
   currentConfig.proMode = isProMode;
   await saveCurrentState(); // Salvar automaticamente
-  console.log('💾 Modo Pro alterado e salvo:', isProMode);
+  debugLog('💾 Modo Pro alterado e salvo:', isProMode);
   updateProModeUI();
 }
 
 function updateProModeUI() {
-  console.log('🎨 updateProModeUI chamada, isProMode:', isProMode);
+  debugLog('🎨 updateProModeUI chamada, isProMode:', isProMode);
   const proSection = document.getElementById('pro-mode-section');
   proSection.style.display = isProMode ? 'block' : 'none';
   
@@ -2021,7 +2031,7 @@ function updateProModeUI() {
       startProactiveAlerts();
     }
     
-    console.log('✅ Funcionalidades v1.5.0 ativadas (Dashboard + Alertas)');
+    debugLog('✅ Funcionalidades v1.5.0 ativadas (Dashboard + Alertas)');
   } else {
     menuProBtn.style.color = 'white';
     menuProBtn.style.fontWeight = 'normal';
@@ -2030,7 +2040,7 @@ function updateProModeUI() {
     if (proactiveAlertsInterval) {
       clearInterval(proactiveAlertsInterval);
       proactiveAlertsInterval = null;
-      console.log('⏹️ Alertas proativos desativados');
+      debugLog('⏹️ Alertas proativos desativados');
     }
   }
 }
@@ -2063,7 +2073,7 @@ function updateProModeUserIndicator() {
 function checkDailyReset() {
   const today = new Date().toDateString();
   if (dailyActivity.lastReset !== today) {
-    console.log('🔄 Resetando contadores de atividade diária...');
+    debugLog('🔄 Resetando contadores de atividade diária...');
     dailyActivity = {
       received: 0,
       resolved: 0,
@@ -2093,7 +2103,7 @@ function updateDailyActivityDisplay() {
 // Calcular atividade do dia baseada nos tickets atuais
 function calculateDailyActivityFromTickets(allTickets) {
   if (!allTickets || allTickets.length === 0) {
-    console.log('⚠️ Nenhum ticket para calcular atividade');
+    debugLog('⚠️ Nenhum ticket para calcular atividade');
     return;
   }
   
@@ -2103,9 +2113,9 @@ function calculateDailyActivityFromTickets(allTickets) {
   // Fallback: últimas 24h se não houver atividade hoje
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   
-  console.log('📊 Calculando atividade do dia a partir dos tickets...');
-  console.log('📊 Total de tickets:', allTickets.length);
-  console.log('📊 Início do dia:', startOfDay.toISOString());
+  debugLog('📊 Calculando atividade do dia a partir dos tickets...');
+  debugLog('📊 Total de tickets:', allTickets.length);
+  debugLog('📊 Início do dia:', startOfDay.toISOString());
   
   let todayCount = 0;
   let last24hCount = 0;
@@ -2152,7 +2162,7 @@ function calculateDailyActivityFromTickets(allTickets) {
     }
   });
   
-  console.log('📊 Atividade calculada:', {
+  debugLog('📊 Atividade calculada:', {
     recebidos: dailyActivity.received,
     fechados: dailyActivity.resolved,
     comentarios: dailyActivity.commented,
@@ -2162,7 +2172,7 @@ function calculateDailyActivityFromTickets(allTickets) {
   
   // Se ainda estiver zerado, mostrar mensagem
   if (dailyActivity.received === 0 && dailyActivity.resolved === 0) {
-    console.log('ℹ️ Nenhuma atividade detectada hoje. Aguarde novos tickets ou interações.');
+    debugLog('ℹ️ Nenhuma atividade detectada hoje. Aguarde novos tickets ou interações.');
   }
 }
 
@@ -2185,7 +2195,7 @@ function trackNewTicketReceived(ticket) {
     });
     updateDailyActivityDisplay();
     updateDailyActivityDetails();
-    console.log('📥 Ticket recebido hoje:', ticket.key);
+    debugLog('📥 Ticket recebido hoje:', ticket.key);
   }
 }
 
@@ -2208,7 +2218,7 @@ function trackTicketResolved(ticket) {
     });
     updateDailyActivityDisplay();
     updateDailyActivityDetails();
-    console.log('✅ Ticket resolvido hoje:', ticket.key);
+    debugLog('✅ Ticket resolvido hoje:', ticket.key);
   }
 }
 
@@ -2229,7 +2239,7 @@ function trackCommentAdded(ticketKey, ticketSummary) {
   });
   updateDailyActivityDisplay();
   updateDailyActivityDetails();
-  console.log('💬 Comentário adicionado hoje:', ticketKey);
+  debugLog('💬 Comentário adicionado hoje:', ticketKey);
 }
 
 // Atualizar listas de detalhes
@@ -2304,14 +2314,14 @@ function setupCustomButtonsFunctionality() {
     }
   });
   
-  console.log('✅ Funcionalidades de drag-and-drop e edição configuradas');
+  debugLog('✅ Funcionalidades de drag-and-drop e edição configuradas');
 }
 
 // Fetch Stats
 // Verificar menções ao usuário
 async function checkForMentions() {
   try {
-    console.log('📢 Verificando menções...');
+    debugLog('📢 Verificando menções...');
     
     const result = await ipcRenderer.invoke('fetch-mentions');
     
@@ -2321,7 +2331,7 @@ async function checkForMentions() {
     }
     
     const mentions = result.data.issues || [];
-    console.log('📢 Menções encontradas:', mentions.length);
+    debugLog('📢 Menções encontradas:', mentions.length);
     
     // Verificar novas menções
     const newMentions = mentions.filter(mention => {
@@ -2335,7 +2345,7 @@ async function checkForMentions() {
       return mentionTime > lastCheck;
     });
     
-    console.log('📢 Novas menções:', newMentions.length);
+    debugLog('📢 Novas menções:', newMentions.length);
     
     if (newMentions.length > 0) {
       // Atualizar registro de menções verificadas
@@ -2403,11 +2413,11 @@ async function fetchAndUpdateStats() {
     // Verificar se precisa resetar contadores diários
     checkDailyReset();
     
-    console.log('🚀 === INICIANDO FETCH DE STATS ===');
+    debugLog('🚀 === INICIANDO FETCH DE STATS ===');
     const result = await ipcRenderer.invoke('fetch-jira-stats', currentConfig);
     
     if (result.success) {
-      console.log('📊 Dados recebidos do Jira:', {
+      debugLog('📊 Dados recebidos do Jira:', {
         total: result.data.total,
         waitingForSupport: result.data.waitingForSupport,
         waitingForCustomer: result.data.waitingForCustomer,
@@ -2416,7 +2426,7 @@ async function fetchAndUpdateStats() {
       
       // Usar dados específicos de atividade diária do backend
       if (result.data.todayReceived || result.data.todayResolved || result.data.todayComments) {
-        console.log('📊 Atualizando atividade diária com dados do Jira...');
+        debugLog('📊 Atualizando atividade diária com dados do Jira...');
         
         // Limpar e recalcular atividade do dia
         dailyActivity.received = 0;
@@ -2454,10 +2464,10 @@ async function fetchAndUpdateStats() {
             summary: comment.ticketSummary,
             time: comment.commentCreated
           }));
-          console.log(`✅ ${dailyActivity.commented} comentários detectados hoje`);
+          debugLog(`✅ ${dailyActivity.commented} comentários detectados hoje`);
         }
         
-        console.log('📊 Atividade diária atualizada:', {
+        debugLog('📊 Atividade diária atualizada:', {
           recebidos: dailyActivity.received,
           fechados: dailyActivity.resolved,
           comentarios: dailyActivity.commented
@@ -2465,14 +2475,14 @@ async function fetchAndUpdateStats() {
       }
       
       // 🔥 ATUALIZAÇÃO ATÔMICA: Atualizar TUDO de uma vez para evitar estados intermediários
-      console.log('💾 Salvando stats globalmente...');
+      debugLog('💾 Salvando stats globalmente...');
       currentStats = result.data;
       searchTickets = result.data.allTickets || [];
       
-      console.log('🎨 Chamando updateUI() com dados finais...');
+      debugLog('🎨 Chamando updateUI() com dados finais...');
       updateUI(result.data);
       
-      console.log('📋 Atualizando listas expandidas...');
+      debugLog('📋 Atualizando listas expandidas...');
       updateExpandedTicketsLists();
       
       // Atualizar display de atividade diária
@@ -2509,7 +2519,7 @@ async function fetchAndUpdateStats() {
 
 // Focar e destacar um ticket específico na UI
 function focusAndHighlightTicket(ticketKey) {
-  console.log(`🎯 Focando no ticket: ${ticketKey}`);
+  debugLog(`🎯 Focando no ticket: ${ticketKey}`);
   
   // Procurar o ticket em todas as listas expandidas
   const ticketElements = document.querySelectorAll('[data-ticket-key]');
@@ -2562,7 +2572,7 @@ function scrollAndHighlight(element) {
     element.style.animation = '';
   }, 3000);
   
-  console.log('✨ Ticket destacado com sucesso');
+  debugLog('✨ Ticket destacado com sucesso');
 }
 
 // Expandir todas as listas de tickets
@@ -2585,7 +2595,7 @@ function expandAllTicketLists() {
 
 function updateTrayWithTickets(stats) {
   if (!stats || !stats.allTickets) {
-    console.log('⚠️ Sem tickets para atualizar o tray');
+    debugLog('⚠️ Sem tickets para atualizar o tray');
     return;
   }
 
@@ -2619,7 +2629,7 @@ function updateTrayWithTickets(stats) {
   ticketsData.warning = ticketsData.warning.slice(0, 10);
   ticketsData.normal = ticketsData.normal.slice(0, 5);
 
-  console.log('🔔 Atualizando tray:', {
+  debugLog('🔔 Atualizando tray:', {
     critical: ticketsData.critical.length,
     warning: ticketsData.warning.length,
     normal: ticketsData.normal.length
@@ -2692,14 +2702,14 @@ function updateUI(stats) {
   
   try {
     // Debug: verificar os dados recebidos
-    console.log('🔢 === UPDATEUI CHAMADO ===');
-    console.log('🔢 Contadores recebidos:', {
+    debugLog('🔢 === UPDATEUI CHAMADO ===');
+    debugLog('🔢 Contadores recebidos:', {
       total: stats.total,
       support: stats.waitingForSupport,
       customer: stats.waitingForCustomer,
       pending: stats.pending
     });
-    console.log('📋 Listas de tickets recebidas:', {
+    debugLog('📋 Listas de tickets recebidas:', {
       supportTickets: stats.supportTickets?.length || 0,
       customerTickets: stats.customerTickets?.length || 0,
       pendingTickets: stats.pendingTickets?.length || 0
@@ -2707,10 +2717,10 @@ function updateUI(stats) {
   
   // Detectar novos tickets e enviar notificações
   if (currentConfig.desktopNotifications !== false && stats.allTickets) {
-    console.log('🔔 Verificando novos tickets para notificações...');
+    debugLog('🔔 Verificando novos tickets para notificações...');
     checkForNewTickets(stats.allTickets);
   } else {
-    console.log('⚠️ Notificações ou stats não disponíveis:', {
+    debugLog('⚠️ Notificações ou stats não disponíveis:', {
       notificationsEnabled: currentConfig.desktopNotifications !== false,
       hasStats: !!stats.allTickets
     });
@@ -2720,11 +2730,11 @@ function updateUI(stats) {
   updateTrayWithTickets(stats);
   
   // Atualizar contadores com animação
-  console.log('🎬 Animando números:');
-  console.log('   Total:', stats.total || 0);
-  console.log('   Support:', stats.waitingForSupport || 0);
-  console.log('   Customer:', stats.waitingForCustomer || 0);
-  console.log('   Pending:', stats.pending || 0);
+  debugLog('🎬 Animando números:');
+  debugLog('   Total:', stats.total || 0);
+  debugLog('   Support:', stats.waitingForSupport || 0);
+  debugLog('   Customer:', stats.waitingForCustomer || 0);
+  debugLog('   Pending:', stats.pending || 0);
   
   animateNumber('stat-total', stats.total || 0);
   animateNumber('stat-support', stats.waitingForSupport || 0);
@@ -2732,7 +2742,7 @@ function updateUI(stats) {
   animateNumber('stat-pending', stats.pending || 0);
   
   // 🆕 NOVOS CARDS - Atualizar contadores
-  console.log('📊 Stats para Novos Cards:', {
+  debugLog('📊 Stats para Novos Cards:', {
     simcard: stats.simcardPendingTickets?.count,
     l0bot: stats.l0BotTickets?.count,
     l1open: stats.l1OpenTickets?.count
@@ -2776,7 +2786,7 @@ function updateUI(stats) {
     // Atualizar última atualização
     document.getElementById('last-update').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
     
-    console.log('✅ === UPDATEUI CONCLUÍDO ===');
+    debugLog('✅ === UPDATEUI CONCLUÍDO ===');
     
   } finally {
     // 🔓 UNLOCK: Liberar flag
@@ -2784,7 +2794,7 @@ function updateUI(stats) {
     
     // Se houver update pendente, processar agora
     if (pendingUpdate) {
-      console.log('🔄 Processando update pendente...');
+      debugLog('🔄 Processando update pendente...');
       const nextUpdate = pendingUpdate;
       pendingUpdate = null;
       
@@ -2796,14 +2806,14 @@ function updateUI(stats) {
 
 // Detectar novos tickets e mudanças
 function checkForNewTickets(allTickets) {
-  console.log('🔍 checkForNewTickets chamado:', {
+  debugLog('🔍 checkForNewTickets chamado:', {
     ticketsCount: allTickets?.length || 0,
     previousCount: previousTicketKeys.size,
     isFirstTime: previousTicketKeys.size === 0
   });
   
   if (!allTickets || allTickets.length === 0) {
-    console.log('⚠️ Nenhum ticket para verificar');
+    debugLog('⚠️ Nenhum ticket para verificar');
     return;
   }
   
@@ -2813,7 +2823,7 @@ function checkForNewTickets(allTickets) {
   
   // Se é a primeira vez, apenas inicializar
   if (previousTicketKeys.size === 0) {
-    console.log('📋 Primeira vez - inicializando lista de tickets');
+    debugLog('📋 Primeira vez - inicializando lista de tickets');
     previousTicketKeys = currentTicketKeys;
     
     // Inicializar estados
@@ -2835,7 +2845,7 @@ function checkForNewTickets(allTickets) {
     
     // Caso 1: Ticket NOVO (não existia antes)
     if (!previousTicketKeys.has(ticketKey)) {
-      console.log('🆕 Novo ticket detectado:', ticketKey);
+      debugLog('🆕 Novo ticket detectado:', ticketKey);
       newTickets.push({
         ...ticket,
         changeType: 'new',
@@ -2850,7 +2860,7 @@ function checkForNewTickets(allTickets) {
     }
     // Caso 2: Ticket MUDOU DE STATUS
     else if (previousState && previousState.status !== currentStatus) {
-      console.log('🔄 Status mudou:', ticketKey, previousState.status, '→', currentStatus);
+      debugLog('🔄 Status mudou:', ticketKey, previousState.status, '→', currentStatus);
       
       // Rastrear ticket fechado se mudou para um status de fechamento
       const closedStatuses = ['Fechado', 'Closed', 'Resolvido', 'Resolved', 'Concluído', 'Concluido', 'Done'];
@@ -2870,7 +2880,7 @@ function checkForNewTickets(allTickets) {
     }
     // Caso 3: Ticket FOI REATRIBUÍDO PARA O USUÁRIO
     else if (previousState && previousState.assignee !== currentAssignee) {
-      console.log('👤 Reatribuído:', ticketKey, previousState.assignee, '→', currentAssignee);
+      debugLog('👤 Reatribuído:', ticketKey, previousState.assignee, '→', currentAssignee);
       
       // Só notificar se foi atribuído PARA o usuário atual
       const currentUserEmail = currentConfig.jiraEmail;
@@ -2921,7 +2931,7 @@ function checkForNewTickets(allTickets) {
   const allNotifications = [...newTickets, ...changedTickets];
   
   if (allNotifications.length > 0) {
-    console.log('✅ Total de mudanças:', {
+    debugLog('✅ Total de mudanças:', {
       novos: newTickets.length,
       alterados: changedTickets.length,
       total: allNotifications.length,
@@ -2937,7 +2947,7 @@ function checkForNewTickets(allTickets) {
     if (notificationsToShow.length > 0) {
       showDesktopNotifications(notificationsToShow);
     } else {
-      console.log('⚠️ Mudanças detectadas, mas notificações desktop desabilitadas para estes tipos');
+      debugLog('⚠️ Mudanças detectadas, mas notificações desktop desabilitadas para estes tipos');
     }
     
     // Atualizar atividade do dia
@@ -2946,28 +2956,28 @@ function checkForNewTickets(allTickets) {
     updateDailyActivityUI();
     
     // 🔄 IMPORTANTE: Forçar atualização dos cards expandidos após mudanças
-    console.log('🔄 Forçando re-renderização dos cards após mudanças...');
+    debugLog('🔄 Forçando re-renderização dos cards após mudanças...');
     updateExpandedTicketsLists();
   } else {
-    console.log('✅ Nenhuma mudança nesta verificação');
+    debugLog('✅ Nenhuma mudança nesta verificação');
   }
 }
 
 // Mostrar notificações desktop
 function showDesktopNotifications(newTickets) {
-  console.log('🔔 showDesktopNotifications chamado:', {
+  debugLog('🔔 showDesktopNotifications chamado:', {
     enabled: currentConfig.desktopNotifications,
     ticketsCount: newTickets.length,
     permission: Notification.permission
   });
   
   if (!currentConfig.desktopNotifications) {
-    console.log('⚠️ Notificações desktop desabilitadas no config');
+    debugLog('⚠️ Notificações desktop desabilitadas no config');
     return;
   }
   
   if (newTickets.length === 0) {
-    console.log('⚠️ Nenhum ticket novo para notificar');
+    debugLog('⚠️ Nenhum ticket novo para notificar');
     return;
   }
   
@@ -2976,7 +2986,7 @@ function showDesktopNotifications(newTickets) {
     console.warn('⚠️ Permissão de notificações não concedida:', Notification.permission);
     // Tentar solicitar permissão novamente
     Notification.requestPermission().then(permission => {
-      console.log('🔔 Nova tentativa de permissão:', permission);
+      debugLog('🔔 Nova tentativa de permissão:', permission);
       if (permission === 'granted') {
         showDesktopNotifications(newTickets); // Tentar novamente
       }
@@ -2984,7 +2994,7 @@ function showDesktopNotifications(newTickets) {
     return;
   }
   
-  console.log('✅ Mostrando', newTickets.length, 'notificações desktop');
+  debugLog('✅ Mostrando', newTickets.length, 'notificações desktop');
   
   // Limite de notificações simultâneas
   const maxNotifications = 3;
@@ -3021,7 +3031,7 @@ function showDesktopNotifications(newTickets) {
           body = `${ticket.key}: ${ticket.summary || ticket.fields?.summary || 'Sem título'}`;
       }
       
-      console.log('📨 Enviando notificação:', title, body);
+      debugLog('📨 Enviando notificação:', title, body);
       
       const notification = new Notification(title, {
         body: body,
@@ -3031,7 +3041,7 @@ function showDesktopNotifications(newTickets) {
       });
       
       notification.onclick = () => {
-        console.log('🖱️ Notificação clicada:', ticket.key);
+        debugLog('🖱️ Notificação clicada:', ticket.key);
         openTicketPreview(ticket.key);
         notification.close();
       };
@@ -3067,7 +3077,7 @@ function playNotificationSound() {
 }
 
 function updateProModeSection(stats) {
-  console.log('📊 Atualizando Modo Pro com dados de:', currentConfig.monitorOtherUser ? currentConfig.otherUserEmail : 'você');
+  debugLog('📊 Atualizando Modo Pro com dados de:', currentConfig.monitorOtherUser ? currentConfig.otherUserEmail : 'você');
   
   // Atualizar indicador de usuário no Modo Pro
   updateProModeUserIndicator();
@@ -3088,17 +3098,17 @@ function updateProModeSection(stats) {
       t.satisfaction !== undefined && t.satisfaction !== null
     );
 
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('🔍 FILTRO POR CAMPO SATISFACTION (Solução Definitiva)');
-    console.log(`📥 Total de tickets recebidos do backend: ${allTickets.length}`);
-    console.log(`✅ Tickets com avaliação real (satisfaction definido): ${ticketsValidos.length}`);
-    console.log(`❌ Tickets sem avaliação (satisfaction undefined): ${allTickets.length - ticketsValidos.length}`);
+    debugLog('═══════════════════════════════════════════════════════');
+    debugLog('🔍 FILTRO POR CAMPO SATISFACTION (Solução Definitiva)');
+    debugLog(`📥 Total de tickets recebidos do backend: ${allTickets.length}`);
+    debugLog(`✅ Tickets com avaliação real (satisfaction definido): ${ticketsValidos.length}`);
+    debugLog(`❌ Tickets sem avaliação (satisfaction undefined): ${allTickets.length - ticketsValidos.length}`);
     
     if (ticketsValidos.length > 0) {
-      console.log('\n⭐ Amostra dos primeiros 3 tickets com avaliação:');
+      debugLog('\n⭐ Amostra dos primeiros 3 tickets com avaliação:');
       ticketsValidos.slice(0, 3).forEach((t, i) => {
         const rating = t.satisfaction || t.ratingNumber;
-        console.log(`  ${i + 1}. ${t.key}: ${rating} estrelas (satisfaction: ${t.satisfaction})`);
+        debugLog(`  ${i + 1}. ${t.key}: ${rating} estrelas (satisfaction: ${t.satisfaction})`);
       });
     }
 
@@ -3112,14 +3122,14 @@ function updateProModeSection(stats) {
       1: ticketsValidos.filter(t => parseInt(t.satisfaction || t.ratingNumber) === 1).length
     };
     
-    console.log('\n📊 Distribuição por estrelas:');
-    console.log(`   ⭐⭐⭐⭐⭐ (5): ${counts[5]}`);
-    console.log(`   ⭐⭐⭐⭐ (4): ${counts[4]}`);
-    console.log(`   ⭐⭐⭐ (3): ${counts[3]}`);
-    console.log(`   ⭐⭐ (2): ${counts[2]}`);
-    console.log(`   ⭐ (1): ${counts[1]}`);
-    console.log(`   📦 TOTAL: ${counts.all}`);
-    console.log('═══════════════════════════════════════════════════════\n');
+    debugLog('\n📊 Distribuição por estrelas:');
+    debugLog(`   ⭐⭐⭐⭐⭐ (5): ${counts[5]}`);
+    debugLog(`   ⭐⭐⭐⭐ (4): ${counts[4]}`);
+    debugLog(`   ⭐⭐⭐ (3): ${counts[3]}`);
+    debugLog(`   ⭐⭐ (2): ${counts[2]}`);
+    debugLog(`   ⭐ (1): ${counts[1]}`);
+    debugLog(`   📦 TOTAL: ${counts.all}`);
+    debugLog('═══════════════════════════════════════════════════════\n');
     
     // Atualizar os contadores nos botões de filtro
     document.getElementById('count-all').textContent = counts.all;
@@ -3628,7 +3638,7 @@ function optimizeGridLayout() {
     });
     
     // Log para debug (pode ser removido em produção)
-    console.log('🎨 Grid reorganizado automaticamente');
+    debugLog('🎨 Grid reorganizado automaticamente');
   });
 }
 
@@ -3700,7 +3710,7 @@ function checkSlaStatusChange(ticketKey, newStatus, summary, minutesRemaining) {
       timestamp: new Date().toISOString()
     });
     
-    console.log(`🔔 Notificação SLA: ${ticketKey} mudou de ${previousStatus} para ${newStatus}`);
+    debugLog(`🔔 Notificação SLA: ${ticketKey} mudou de ${previousStatus} para ${newStatus}`);
   }
 }
 
@@ -3767,14 +3777,14 @@ function isSlaBreached(ticket) {
   if (timeToResolution) {
     // Verificar ongoingCycle.breached
     if (timeToResolution.ongoingCycle && timeToResolution.ongoingCycle.breached === true) {
-      console.log(`🔴 SLA BREACHED detectado em customfield_10123 para ${ticket.key}`);
+      debugLog(`🔴 SLA BREACHED detectado em customfield_10123 para ${ticket.key}`);
       return true;
     }
     // Verificar completedCycles
     if (timeToResolution.completedCycles && timeToResolution.completedCycles.length > 0) {
       const lastCycle = timeToResolution.completedCycles[timeToResolution.completedCycles.length - 1];
       if (lastCycle.breached === true) {
-        console.log(`🔴 SLA BREACHED detectado em completedCycles (customfield_10123) para ${ticket.key}`);
+        debugLog(`🔴 SLA BREACHED detectado em completedCycles (customfield_10123) para ${ticket.key}`);
         return true;
       }
     }
@@ -3784,13 +3794,13 @@ function isSlaBreached(ticket) {
   const timeToFirstResponse = ticket.fields.customfield_10124;
   if (timeToFirstResponse) {
     if (timeToFirstResponse.ongoingCycle && timeToFirstResponse.ongoingCycle.breached === true) {
-      console.log(`🔴 SLA BREACHED detectado em customfield_10124 para ${ticket.key}`);
+      debugLog(`🔴 SLA BREACHED detectado em customfield_10124 para ${ticket.key}`);
       return true;
     }
     if (timeToFirstResponse.completedCycles && timeToFirstResponse.completedCycles.length > 0) {
       const lastCycle = timeToFirstResponse.completedCycles[timeToFirstResponse.completedCycles.length - 1];
       if (lastCycle.breached === true) {
-        console.log(`🔴 SLA BREACHED detectado em completedCycles (customfield_10124) para ${ticket.key}`);
+        debugLog(`🔴 SLA BREACHED detectado em completedCycles (customfield_10124) para ${ticket.key}`);
         return true;
       }
     }
@@ -4084,17 +4094,17 @@ function loadEvaluatedTicketsTicketsList() {
   const allTickets = currentStats.evaluatedTickets.tickets || [];
   
   // 🔍 DEBUG CRÍTICO: Mostrar primeiros 10 tickets BRUTOS do backend
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('🔥 DEBUG CRÍTICO - DADOS BRUTOS DO BACKEND');
-  console.log('═══════════════════════════════════════════════════════');
-  console.log(`📥 Total de tickets recebidos do backend: ${allTickets.length}`);
-  console.log('\n🔍 PRIMEIROS 10 TICKETS (dados brutos):');
+  debugLog('═══════════════════════════════════════════════════════');
+  debugLog('🔥 DEBUG CRÍTICO - DADOS BRUTOS DO BACKEND');
+  debugLog('═══════════════════════════════════════════════════════');
+  debugLog(`📥 Total de tickets recebidos do backend: ${allTickets.length}`);
+  debugLog('\n🔍 PRIMEIROS 10 TICKETS (dados brutos):');
   allTickets.slice(0, 10).forEach((ticket, idx) => {
-    console.log(`\n   ${idx + 1}. ${ticket.key}:`);
-    console.log(`      satisfaction: ${ticket.satisfaction} (tipo: ${typeof ticket.satisfaction})`);
-    console.log(`      ratingNumber: ${ticket.ratingNumber} (tipo: ${typeof ticket.ratingNumber})`);
-    console.log(`      ratingEmoji: ${ticket.ratingEmoji}`);
-    console.log(`      Objeto completo:`, JSON.stringify(ticket, null, 2));
+    debugLog(`\n   ${idx + 1}. ${ticket.key}:`);
+    debugLog(`      satisfaction: ${ticket.satisfaction} (tipo: ${typeof ticket.satisfaction})`);
+    debugLog(`      ratingNumber: ${ticket.ratingNumber} (tipo: ${typeof ticket.ratingNumber})`);
+    debugLog(`      ratingEmoji: ${ticket.ratingEmoji}`);
+    debugLog(`      Objeto completo:`, JSON.stringify(ticket, null, 2));
   });
   
   // 🔥 FILTRO: Garantir que estamos usando apenas tickets com satisfaction definido
@@ -4102,12 +4112,12 @@ function loadEvaluatedTicketsTicketsList() {
     t.satisfaction !== undefined && t.satisfaction !== null
   );
   
-  console.log(`\n📊 APÓS FILTRO:`);
-  console.log(`✅ Tickets com avaliação válida (1-5): ${tickets.length}`);
-  console.log(`❌ Tickets filtrados (sem avaliação): ${allTickets.length - tickets.length}`);
+  debugLog(`\n📊 APÓS FILTRO:`);
+  debugLog(`✅ Tickets com avaliação válida (1-5): ${tickets.length}`);
+  debugLog(`❌ Tickets filtrados (sem avaliação): ${allTickets.length - tickets.length}`);
   
   if (tickets.length === 0) {
-    console.log('⚠️ Nenhum ticket com avaliação válida!');
+    debugLog('⚠️ Nenhum ticket com avaliação válida!');
     ticketsList.innerHTML = '<p style="color: #888; text-align: center; padding: 20px; font-size: 14px;">📊 Nenhum ticket avaliado encontrado<br><span style="font-size: 12px; color: #666; margin-top: 8px; display: block;">Os tickets aparecem aqui quando você recebe avaliação do cliente</span></p>';
     return;
   }
@@ -4121,28 +4131,28 @@ function loadEvaluatedTicketsTicketsList() {
     1: 0
   };
   
-  console.log('\n🔍 CONTANDO RATINGS:');
+  debugLog('\n🔍 CONTANDO RATINGS:');
   tickets.forEach((ticket, idx) => {
     if (idx < 5) {
-      console.log(`   ${idx + 1}. ${ticket.key}: ratingNumber=${ticket.ratingNumber}, satisfaction=${ticket.satisfaction}`);
+      debugLog(`   ${idx + 1}. ${ticket.key}: ratingNumber=${ticket.ratingNumber}, satisfaction=${ticket.satisfaction}`);
     }
     if (ticket.ratingNumber >= 1 && ticket.ratingNumber <= 5) {
       ratingsStats[ticket.ratingNumber]++;
     } else {
-      console.log(`   ⚠️  Ticket ${ticket.key} tem ratingNumber INVÁLIDO: ${ticket.ratingNumber}`);
+      debugLog(`   ⚠️  Ticket ${ticket.key} tem ratingNumber INVÁLIDO: ${ticket.ratingNumber}`);
     }
   });
   
   const totalRatings = Object.values(ratingsStats).reduce((sum, count) => sum + count, 0);
   
-  console.log('\n📊 DISTRIBUIÇÃO FINAL:');
-  console.log(`   ⭐⭐⭐⭐⭐ (5): ${ratingsStats[5]}`);
-  console.log(`   ⭐⭐⭐⭐ (4): ${ratingsStats[4]}`);
-  console.log(`   ⭐⭐⭐ (3): ${ratingsStats[3]}`);
-  console.log(`   ⭐⭐ (2): ${ratingsStats[2]}`);
-  console.log(`   ⭐ (1): ${ratingsStats[1]}`);
-  console.log(`   📦 TOTAL: ${totalRatings}`);
-  console.log('═══════════════════════════════════════════════════════\n');
+  debugLog('\n📊 DISTRIBUIÇÃO FINAL:');
+  debugLog(`   ⭐⭐⭐⭐⭐ (5): ${ratingsStats[5]}`);
+  debugLog(`   ⭐⭐⭐⭐ (4): ${ratingsStats[4]}`);
+  debugLog(`   ⭐⭐⭐ (3): ${ratingsStats[3]}`);
+  debugLog(`   ⭐⭐ (2): ${ratingsStats[2]}`);
+  debugLog(`   ⭐ (1): ${ratingsStats[1]}`);
+  debugLog(`   📦 TOTAL: ${totalRatings}`);
+  debugLog('═══════════════════════════════════════════════════════\n');
   
   // Gerar HTML do resumo de avaliações
   const ratingsStatsHtml = totalRatings > 0 ? `
@@ -4299,13 +4309,13 @@ async function openTicketPreview(ticketKey) {
   error.style.display = 'none';
   
   try {
-    console.log(`🔍 Buscando detalhes do ticket: ${ticketKey}`);
+    debugLog(`🔍 Buscando detalhes do ticket: ${ticketKey}`);
     const result = await ipcRenderer.invoke('get-ticket-details', ticketKey);
     
-    console.log('📦 Resultado recebido:', result);
+    debugLog('📦 Resultado recebido:', result);
     
     if (result.success) {
-      console.log('✅ Dados do ticket:', {
+      debugLog('✅ Dados do ticket:', {
         key: result.data?.key,
         summary: result.data?.summary,
         hasComments: !!result.data?.comments,
@@ -4337,10 +4347,10 @@ async function openTicketPreview(ticketKey) {
 let currentPreviewTicket = null;
 
 function displayTicketPreview(ticket) {
-  console.log('🎨 Renderizando preview do ticket:', ticket);
-  console.log('📋 Support Level:', ticket.supportLevel);
-  console.log('📋 ITOps Team:', ticket.team);
-  console.log('📋 Custom Fields:', ticket.customFields);
+  debugLog('🎨 Renderizando preview do ticket:', ticket);
+  debugLog('📋 Support Level:', ticket.supportLevel);
+  debugLog('📋 ITOps Team:', ticket.team);
+  debugLog('📋 Custom Fields:', ticket.customFields);
   
   if (!ticket) {
     console.error('❌ Ticket vazio ou undefined!');
@@ -4676,7 +4686,7 @@ function displayTicketPreview(ticket) {
       }
     });
     
-    console.log('✅ Preview renderizado com sucesso');
+    debugLog('✅ Preview renderizado com sucesso');
   } catch (err) {
     console.error('❌ Erro ao renderizar preview:', err);
     console.error('Stack:', err.stack);
@@ -4978,7 +4988,7 @@ async function checkForMentions(ticketKey, text) {
       const projectKey = ticketKey.split('-')[0];
       
       // BUSCA DINÂMICA via API do Jira (como no Jira nativo)
-      console.log(`🔎 Buscando usuários com query "${query}" via API...`);
+      debugLog(`🔎 Buscando usuários com query "${query}" via API...`);
       
       // Usar search-users com a query do usuário
       const searchQuery = query.length > 0 ? query : 'a'; // Se vazio, buscar por 'a' para ter resultados
@@ -4992,8 +5002,8 @@ async function checkForMentions(ticketKey, text) {
       }
       
       const users = result.data; // FIX: usar 'data' em vez de 'users'
-      console.log(`✅ ${users.length} usuários encontrados via API`);
-      console.log('👥 Resultados:', users.slice(0, 5).map(u => `${u.displayName} (${u.emailAddress})`));
+      debugLog(`✅ ${users.length} usuários encontrados via API`);
+      debugLog('👥 Resultados:', users.slice(0, 5).map(u => `${u.displayName} (${u.emailAddress})`));
       
       // Se query vazia, mostrar todos
       if (query.length === 0) {
@@ -5050,9 +5060,9 @@ async function checkForMentions(ticketKey, text) {
       })
       .slice(0, 15); // Mostrar até 15 resultados
       
-      console.log(`✅ ${filtered.length} usuários encontrados com query "${query}"`);
+      debugLog(`✅ ${filtered.length} usuários encontrados com query "${query}"`);
       if (filtered.length > 0) {
-        console.log('👤 Resultados:', filtered.map(u => `${u.displayName} (${u.emailAddress})`));
+        debugLog('👤 Resultados:', filtered.map(u => `${u.displayName} (${u.emailAddress})`));
       }
       
       if (filtered.length > 0) {
@@ -5110,9 +5120,9 @@ function renderMentionSuggestions(ticketKey, users) {
   suggestionsDiv.style.pointerEvents = 'auto';
   suggestionsDiv.style.display = 'block';
   
-  console.log('🎨 Renderizou', users.length, 'sugestões de menção para ticket', ticketKey);
-  console.log('📍 SuggestionsDiv:', suggestionsDiv);
-  console.log('🎨 Estilos computed:', {
+  debugLog('🎨 Renderizou', users.length, 'sugestões de menção para ticket', ticketKey);
+  debugLog('📍 SuggestionsDiv:', suggestionsDiv);
+  debugLog('🎨 Estilos computed:', {
     display: getComputedStyle(suggestionsDiv).display,
     zIndex: getComputedStyle(suggestionsDiv).zIndex,
     pointerEvents: getComputedStyle(suggestionsDiv).pointerEvents,
@@ -5125,25 +5135,25 @@ function renderMentionSuggestions(ticketKey, users) {
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     const elementAtPoint = document.elementFromPoint(centerX, centerY);
-    console.log('🎯 Elemento no centro do suggestionsDiv:', elementAtPoint);
-    console.log('🎯 É o suggestionsDiv ou filho?', suggestionsDiv.contains(elementAtPoint));
-    console.log('📏 BoundingRect:', rect);
+    debugLog('🎯 Elemento no centro do suggestionsDiv:', elementAtPoint);
+    debugLog('🎯 É o suggestionsDiv ou filho?', suggestionsDiv.contains(elementAtPoint));
+    debugLog('📏 BoundingRect:', rect);
   }, 100);
   
   // Aguardar DOM estar pronto e adicionar listeners
   setTimeout(() => {
-    console.log('⏰ Adicionando listeners após render...');
+    debugLog('⏰ Adicionando listeners após render...');
     
     // Event handler usando mousedown (mais confiável)
     const mousedownHandler = function(e) {
-      console.log('🖱️ MOUSEDOWN detectado!', e.target);
+      debugLog('🖱️ MOUSEDOWN detectado!', e.target);
       
       // Buscar o elemento .mention-item mais próximo
       const mentionItem = e.target.closest('.mention-item');
       
       if (mentionItem) {
-        console.log('✅ Encontrou .mention-item:', mentionItem);
-        console.log('📦 Datasets:', mentionItem.dataset);
+        debugLog('✅ Encontrou .mention-item:', mentionItem);
+        debugLog('📦 Datasets:', mentionItem.dataset);
         
         e.preventDefault();
         e.stopPropagation();
@@ -5152,7 +5162,7 @@ function renderMentionSuggestions(ticketKey, users) {
         const dName = mentionItem.dataset.displayName;
         const aId = mentionItem.dataset.accountId;
         
-        console.log('🔑 Extraindo dados:', { tKey, dName, aId });
+        debugLog('🔑 Extraindo dados:', { tKey, dName, aId });
         
         if (tKey && dName && aId) {
           insertMention(tKey, dName, aId);
@@ -5162,7 +5172,7 @@ function renderMentionSuggestions(ticketKey, users) {
           console.error('❌ Dados inválidos:', mentionItem.dataset);
         }
       } else {
-        console.log('⚠️ Click fora de .mention-item');
+        debugLog('⚠️ Click fora de .mention-item');
       }
     };
     
@@ -5175,13 +5185,13 @@ function renderMentionSuggestions(ticketKey, users) {
     suggestionsDiv.addEventListener('mousedown', mousedownHandler, true);
     suggestionsDiv._mousedownHandler = mousedownHandler;
     
-    console.log('✅ Listener MOUSEDOWN adicionado ao suggestionsDiv');
+    debugLog('✅ Listener MOUSEDOWN adicionado ao suggestionsDiv');
     
     // Também adicionar diretamente em cada item como fallback
     const items = suggestionsDiv.querySelectorAll('.mention-item');
     items.forEach((item, idx) => {
       item.addEventListener('mousedown', function(e) {
-        console.log(`🎯 MOUSEDOWN DIRETO no item ${idx}`);
+        debugLog(`🎯 MOUSEDOWN DIRETO no item ${idx}`);
         e.stopPropagation();
         
         const tKey = this.dataset.ticketKey;
@@ -5195,7 +5205,7 @@ function renderMentionSuggestions(ticketKey, users) {
       }, true);
     });
     
-    console.log(`✅ Listeners diretos adicionados a ${items.length} itens`);
+    debugLog(`✅ Listeners diretos adicionados a ${items.length} itens`);
   }, 50); // 50ms de delay
 }
 
@@ -5275,7 +5285,7 @@ function escapeHtml(text) {
 
 // Inserir menção a partir do elemento clicado (data-attributes)
 function insertMentionFromElement(element) {
-  console.log('🖱️ Clicou em elemento de menção:', element);
+  debugLog('🖱️ Clicou em elemento de menção:', element);
   
   // Se clicou em um elemento filho, buscar o pai com a classe mention-item
   let mentionItem = element;
@@ -5288,14 +5298,14 @@ function insertMentionFromElement(element) {
     return;
   }
   
-  console.log('📋 Elemento mention-item encontrado:', mentionItem);
-  console.log('📋 Datasets disponíveis:', mentionItem.dataset);
+  debugLog('📋 Elemento mention-item encontrado:', mentionItem);
+  debugLog('📋 Datasets disponíveis:', mentionItem.dataset);
   
   const ticketKey = mentionItem.dataset.ticketKey;
   const displayName = mentionItem.dataset.displayName;
   const accountId = mentionItem.dataset.accountId;
   
-  console.log('🔑 Dados extraídos:', { ticketKey, displayName, accountId });
+  debugLog('🔑 Dados extraídos:', { ticketKey, displayName, accountId });
   
   if (!ticketKey || !displayName || !accountId) {
     console.error('❌ Dados de menção inválidos:', { ticketKey, displayName, accountId });
@@ -5308,7 +5318,7 @@ function insertMentionFromElement(element) {
 
 // Inserir menção no texto
 function insertMention(ticketKey, displayName, accountId) {
-  console.log('📝 Inserindo menção:', { ticketKey, displayName, accountId });
+  debugLog('📝 Inserindo menção:', { ticketKey, displayName, accountId });
   
   const textarea = document.getElementById(`new-comment-textarea-${ticketKey}`);
   if (!textarea) {
@@ -5329,7 +5339,7 @@ function insertMention(ticketKey, displayName, accountId) {
   const after = text.substring(atIndex).replace(/@[^\s]*/, `@${displayName} `);
   textarea.value = before + after;
   
-  console.log('✅ Texto atualizado:', textarea.value);
+  debugLog('✅ Texto atualizado:', textarea.value);
   
   // Guardar accountId para envio
   if (!textarea.dataset.mentions) {
@@ -5339,7 +5349,7 @@ function insertMention(ticketKey, displayName, accountId) {
   mentions[displayName] = accountId;
   textarea.dataset.mentions = JSON.stringify(mentions);
   
-  console.log('✅ Menções salvas:', mentions);
+  debugLog('✅ Menções salvas:', mentions);
   
   // Esconder sugestões
   const suggestionsDiv = document.getElementById(`mention-suggestions-${ticketKey}`);
@@ -5707,7 +5717,7 @@ async function searchTeams(fieldName, query) {
         const result = await ipcRenderer.invoke('get-itops-team-options');
         if (result.success && result.data) {
           cachedTeams = result.data;
-          console.log('✅ Times carregados do Jira:', cachedTeams);
+          debugLog('✅ Times carregados do Jira:', cachedTeams);
         } else {
           throw new Error('Falha ao carregar times');
         }
@@ -5762,7 +5772,7 @@ async function saveField(fieldName, ticketKey, newValue, displayName = null) {
     return;
   }
   
-  console.log(`💾 Salvando ${fieldName}:`, newValue, displayName);
+  debugLog(`💾 Salvando ${fieldName}:`, newValue, displayName);
   showToast('Salvando', 'Atualizando ticket...', 'info');
   
   try {
@@ -5819,7 +5829,7 @@ function openCurrentTicketInWebview() {
 function setupDragAndDropForContainer(container) {
   const buttons = container.querySelectorAll('.draggable-btn');
   
-  console.log(`🔧 Configurando drag-and-drop para ${buttons.length} botões em:`, container.id);
+  debugLog(`🔧 Configurando drag-and-drop para ${buttons.length} botões em:`, container.id);
   
   buttons.forEach(button => {
     const handle = button.querySelector('.drag-handle');
@@ -5831,18 +5841,18 @@ function setupDragAndDropForContainer(container) {
     handle.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       button.draggable = true;
-      console.log('🖱️ Drag iniciado:', button.querySelector('.btn-text')?.textContent);
+      debugLog('🖱️ Drag iniciado:', button.querySelector('.btn-text')?.textContent);
     });
     
     button.addEventListener('dragstart', (e) => {
       button.classList.add('dragging');
-      console.log('🎯 Dragstart:', button.querySelector('.btn-text')?.textContent);
+      debugLog('🎯 Dragstart:', button.querySelector('.btn-text')?.textContent);
     });
     
     button.addEventListener('dragend', (e) => {
       button.classList.remove('dragging');
       button.draggable = false;
-      console.log('✅ Drag finalizado');
+      debugLog('✅ Drag finalizado');
       saveButtonsOrder(container);
     });
   });
@@ -5879,14 +5889,14 @@ function getDragAfterElement(container, y) {
 
 function saveButtonsOrder(container) {
   // Implementar salvamento da ordem se necessário
-  console.log('Ordem dos botões salva');
+  debugLog('Ordem dos botões salva');
 }
 
 // Botões Editáveis
 function setupEditableButtons(container) {
   const buttons = container.querySelectorAll('.draggable-btn');
   
-  console.log(`✏️ Configurando edição para ${buttons.length} botões em:`, container.id);
+  debugLog(`✏️ Configurando edição para ${buttons.length} botões em:`, container.id);
   
   buttons.forEach(button => {
     const editIcon = button.querySelector('.edit-icon');
@@ -5903,13 +5913,13 @@ function setupEditableButtons(container) {
     
     newEditIcon.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log('✏️ Edição iniciada:', btnText.textContent);
+      debugLog('✏️ Edição iniciada:', btnText.textContent);
       startEditingButton(button, btnText);
     });
     
     btnText.addEventListener('dblclick', (e) => {
       e.stopPropagation();
-      console.log('✏️ Duplo clique para editar:', btnText.textContent);
+      debugLog('✏️ Duplo clique para editar:', btnText.textContent);
       startEditingButton(button, btnText);
     });
     
@@ -5919,7 +5929,7 @@ function setupEditableButtons(container) {
       
       const url = button.getAttribute('data-url');
       if (url) {
-        console.log('🔗 Abrindo URL:', url);
+        debugLog('🔗 Abrindo URL:', url);
         ipcRenderer.invoke('open-url', url);
       }
     });
@@ -5944,7 +5954,7 @@ function startEditingButton(button, btnText) {
       btnText.textContent = currentText;
     }
     // Salvar alteração se necessário
-    console.log('Botão editado:', newText);
+    debugLog('Botão editado:', newText);
   };
   
   btnText.addEventListener('blur', finishEditing, { once: true });
@@ -6409,11 +6419,11 @@ function updateWindowOpacity(opacity) {
 
 // 🎨 TEMAS CUSTOMIZÁVEIS
 function setupThemeCustomizerListeners() {
-  console.log('🎨 Configurando listeners do customizador de tema');
+  debugLog('🎨 Configurando listeners do customizador de tema');
   
   // Remover listeners antigos (se existirem) e adicionar novos
   const swatches = document.querySelectorAll('.color-swatch');
-  console.log('📊 Encontrados', swatches.length, 'botões de cor');
+  debugLog('📊 Encontrados', swatches.length, 'botões de cor');
   
   swatches.forEach(btn => {
     // Clonar o elemento para remover todos os listeners antigos
@@ -6424,7 +6434,7 @@ function setupThemeCustomizerListeners() {
       e.preventDefault();
       e.stopPropagation();
       const color = newBtn.getAttribute('data-color');
-      console.log('🎨 Cor selecionada:', color);
+      debugLog('🎨 Cor selecionada:', color);
       applyAccentColor(color, true);
       
       // Atualizar visual de selecionado
@@ -6435,7 +6445,7 @@ function setupThemeCustomizerListeners() {
   
   // Theme presets
   const presetBtns = document.querySelectorAll('.theme-preset-btn');
-  console.log('📊 Encontrados', presetBtns.length, 'temas pré-definidos');
+  debugLog('📊 Encontrados', presetBtns.length, 'temas pré-definidos');
   
   presetBtns.forEach(btn => {
     // Clonar o elemento para remover todos os listeners antigos
@@ -6446,17 +6456,17 @@ function setupThemeCustomizerListeners() {
       e.preventDefault();
       e.stopPropagation();
       const theme = newBtn.getAttribute('data-theme');
-      console.log('🎨 Tema selecionado:', theme);
+      debugLog('🎨 Tema selecionado:', theme);
       applyThemePreset(theme, true);
       hideThemeCustomizer();
     });
   });
   
-  console.log('✅ Listeners configurados!');
+  debugLog('✅ Listeners configurados!');
 }
 
 function showThemeCustomizer() {
-  console.log('🎨 Abrindo customizador de tema');
+  debugLog('🎨 Abrindo customizador de tema');
   const modal = document.getElementById('theme-customizer-modal');
   modal.style.display = 'flex';
   
@@ -6517,7 +6527,7 @@ function hideThemeCustomizer() {
 // ============================================
 
 function showLanguageModal() {
-  console.log('🌍 Abrindo modal de idioma');
+  debugLog('🌍 Abrindo modal de idioma');
   const modal = document.getElementById('language-modal');
   modal.style.display = 'flex';
   
@@ -6578,15 +6588,15 @@ function hideLanguageModal() {
 }
 
 function applyAccentColor(color, showNotification = false) {
-  console.log('🎨 Aplicando cor de acento:', color);
+  debugLog('🎨 Aplicando cor de acento:', color);
   
   // Aplicar a cor
   document.documentElement.style.setProperty('--accent-color', color);
-  console.log('✅ Variável CSS setada');
+  debugLog('✅ Variável CSS setada');
   
   // Salvar no config
   ipcRenderer.invoke('save-config', { accentColor: color }).then(() => {
-    console.log('💾 Cor salva no config');
+    debugLog('💾 Cor salva no config');
   });
   
   if (showNotification) {
@@ -6599,7 +6609,7 @@ function applyCustomColor() {
   const colorInput = document.getElementById('customColorPicker');
   if (colorInput && colorInput.value) {
     const customColor = colorInput.value;
-    console.log('🎨 Aplicando cor personalizada:', customColor);
+    debugLog('🎨 Aplicando cor personalizada:', customColor);
     applyAccentColor(customColor, true);
   }
 }
@@ -6609,7 +6619,7 @@ window.applyCustomColor = applyCustomColor;
 window.applyAccentColor = applyAccentColor;
 
 function applyThemePreset(theme, showNotification = false) {
-  console.log('🎨 Aplicando tema preset:', theme);
+  debugLog('🎨 Aplicando tema preset:', theme);
   
   const presets = {
     default: {
@@ -6636,17 +6646,17 @@ function applyThemePreset(theme, showNotification = false) {
   
   const preset = presets[theme];
   if (preset) {
-    console.log('✅ Preset encontrado:', preset);
+    debugLog('✅ Preset encontrado:', preset);
     
     // Aplicar as cores
     document.documentElement.style.setProperty('--accent-color', preset.accent);
     document.documentElement.style.setProperty('--bg-primary', preset.bg);
     document.documentElement.style.setProperty('--text-primary', preset.text);
-    console.log('✅ Variáveis CSS setadas');
+    debugLog('✅ Variáveis CSS setadas');
     
     // Salvar no config
     ipcRenderer.invoke('save-config', { themePreset: theme }).then(() => {
-      console.log('💾 Tema salvo:', theme);
+      debugLog('💾 Tema salvo:', theme);
     });
     
     if (showNotification) {
@@ -6857,12 +6867,12 @@ window.hideTicketPreview = hideTicketPreview;
 window.openTrendDay = openTrendDay;
 window.downloadAttachment = downloadAttachment;
 window.showAttachmentPreview = async (attachmentId) => {
-  console.log('🖼️ showAttachmentPreview chamada com ID:', attachmentId);
-  console.log('🖼️ Tipo do attachmentId:', typeof attachmentId);
+  debugLog('🖼️ showAttachmentPreview chamada com ID:', attachmentId);
+  debugLog('🖼️ Tipo do attachmentId:', typeof attachmentId);
   
   // Criar modal de preview se não existir
   let modal = document.getElementById('attachment-preview-modal');
-  console.log('🖼️ Modal existente?', !!modal);
+  debugLog('🖼️ Modal existente?', !!modal);
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'attachment-preview-modal';
@@ -6969,7 +6979,7 @@ window.toggleActivityDetails = toggleActivityDetails;
 let performanceMetricsCache = null;
 
 async function loadPerformanceDashboard(days = 30) {
-  console.log('📊 Carregando Dashboard de Performance...');
+  debugLog('📊 Carregando Dashboard de Performance...');
   
   // Atualizar badge de usuário monitorado
   updateProMonitoredUserBadge();
@@ -7150,7 +7160,7 @@ function displayRecentResolved(recentTickets) {
 let proactiveAlertsInterval = null;
 
 async function checkProactiveAlerts() {
-  console.log('🔔 Verificando alertas proativos...');
+  debugLog('🔔 Verificando alertas proativos...');
   
   // Atualizar badge de usuário monitorado
   updateProMonitoredUserBadge();
@@ -7403,7 +7413,7 @@ function startTimer() {
     }
   }, 1000);
   
-  console.log('⏱️ Timer iniciado');
+  debugLog('⏱️ Timer iniciado');
 }
 
 function pauseTimer() {
@@ -7417,7 +7427,7 @@ function pauseTimer() {
   document.getElementById('timer-start-btn').style.display = 'flex';
   document.getElementById('timer-pause-btn').style.display = 'none';
   
-  console.log('⏸️ Timer pausado em:', formatTime(timerState.seconds));
+  debugLog('⏸️ Timer pausado em:', formatTime(timerState.seconds));
 }
 
 function stopTimer() {
@@ -7435,7 +7445,7 @@ function stopTimer() {
   document.getElementById('timer-start-btn').style.display = 'flex';
   document.getElementById('timer-pause-btn').style.display = 'none';
   
-  console.log('⏹️ Timer parado. Tempo total:', formatTime(totalSeconds));
+  debugLog('⏹️ Timer parado. Tempo total:', formatTime(totalSeconds));
   
   return totalSeconds;
 }
@@ -7785,7 +7795,7 @@ function hideEditTemplateModal() {
 
 // 🎉 CONFETTI CELEBRATIONS
 function celebrateTicketResolved(ticketKey) {
-  console.log('🎉 Celebrando ticket resolvido:', ticketKey);
+  debugLog('🎉 Celebrando ticket resolvido:', ticketKey);
   
   // Confetti animation
   if (window.confetti) {
@@ -7905,7 +7915,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.id === 'edit-template-modal') hideEditTemplateModal();
   });
   
-  console.log('✅ UX Enhancements v1.6.0 carregados');
+  debugLog('✅ UX Enhancements v1.6.0 carregados');
 });
 
 // Adicionar atalho Cmd+Shift+T para templates
