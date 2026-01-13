@@ -946,10 +946,8 @@ body:has(.app-container[style*="scale"]) {
    👤 ÍCONE DO USUÁRIO - CANTO SUPERIOR DIREITO
    ======================================== */
 
-/* Reposicionar o botão de usuário para o final do header */
+/* Botão de usuário estilizado no canto superior direito */
 .user-monitor-btn {
-  order: 999 !important; /* Força o botão para o final */
-  margin-left: auto !important; /* Empurra para a direita */
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
   border: 1.5px solid rgba(102, 126, 234, 0.4) !important;
   padding: 6px 12px !important;
@@ -962,6 +960,7 @@ body:has(.app-container[style*="scale"]) {
   transition: all 0.3s ease !important;
   position: relative !important;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15) !important;
+  margin-left: 8px !important;
 }
 
 .user-monitor-btn:hover {
@@ -1018,12 +1017,33 @@ body:has(.app-container[style*="scale"]) {
   }
 }
 
+/* Separador visual antes do botão de minimize para destacar o botão de usuário */
+#minimize-btn {
+  margin-left: 12px !important;
+  position: relative !important;
+}
+
+#minimize-btn::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
 /* Ajustes responsivos para o botão de usuário */
 @media (max-width: 768px) {
   .user-monitor-label {
     max-width: 80px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+  }
+  
+  #minimize-btn::before {
+    display: none; /* Esconde separador em telas pequenas */
   }
 }
 
