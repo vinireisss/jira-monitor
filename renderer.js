@@ -4210,14 +4210,14 @@ function loadEvaluatedTicketsTicketsList() {
           const count = ratingsStats[stars];
           const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
           return `
-            <div class="rating-row" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer; padding: 6px; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'" onclick="filterEvaluatedTicketsByRating(${stars})">
-              <div class="rating-stars" style="min-width: 90px; display: flex; align-items: center; gap: 4px; font-size: 14px;">
-                <span style="color: #ffd700;">${'⭐'.repeat(stars)}</span>
+            <div class="rating-row" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer; padding: 6px; border-radius: 6px; transition: background 0.2s; user-select: none;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'" onclick="filterEvaluatedTicketsByRating(${stars})">
+              <div class="rating-stars" style="min-width: 90px; display: flex; align-items: center; gap: 4px; font-size: 14px; user-select: none;">
+                <span style="color: #ffd700; user-select: none;">${'⭐'.repeat(stars)}</span>
               </div>
               <div class="rating-bar-container" style="flex: 1; height: 20px; background: rgba(255, 255, 255, 0.2); border-radius: 10px; overflow: hidden; position: relative;">
                 <div class="rating-bar-fill" style="height: 100%; width: ${percentage}%; background: linear-gradient(90deg, #ffd700 0%, #ffed4e 100%); border-radius: 10px; transition: width 0.3s ease;"></div>
               </div>
-              <div class="rating-count" style="min-width: 45px; text-align: right; font-weight: 600; font-size: 16px;">
+              <div class="rating-count" style="min-width: 45px; text-align: right; font-weight: 600; font-size: 16px; user-select: none;">
                 ${count}
               </div>
             </div>
@@ -4238,9 +4238,9 @@ function loadEvaluatedTicketsTicketsList() {
   const ticketsListHtml = tickets.map(ticket => {
     // Mostrar as estrelas da avaliação com número
     const starsHtml = ticket.ratingEmoji ? 
-      `<div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
-        <span style="font-size: 16px; color: #ffd700; letter-spacing: 2px;" title="Avaliação do cliente: ${ticket.ratingNumber || '?'} estrelas">${ticket.ratingEmoji}</span>
-        ${ticket.ratingNumber ? `<span style="font-size: 12px; color: #ffd700; font-weight: 600;">(${ticket.ratingNumber})</span>` : ''}
+      `<div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; user-select: none;">
+        <span style="font-size: 16px; color: #ffd700; letter-spacing: 2px; user-select: none;" title="Avaliação do cliente: ${ticket.ratingNumber || '?'} estrelas">${ticket.ratingEmoji}</span>
+        ${ticket.ratingNumber ? `<span style="font-size: 12px; color: #ffd700; font-weight: 600; user-select: none;">(${ticket.ratingNumber})</span>` : ''}
       </div>` : '';
     
     return `
