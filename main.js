@@ -233,14 +233,6 @@ function createWindow() {
       },
       { type: 'separator' },
       {
-        label: '🎯 Modo Focus',
-        type: 'checkbox',
-        click: () => {
-          mainWindow.webContents.send('toggle-focus-mode');
-        }
-      },
-      { type: 'separator' },
-      {
         label: '🔗 Copiar Link',
         visible: params.linkURL.length > 0,
         click: () => {

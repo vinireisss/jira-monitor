@@ -214,16 +214,6 @@
   text-transform: uppercase;
 }
 
-/* 🎯 MODO FOCUS */
-.focus-mode .header,
-.focus-mode .footer,
-.focus-mode .pro-mode-section,
-.focus-mode .search-container,
-.focus-mode #pro-mode-section,
-.focus-mode .daily-activity-widget {
-  display: none !important;
-}
-
 .focus-mode .main {
   padding: 10px !important;
 }

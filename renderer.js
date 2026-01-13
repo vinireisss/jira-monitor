@@ -121,7 +121,6 @@ function addI18nAttributes() {
     'menu-search': 'menu.search',
     'menu-shortcuts': 'menu.shortcuts',
     'menu-templates': 'menu.templates',
-    'menu-focus-mode': 'menu.focusMode',
     'menu-themes': 'menu.themes',
     'menu-export': 'menu.export'
   };
@@ -188,7 +187,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       proMode: isProMode,
       isHorizontalLayout: isHorizontalLayout,
       windowOpacity: windowOpacity,
-      focusMode: isFocusMode,
       densityMode: densityMode,
       zoomLevel: zoomLevels[currentZoomIndex] // Salvar nível de zoom
     };
@@ -268,8 +266,6 @@ ipcRenderer.on('set-monitored-user', async (event, userEmail) => {
 });
 
 // Listener para alternar modo focus (do menu de contexto)
-ipcRenderer.on('toggle-focus-mode', () => {
-  toggleFocusMode();
 });
 
 // Listener para focar em um ticket específico (do menu bar / tray)
@@ -426,7 +422,6 @@ async function saveConfig() {
       // Configurações de UI/UX que devem persistir
       isHorizontalLayout: isHorizontalLayout,
       windowOpacity: windowOpacity,
-      focusMode: isFocusMode,
       densityMode: densityMode,
       zoomLevel: zoomLevels[currentZoomIndex], // Salvar nível de zoom
       accentColor: currentConfig.accentColor,
@@ -846,8 +841,6 @@ function setupEventListeners() {
     showTimerWidget();
     hideMenu();
   });
-  document.getElementById('menu-focus-mode').addEventListener('click', () => {
-    toggleFocusMode();
     hideMenu();
   });
   // Opacity slider
@@ -1189,7 +1182,6 @@ function setupKeyboardShortcuts() {
       showConfigPanel();
     } else if (isCmdOrCtrl && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
       e.preventDefault();
-      toggleFocusMode();
     } else if (isCmdOrCtrl && e.key === 'e') {
       e.preventDefault();
       showExportModal();
@@ -1976,7 +1968,6 @@ async function saveCurrentState() {
       proMode: isProMode,
       isHorizontalLayout: isHorizontalLayout,
       windowOpacity: windowOpacity,
-      focusMode: isFocusMode,
       densityMode: densityMode,
       zoomLevel: zoomLevels[currentZoomIndex], // Salvar nível de zoom
       dailyActivity: dailyActivity // Salvar atividade diária
@@ -1985,7 +1976,6 @@ async function saveCurrentState() {
     await ipcRenderer.invoke('save-config', stateToSave);
     debugLog('💾 Estado salvo automaticamente:', {
       proMode: stateToSave.proMode,
-      focusMode: stateToSave.focusMode,
       windowOpacity: stateToSave.windowOpacity,
       dailyActivity: stateToSave.dailyActivity
     });
@@ -6381,22 +6371,6 @@ function closeDailyActivityWidget() {
   widget.style.display = 'none';
 }
 
-// 🎯 MODO FOCUS
-function toggleFocusMode() {
-  isFocusMode = !isFocusMode;
-  const body = document.body;
-  
-  if (isFocusMode) {
-    body.classList.add('focus-mode');
-    showToast('Modo Focus', 'Ativado', 'success');
-  } else {
-    body.classList.remove('focus-mode');
-    showToast('Modo Focus', 'Desativado', 'info');
-  }
-  
-  // Salvar preferência
-  ipcRenderer.invoke('save-config', { focusMode: isFocusMode });
-}
 
 // 🪟 OPACIDADE AJUSTÁVEL
 function updateWindowOpacity(opacity) {
