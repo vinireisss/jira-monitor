@@ -3311,7 +3311,6 @@ async function loadProjectTickets(projectKey, container) {
         
         return `
           <div class="ticket-item" data-ticket-key="${key}" ${slaStatus ? `data-sla-status="${slaStatus}"` : ''}>
-            ${avatarHTML}
             <div class="ticket-item-content">
               <div class="ticket-key-link">
                 <a href="https://nubank.atlassian.net/browse/${key}" target="_blank" onclick="event.stopPropagation()">${key}</a>
@@ -3326,6 +3325,7 @@ async function loadProjectTickets(projectKey, container) {
                 <div class="sla-loading">⏳ Carregando SLAs...</div>
               </div>
             </div>
+            ${avatarHTML}
           </div>
         `;
       }).join('');
@@ -3382,8 +3382,7 @@ function updateRecentTickets(tickets) {
     const avatarHTML = createAvatarHTML(assigneeEmail);
     
     return `
-      <div class="recent-ticket-item" data-ticket-key="${ticket.key}" style="position: relative; display: flex; align-items: center; gap: 8px;">
-        ${avatarHTML}
+      <div class="recent-ticket-item" data-ticket-key="${ticket.key}" style="position: relative;">
         <div style="flex: 1; min-width: 0;">
           <div class="recent-ticket-key">${ticket.key} ${newBadge}</div>
           <div class="recent-ticket-summary">${ticket.summary}</div>
@@ -3397,6 +3396,7 @@ function updateRecentTickets(tickets) {
             <svg viewBox="0 0 24 24"><path fill="white" d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
           </button>
         </div>
+        ${avatarHTML}
       </div>
     `;
   }).join('');
@@ -3878,7 +3878,6 @@ function loadTicketsList(cardId) {
     
     return `
       <div class="ticket-item" data-ticket-key="${key}" ${slaStatus ? `data-sla-status="${slaStatus}"` : ''}>
-        ${avatarHTML}
         <div class="ticket-item-content">
           <div class="ticket-key">${key}</div>
           <div class="ticket-summary">${summary}</div>
@@ -3887,6 +3886,7 @@ function loadTicketsList(cardId) {
             <div class="sla-loading">⏳ Carregando SLAs...</div>
           </div>
         </div>
+        ${avatarHTML}
       </div>
     `;
   }).join('');
