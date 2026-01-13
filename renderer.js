@@ -179,11 +179,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       isHorizontalLayout: isHorizontalLayout,
       windowOpacity: windowOpacity,
       focusMode: isFocusMode,
-      densityMode: densityMode
+      densityMode: densityMode,
+      zoomLevel: zoomLevels[currentZoomIndex] // Salvar nível de zoom
     };
     console.log('🚪 ========================================');
     console.log('🚪 FECHANDO APP - SALVANDO ESTADO FINAL');
     console.log('🚪 Modo Pro ao fechar:', isProMode);
+    console.log('🚪 Zoom ao fechar:', zoomLevels[currentZoomIndex]);
     console.log('🚪 ========================================');
     ipcRenderer.send('save-config-sync', stateToSave);
   });
@@ -365,6 +367,21 @@ async function loadConfig() {
       applyDensityMode(densityMode, false); // false para não mostrar toast no início
     }
     
+    // Restaurar zoom
+    if (config.zoomLevel !== undefined) {
+      currentZoomIndex = zoomLevels.indexOf(config.zoomLevel);
+      if (currentZoomIndex === -1) {
+        currentZoomIndex = 5; // Default 100%
+      }
+      currentZoom = zoomLevels[currentZoomIndex];
+      const appContainer = document.querySelector('.app-container');
+      if (appContainer && currentZoom !== 1.0) {
+        appContainer.style.transform = `scale(${currentZoom})`;
+        appContainer.style.transformOrigin = 'center center';
+        document.body.style.overflow = 'hidden';
+      }
+    }
+    
     // Atualizar indicador de usuário monitorado
     updateMonitoredUserIndicator();
   } catch (error) {
@@ -402,6 +419,7 @@ async function saveConfig() {
       windowOpacity: windowOpacity,
       focusMode: isFocusMode,
       densityMode: densityMode,
+      zoomLevel: zoomLevels[currentZoomIndex], // Salvar nível de zoom
       accentColor: currentConfig.accentColor,
       themePreset: currentConfig.themePreset,
       clearedNotifications: currentConfig.clearedNotifications || [],
@@ -1861,7 +1879,20 @@ function resetZoom() {
 
 function applyZoom() {
   currentZoom = zoomLevels[currentZoomIndex];
-  document.body.style.zoom = currentZoom;
+  const appContainer = document.querySelector('.app-container');
+  
+  if (appContainer) {
+    // Usar transform scale em vez de zoom para não interferir com redimensionamento
+    appContainer.style.transform = `scale(${currentZoom})`;
+    appContainer.style.transformOrigin = 'center center';
+    
+    // Ajustar overflow do body para evitar problemas de scroll
+    if (currentZoom !== 1.0) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  }
   
   // Feedback visual
   showZoomIndicator();
@@ -1942,6 +1973,7 @@ async function saveCurrentState() {
       windowOpacity: windowOpacity,
       focusMode: isFocusMode,
       densityMode: densityMode,
+      zoomLevel: zoomLevels[currentZoomIndex], // Salvar nível de zoom
       dailyActivity: dailyActivity // Salvar atividade diária
     };
     
