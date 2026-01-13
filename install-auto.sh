@@ -169,6 +169,15 @@ else
     echo -e "${GREEN}✅ Dependências instaladas${NC}"
 fi
 
+# 7. Instalar aliases
+echo ""
+echo -e "${BLUE}[7/7]${NC} Configurando aliases..."
+if [ -f "$PROJECT_DIR/install-aliases.sh" ]; then
+    bash "$PROJECT_DIR/install-aliases.sh"
+else
+    echo -e "${YELLOW}⚠️  Arquivo install-aliases.sh não encontrado${NC}"
+fi
+
 # Finalização
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
@@ -178,13 +187,25 @@ echo ""
 echo -e "${BLUE}📂 Projeto instalado em:${NC}"
 echo -e "   ${GREEN}$PROJECT_DIR${NC}"
 echo ""
+echo -e "${BLUE}⚡ Aliases instalados:${NC}"
+echo -e "   ${GREEN}j${NC}              - Abre o Jira Monitor"
+echo -e "   ${GREEN}jira-update${NC}    - Atualiza (git pull + npm install)"
+echo -e "   ${GREEN}jira-restart${NC}   - Reinicia o app"
+echo -e "   ${GREEN}jira-status${NC}    - Ver status do Git"
+echo -e "   ${GREEN}jira-log${NC}       - Ver últimos 10 commits"
+echo ""
+echo -e "${YELLOW}⚠️  IMPORTANTE: Para usar os aliases, rode:${NC}"
+echo -e "   ${BLUE}source ~/.zshrc${NC}  (ou feche e reabra o terminal)"
+echo ""
 echo -e "${BLUE}🚀 Para iniciar o Jira Monitor:${NC}"
-echo -e "   ${YELLOW}cd $PROJECT_DIR${NC}"
-echo -e "   ${YELLOW}npm start${NC}"
+echo -e "   ${YELLOW}j${NC}  (depois de recarregar o terminal)"
+echo -e "   ou"
+echo -e "   ${YELLOW}cd $PROJECT_DIR && npm start${NC}"
 echo ""
 echo -e "${BLUE}📖 Próximos passos:${NC}"
-echo -e "   1. Configure suas credenciais do Jira na primeira execução"
-echo -e "   2. Leia o QUICK_START.md para mais informações"
+echo -e "   1. ${YELLOW}source ~/.zshrc${NC} (ou reabrir terminal)"
+echo -e "   2. Digite ${GREEN}j${NC} para iniciar"
+echo -e "   3. Configure suas credenciais do Jira na primeira execução"
 echo ""
 
 # Perguntar se deseja iniciar agora
