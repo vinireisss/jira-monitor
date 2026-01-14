@@ -102,6 +102,11 @@
   border-radius: 8px !important;
   border-left: 3px solid rgba(99, 102, 241, 0.4) !important;
   backdrop-filter: blur(10px) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important; /* Previne sobreposição */
+  position: relative !important;
+  clear: both !important; /* Limpa floats anteriores */
 }
 
 /* Container interno dos SLAs */
@@ -109,19 +114,24 @@
   display: flex !important;
   flex-direction: column !important;
   gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Cada linha de SLA */
 .sla-row {
   display: flex !important;
   align-items: center !important;
-  gap: 10px !important;
+  flex-wrap: wrap !important; /* Permite quebra de linha em telas pequenas */
+  gap: 8px !important;
   font-size: 12px !important;
   line-height: 1.6 !important;
-  padding: 6px 8px !important;
+  padding: 8px 10px !important;
   background: rgba(255, 255, 255, 0.03) !important;
   border-radius: 6px !important;
   transition: all 0.2s ease !important;
+  min-height: 32px !important; /* Garante altura mínima */
 }
 
 .sla-row:hover {
@@ -130,7 +140,7 @@
 }
 
 .sla-row:not(:last-child) {
-  margin-bottom: 4px !important;
+  margin-bottom: 6px !important;
 }
 
 /* Emoji do SLA */
@@ -138,6 +148,7 @@
   font-size: 16px !important;
   flex-shrink: 0 !important;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+  line-height: 1 !important;
 }
 
 /* Label do SLA (First Response / Resolution) */
@@ -147,7 +158,8 @@
   letter-spacing: 0.8px !important;
   text-transform: uppercase !important;
   flex-shrink: 0 !important;
-  min-width: 100px !important;
+  white-space: nowrap !important; /* Não quebra o texto */
+  max-width: fit-content !important;
 }
 
 /* Status do SLA (OK, Estourado, restante) */
@@ -155,7 +167,11 @@
   font-size: 12px !important;
   font-weight: 600 !important;
   color: rgba(255, 255, 255, 0.85) !important;
-  flex-grow: 1 !important;
+  flex: 1 1 auto !important; /* Permite crescer e encolher */
+  min-width: 0 !important; /* Permite encolher abaixo do conteúdo */
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 /* Data/Hora do SLA */
@@ -165,11 +181,13 @@
   color: rgba(255, 255, 255, 0.6) !important;
   font-family: 'SF Mono', 'Monaco', 'Menlo', monospace !important;
   background: rgba(0, 0, 0, 0.3) !important;
-  padding: 4px 10px !important;
+  padding: 4px 8px !important;
   border-radius: 6px !important;
-  flex-shrink: 0 !important;
+  flex-shrink: 1 !important; /* Permite encolher se necessário */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   letter-spacing: 0.5px !important;
+  white-space: nowrap !important;
+  margin-left: auto !important; /* Empurra para a direita */
 }
 
 /* Melhorar contraste das cores dos status */
@@ -191,21 +209,129 @@
   text-shadow: 0 0 10px rgba(248, 113, 113, 0.5) !important;
 }
 
-/* Responsividade */
-@media (max-width: 768px) {
-  .sla-label {
-    min-width: 80px !important;
-    font-size: 10px !important;
+/* Responsividade - Breakpoints aprimorados */
+@media (max-width: 1024px) {
+  .sla-row {
+    gap: 6px !important;
+    padding: 6px 8px !important;
   }
   
   .sla-datetime {
     font-size: 10px !important;
     padding: 3px 6px !important;
   }
+}
+
+@media (max-width: 768px) {
+  .sla-label {
+    font-size: 10px !important;
+  }
+  
+  .sla-datetime {
+    font-size: 9px !important;
+    padding: 2px 5px !important;
+    letter-spacing: 0px !important;
+  }
   
   .sla-status {
     font-size: 11px !important;
   }
+  
+  .sla-emoji {
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .sla-row {
+    gap: 4px !important;
+    padding: 6px !important;
+  }
+  
+  .sla-label {
+    font-size: 9px !important;
+    letter-spacing: 0.3px !important;
+  }
+  
+  .sla-status {
+    font-size: 10px !important;
+    flex: 1 1 100% !important; /* Força quebra de linha se necessário */
+    margin-left: 24px !important; /* Alinha com o label */
+  }
+  
+  .sla-datetime {
+    font-size: 9px !important;
+    padding: 2px 4px !important;
+    flex: 0 0 auto !important;
+    margin-left: 24px !important; /* Alinha com o label */
+  }
+}
+
+/* ========================================
+   🔧 FIX - Prevenir sobreposição de SLA nos Tickets
+   ======================================== */
+
+/* Garantir que ticket items tenham espaço adequado */
+.ticket-item {
+  overflow: visible !important;
+  position: relative !important;
+  contain: layout !important; /* Otimização de rendering */
+}
+
+.ticket-item-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+/* Garantir que nada saia dos limites do container */
+.tickets-list .ticket-item,
+.recent-tickets-list .recent-ticket-item,
+.project-tickets-list .ticket-item {
+  margin-bottom: 12px !important; /* Mais espaço entre tickets */
+  padding-bottom: 8px !important;
+}
+
+/* Prevenir sobreposição com avatar */
+.ticket-item .ticket-sla-info {
+  max-width: calc(100% - 50px) !important; /* Espaço para avatar */
+}
+
+/* Em telas pequenas, dar mais espaço */
+@media (max-width: 768px) {
+  .ticket-item .ticket-sla-info {
+    max-width: 100% !important;
+  }
+}
+
+/* Garantir z-index correto para evitar sobreposições */
+.sla-row {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.sla-container {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.ticket-sla-info {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Prevenir que elementos flutuantes sobreponham o SLA */
+.ticket-sla-info::before {
+  content: '' !important;
+  display: table !important;
+  clear: both !important;
+}
+
+.ticket-sla-info::after {
+  content: '' !important;
+  display: table !important;
+  clear: both !important;
 }
 
 /* ========================================
