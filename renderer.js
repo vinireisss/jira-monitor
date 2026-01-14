@@ -3347,16 +3347,21 @@ async function loadProjectTickets(projectKey, container) {
         const slaContainer = document.getElementById(`sla-${key}`);
         if (slaContainer) {
           try {
+            console.log(`🔍 [DEBUG] Buscando SLA para ${key}...`);
             const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
-            if (slaData && slaData.success) {
+            console.log(`📊 [DEBUG] SLA Response para ${key}:`, slaData);
+            
+            if (slaData && slaData.success && slaData.data) {
               updateTicketSlaDisplay(key, slaData.data);
             } else {
+              console.warn(`⚠️ [DEBUG] SLA não disponível para ${key}:`, slaData?.error || 'Sem dados');
               slaContainer.innerHTML = '';
-          slaContainer.style.display = 'none';
+              slaContainer.style.display = 'none';
             }
           } catch (err) {
-            console.error(`Erro ao buscar SLA para ${key}:`, err);
+            console.error(`❌ [ERROR] Erro ao buscar SLA para ${key}:`, err);
             slaContainer.innerHTML = '';
+            slaContainer.style.display = 'none';
           }
         }
       });
@@ -3974,16 +3979,22 @@ function loadTicketsList(cardId) {
     const slaContainer = document.getElementById(`sla-${key}`);
     if (slaContainer) {
       try {
+        console.log(`🔍 [DEBUG] Buscando SLA para ${key}...`);
         const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
-        if (slaData && slaData.success) {
+        console.log(`📊 [DEBUG] SLA Response para ${key}:`, slaData);
+        
+        if (slaData && slaData.success && slaData.data) {
           updateTicketSlaDisplay(key, slaData.data);
         } else {
+          // SLA não disponível ou ticket não é do Service Desk
+          console.warn(`⚠️ [DEBUG] SLA não disponível para ${key}:`, slaData?.error || 'Sem dados');
           slaContainer.innerHTML = '';
           slaContainer.style.display = 'none';
         }
       } catch (err) {
-        console.error(`Erro ao buscar SLA para ${key}:`, err);
+        console.error(`❌ [ERROR] Erro ao buscar SLA para ${key}:`, err);
         slaContainer.innerHTML = '';
+        slaContainer.style.display = 'none';
       }
     }
   });
@@ -4111,16 +4122,21 @@ function loadSimCardsTicketsList() {
     const slaContainer = document.getElementById(`sla-${key}`);
     if (slaContainer) {
       try {
+        console.log(`🔍 [DEBUG] Buscando SLA para ${key}...`);
         const slaData = await ipcRenderer.invoke('get-ticket-sla', key);
-        if (slaData && slaData.success) {
+        console.log(`📊 [DEBUG] SLA Response para ${key}:`, slaData);
+        
+        if (slaData && slaData.success && slaData.data) {
           updateTicketSlaDisplay(key, slaData.data);
         } else {
+          console.warn(`⚠️ [DEBUG] SLA não disponível para ${key}:`, slaData?.error || 'Sem dados');
           slaContainer.innerHTML = '';
           slaContainer.style.display = 'none';
         }
       } catch (err) {
-        console.error(`Erro ao buscar SLA para ${key}:`, err);
+        console.error(`❌ [ERROR] Erro ao buscar SLA para ${key}:`, err);
         slaContainer.innerHTML = '';
+        slaContainer.style.display = 'none';
       }
     }
   });
