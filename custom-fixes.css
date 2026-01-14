@@ -142,6 +142,9 @@
   border-radius: 5px !important;
   transition: all 0.2s ease !important;
   min-height: 26px !important; /* Altura mínima compacta */
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .sla-row:hover {
@@ -471,22 +474,40 @@
    AVATAR COM INICIAIS
    ======================================== */
 
+/* ========================================
+   🔴 IMPORTANTE: Avatar DEVE permanecer CIRCULAR!
+   ======================================== */
+
 /* Container do avatar ao lado de cada ticket */
 .ticket-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  /* FORÇAR dimensões fixas - CÍRCULO PERFEITO */
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  
+  /* PREVENIR deformação */
+  flex: 0 0 38px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  aspect-ratio: 1/1 !important;
+  
+  /* Estilo */
+  border-radius: 50% !important;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 14px;
-  flex-shrink: 0;
   text-transform: uppercase;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
+  
+  /* Posicionamento */
   position: absolute !important;
   top: 18px !important;
   right: 10px !important;
@@ -552,28 +573,39 @@
   width: 100%;
 }
 
-/* FORÇAR todos os elementos internos a ocuparem 100% da largura */
-.ticket-item > *,
-.ticket-item-content > *,
-.ticket-item .ticket-key,
-.ticket-item .ticket-summary,
-.ticket-item .ticket-status,
-.ticket-item .ticket-meta,
-.ticket-item [class*="ticket-"],
-.ticket-item div[style*="padding"],
-.ticket-item div[style*="background"],
-.ticket-item div[style*="border-radius"] {
+/* ========================================
+   ✅ APLICAR largura 100% APENAS nos blocos de conteúdo
+   ❌ NUNCA no avatar!
+   ======================================== */
+
+/* 1. Status badge "Waiting for Customer" e similares */
+.ticket-item > div[style*="background"]:not(.ticket-avatar),
+.ticket-item > div[style*="padding: 8px"]:not(.ticket-avatar),
+.ticket-item > div[style*="border-radius: 8px"]:not(.ticket-avatar),
+.ticket-item > div[style*="text-align: center"]:not(.ticket-avatar) {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
 
-/* Status badges como "Waiting for Customer" devem ter largura total */
-.ticket-item div[style*="text-align: center"],
-.ticket-item div[style*="margin-top: 8px"],
-.ticket-item div[style*="font-size: 11px"] {
+/* 2. Título e summary do ticket */
+.ticket-item .ticket-key,
+.ticket-item .ticket-summary,
+.ticket-item-content > div:not(.ticket-avatar),
+.ticket-item > div:not(.ticket-avatar) {
   width: 100% !important;
   max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 3. PROTEÇÃO EXTRA: Avatar NUNCA deve ter width 100% */
+.ticket-avatar,
+.recent-ticket-item .ticket-avatar,
+.ticket-item .ticket-avatar {
+  width: 38px !important;
+  max-width: 38px !important;
+  min-width: 38px !important;
+  flex: 0 0 38px !important;
 }
 
 /* Garantir que o conteúdo interno não seja cortado */
@@ -604,16 +636,25 @@
   padding: 14px 55px 14px 14px !important; /* Reduzido padding direito */
 }
 
-/* FORÇAR largura total em recent-ticket-item também */
-.recent-ticket-item > *,
+/* FORÇAR largura total em recent-ticket-item também (EXCETO avatar) */
+.recent-ticket-item > div[style*="background"]:not(.ticket-avatar),
+.recent-ticket-item > div[style*="padding"]:not(.ticket-avatar),
 .recent-ticket-item .recent-ticket-key,
 .recent-ticket-item .recent-ticket-summary,
 .recent-ticket-item .recent-ticket-status,
-.recent-ticket-item .recent-ticket-meta,
-.recent-ticket-item [class*="recent-"] {
+.recent-ticket-item .recent-ticket-meta {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+}
+
+/* Garantir que avatar em recent-ticket também seja circular */
+.recent-ticket-item .ticket-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  flex-grow: 0 !important;
 }
 
 /* ========================================
