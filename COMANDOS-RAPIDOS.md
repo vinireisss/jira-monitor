@@ -20,7 +20,7 @@ Se preferir instalar manualmente:
 cat >> ~/.zshrc << 'EOF'
 
 # 🎯 Jira Monitor - Comandos Rápidos
-alias j="cd ~/dev/nu/jira-monitor && npm start > /dev/null 2>&1 &"
+alias jira-monitor="cd ~/dev/nu/jira-monitor && npm start > /dev/null 2>&1 &"
 alias jira-update="cd ~/dev/nu/jira-monitor && git pull origin main && npm install"
 alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -9 -f 'electron.*jira-monitor' 2>/dev/null; sleep 1; pkill -9 Electron 2>/dev/null; sleep 0.5; npm start > /dev/null 2>&1 &"
 alias jira-status="cd ~/dev/nu/jira-monitor && git status"
@@ -40,7 +40,7 @@ source ~/.zshrc
 
 | Comando | O que faz |
 |---------|-----------|
-| `j` | 🚀 Abre o Jira Monitor |
+| `jira-monitor` | 🚀 Abre o Jira Monitor |
 | `jira-update` | 🔄 Atualiza para a última versão (git pull + npm install) |
 | `jira-restart` | 🔄 Reinicia o app do ZERO (encerra completamente e abre novamente) |
 
@@ -82,13 +82,13 @@ j
 
 ### **Cenário 1: Começar o dia**
 ```bash
-j                    # Abre o Jira Monitor
+jira-monitor         # Abre o Jira Monitor
 ```
 
 ### **Cenário 2: Há uma atualização nova**
 ```bash
 jira-update          # Baixa atualizações
-j                    # Abre o app atualizado
+jira-monitor         # Abre o app atualizado
 ```
 
 ### **Cenário 3: App travou ou bugou**

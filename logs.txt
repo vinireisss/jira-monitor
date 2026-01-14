@@ -1,0 +1,32 @@
+
+> jira-monitor@1.6.1 start
+> ./start.sh
+
+🚀 Iniciando Jira Monitor...
+✅ Usando Node.js v20 via nvm
+📦 Node.js: v20.19.6 (/Users/gabriel.silva.digisystem/.nvm/versions/node/v20.19.6/bin/node)
+✅ Versão do Node compatível (v20+)
+⚡ Iniciando Electron...
+✅ Tray Manager inicializado na Menu Bar
+📍 Ícone: 16x16
+🔍 Filtros aplicados: {
+  support: { original: 0, filtrado: 0 },
+  customer: { original: 16, filtrado: 16 },
+  pending: { original: 1, filtrado: 1 }
+}
+🎨 Ícone atualizado: 🟢 (0 crítico, 0 alerta, 5 OK)
+🔄 Tray atualizado: { critical: 0, warning: 0, normal: 5 }
+🔍 Filtros aplicados: {
+  support: { original: 0, filtrado: 0 },
+  customer: { original: 16, filtrado: 16 },
+  pending: { original: 1, filtrado: 1 }
+}
+🎨 Ícone atualizado: 🟢 (0 crítico, 0 alerta, 5 OK)
+🔄 Tray atualizado: { critical: 0, warning: 0, normal: 5 }
+🔍 Filtros aplicados: {
+  support: { original: 0, filtrado: 0 },
+  customer: { original: 16, filtrado: 16 },
+  pending: { original: 1, filtrado: 1 }
+}
+🎨 Ícone atualizado: 🟢 (0 crítico, 0 alerta, 5 OK)
+🔄 Tray atualizado: { critical: 0, warning: 0, normal: 5 }
