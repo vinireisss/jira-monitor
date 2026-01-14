@@ -632,7 +632,7 @@
 }
 
 .filter-chip .filter-count {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: transparent !important;
   color: #a3bffa !important;
   text-decoration: none !important;
 }
@@ -644,7 +644,7 @@
 }
 
 .filter-chip.active .filter-count {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: transparent !important;
   color: white !important;
 }
 
@@ -652,6 +652,26 @@
 .evaluated-filters .expand-btn-inline {
   margin-left: auto !important;
   order: 999 !important;
+}
+
+/* ========================================
+   🔧 FIX - Centralização do Ícone da Seta (expand-btn-inline)
+   ======================================== */
+.expand-btn-inline {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 10px !important;
+}
+
+.expand-btn-inline .expand-icon {
+  display: block !important;
+  margin: 0 !important;
+}
+
+.expand-btn-inline svg {
+  display: block !important;
+  margin: 0 auto !important;
 }
 
 /* ========================================
