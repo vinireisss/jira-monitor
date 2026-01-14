@@ -68,7 +68,8 @@ fi
 
 echo ""
 echo "📋 Aliases disponíveis:"
-echo "   j              - Abre o Jira Monitor"
+echo "   j              - Abre o Jira Monitor (atalho rápido!)"
+echo "   jira-monitor   - Abre o Jira Monitor"
 echo "   jira-update    - Atualiza (git pull + npm install)"
 echo "   jira-restart   - Reinicia o app"
 echo "   jira-status    - Ver status do Git"
