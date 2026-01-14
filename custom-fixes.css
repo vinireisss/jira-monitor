@@ -96,11 +96,11 @@
 
 /* Container principal do SLA */
 .ticket-sla-info {
-  margin-top: 10px !important;
-  padding: 10px 12px !important;
+  margin-top: 8px !important;
+  padding: 8px 10px !important;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%) !important;
-  border-radius: 8px !important;
-  border-left: 3px solid rgba(99, 102, 241, 0.4) !important;
+  border-radius: 6px !important;
+  border-left: 2.5px solid rgba(99, 102, 241, 0.4) !important;
   backdrop-filter: blur(10px) !important;
   width: 100% !important;
   box-sizing: border-box !important;
@@ -109,11 +109,18 @@
   clear: both !important; /* Limpa floats anteriores */
 }
 
+/* SLA Loading state */
+.sla-loading {
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  padding: 2px 0 !important;
+}
+
 /* Container interno dos SLAs */
 .sla-container {
   display: flex !important;
   flex-direction: column !important;
-  gap: 8px !important;
+  gap: 4px !important;
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
@@ -126,12 +133,12 @@
   flex-wrap: wrap !important; /* Permite quebra de linha em telas pequenas */
   gap: 8px !important;
   font-size: 12px !important;
-  line-height: 1.6 !important;
-  padding: 8px 10px !important;
+  line-height: 1.4 !important;
+  padding: 6px 8px !important;
   background: rgba(255, 255, 255, 0.03) !important;
-  border-radius: 6px !important;
+  border-radius: 5px !important;
   transition: all 0.2s ease !important;
-  min-height: 32px !important; /* Garante altura mínima */
+  min-height: 26px !important; /* Altura mínima compacta */
 }
 
 .sla-row:hover {
@@ -140,22 +147,22 @@
 }
 
 .sla-row:not(:last-child) {
-  margin-bottom: 6px !important;
+  margin-bottom: 3px !important;
 }
 
 /* Emoji do SLA */
 .sla-emoji {
-  font-size: 16px !important;
+  font-size: 14px !important;
   flex-shrink: 0 !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3)) !important;
   line-height: 1 !important;
 }
 
 /* Label do SLA (First Response / Resolution) */
 .sla-label {
-  font-size: 11px !important;
+  font-size: 10px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.8px !important;
+  letter-spacing: 0.6px !important;
   text-transform: uppercase !important;
   flex-shrink: 0 !important;
   white-space: nowrap !important; /* Não quebra o texto */
@@ -164,7 +171,7 @@
 
 /* Status do SLA (OK, Estourado, restante) */
 .sla-status {
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   color: rgba(255, 255, 255, 0.85) !important;
   flex: 1 1 auto !important; /* Permite crescer e encolher */
@@ -176,16 +183,16 @@
 
 /* Data/Hora do SLA */
 .sla-datetime {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.65) !important;
   font-family: 'SF Mono', 'Monaco', 'Menlo', monospace !important;
-  background: rgba(0, 0, 0, 0.3) !important;
-  padding: 4px 8px !important;
-  border-radius: 6px !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  padding: 2px 5px !important;
+  border-radius: 3px !important;
   flex-shrink: 1 !important; /* Permite encolher se necessário */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  letter-spacing: 0.5px !important;
+  letter-spacing: 0.3px !important;
   white-space: nowrap !important;
   margin-left: auto !important; /* Empurra para a direita */
 }
@@ -213,57 +220,74 @@
 @media (max-width: 1024px) {
   .sla-row {
     gap: 6px !important;
-    padding: 6px 8px !important;
-  }
-  
-  .sla-datetime {
-    font-size: 10px !important;
-    padding: 3px 6px !important;
-  }
-}
-
-@media (max-width: 768px) {
-  .sla-label {
-    font-size: 10px !important;
+    padding: 5px 7px !important;
   }
   
   .sla-datetime {
     font-size: 9px !important;
     padding: 2px 5px !important;
+  }
+  
+  .ticket-sla-info {
+    padding: 7px 9px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .sla-label {
+    font-size: 9px !important;
+  }
+  
+  .sla-datetime {
+    font-size: 9px !important;
+    padding: 2px 4px !important;
     letter-spacing: 0px !important;
   }
   
   .sla-status {
-    font-size: 11px !important;
+    font-size: 10px !important;
   }
   
   .sla-emoji {
-    font-size: 14px !important;
+    font-size: 13px !important;
+  }
+  
+  .ticket-sla-info {
+    padding: 6px 8px !important;
+    margin-top: 6px !important;
+  }
+  
+  .sla-container {
+    gap: 3px !important;
   }
 }
 
 @media (max-width: 480px) {
   .sla-row {
     gap: 4px !important;
-    padding: 6px !important;
+    padding: 5px !important;
   }
   
   .sla-label {
     font-size: 9px !important;
-    letter-spacing: 0.3px !important;
+    letter-spacing: 0.2px !important;
   }
   
   .sla-status {
     font-size: 10px !important;
     flex: 1 1 100% !important; /* Força quebra de linha se necessário */
-    margin-left: 24px !important; /* Alinha com o label */
+    margin-left: 20px !important; /* Alinha com o label */
   }
   
   .sla-datetime {
     font-size: 9px !important;
     padding: 2px 4px !important;
     flex: 0 0 auto !important;
-    margin-left: 24px !important; /* Alinha com o label */
+    margin-left: 20px !important; /* Alinha com o label */
+  }
+  
+  .ticket-sla-info {
+    padding: 5px 7px !important;
   }
 }
 
@@ -289,8 +313,8 @@
 .tickets-list .ticket-item,
 .recent-tickets-list .recent-ticket-item,
 .project-tickets-list .ticket-item {
-  margin-bottom: 12px !important; /* Mais espaço entre tickets */
-  padding-bottom: 8px !important;
+  margin-bottom: 8px !important; /* Espaçamento compacto entre tickets */
+  padding-bottom: 4px !important;
 }
 
 /* Prevenir sobreposição com avatar */
