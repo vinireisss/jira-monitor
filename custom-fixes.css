@@ -489,7 +489,7 @@
   transition: all 0.3s ease;
   position: absolute !important;
   top: 18px !important;
-  right: 45px !important;
+  right: 10px !important;
   transform: none !important;
   z-index: 10 !important;
   margin: 0 !important;
@@ -540,7 +540,7 @@
 .ticket-item {
   position: relative !important;
   display: block !important;
-  padding: 14px 91px 14px 14px !important; /* Espaço à direita para o avatar */
+  padding: 14px 55px 14px 14px !important; /* Reduzido padding direito para menos espaço vazio */
   transition: background 0.2s;
   overflow: visible !important;
 }
@@ -552,14 +552,38 @@
   width: 100%;
 }
 
+/* FORÇAR todos os elementos internos a ocuparem 100% da largura */
+.ticket-item > *,
+.ticket-item-content > *,
+.ticket-item .ticket-key,
+.ticket-item .ticket-summary,
+.ticket-item .ticket-status,
+.ticket-item .ticket-meta,
+.ticket-item [class*="ticket-"],
+.ticket-item div[style*="padding"],
+.ticket-item div[style*="background"],
+.ticket-item div[style*="border-radius"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Status badges como "Waiting for Customer" devem ter largura total */
+.ticket-item div[style*="text-align: center"],
+.ticket-item div[style*="margin-top: 8px"],
+.ticket-item div[style*="font-size: 11px"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 /* Garantir que o conteúdo interno não seja cortado */
 .ticket-item .ticket-info,
 .ticket-item .sla-info {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
-  max-width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 /* Melhorar layout dos horários */
@@ -569,14 +593,27 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
   overflow: visible;
 }
 
 /* Layout para recent-ticket-item */
 .recent-ticket-item {
   position: relative !important;
-  padding: 14px 91px 14px 14px !important; /* Espaço à direita para o avatar */
+  padding: 14px 55px 14px 14px !important; /* Reduzido padding direito */
+}
+
+/* FORÇAR largura total em recent-ticket-item também */
+.recent-ticket-item > *,
+.recent-ticket-item .recent-ticket-key,
+.recent-ticket-item .recent-ticket-summary,
+.recent-ticket-item .recent-ticket-status,
+.recent-ticket-item .recent-ticket-meta,
+.recent-ticket-item [class*="recent-"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* ========================================
@@ -590,7 +627,7 @@
     height: 36px !important;
     font-size: 13px !important;
     top: 16px !important;
-    right: 38px !important;
+    right: 10px !important;
     transform: none !important;
   }
   
@@ -600,7 +637,7 @@
   
   .ticket-item,
   .recent-ticket-item {
-    padding: 12px 82px 12px 12px !important;
+    padding: 12px 52px 12px 12px !important;
   }
 }
 
@@ -611,7 +648,7 @@
     height: 34px !important;
     font-size: 12px !important;
     top: 14px !important;
-    right: 32px !important;
+    right: 8px !important;
     transform: none !important;
   }
   
@@ -621,7 +658,7 @@
   
   .ticket-item,
   .recent-ticket-item {
-    padding: 12px 72px 12px 12px !important;
+    padding: 12px 48px 12px 12px !important;
   }
 }
 
