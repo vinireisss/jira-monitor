@@ -1485,6 +1485,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pro-section-header .pro-section-title {
+  margin-bottom: 0;
 }
 
 .daily-activity-cards {

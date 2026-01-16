@@ -907,6 +907,14 @@
 /* ========================================
    🔧 FIX - Filtros de Tickets Avaliados (Remover fundo branco)
    ======================================== */
+.evaluated-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .filter-chip {
   background: rgba(102, 126, 234, 0.15) !important;
   border: 1px solid rgba(102, 126, 234, 0.3) !important;
