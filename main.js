@@ -1,3 +1,17 @@
+// 🔁 Auto-relançar se Electron estiver em modo Node (ELECTRON_RUN_AS_NODE)
+if (process.env.ELECTRON_RUN_AS_NODE && !process.env.JIRA_MONITOR_RELAUNCH) {
+  const { spawn } = require('child_process');
+  const env = { ...process.env };
+  delete env.ELECTRON_RUN_AS_NODE;
+  env.JIRA_MONITOR_RELAUNCH = '1';
+  spawn(process.execPath, process.argv.slice(1), {
+    env,
+    detached: true,
+    stdio: 'ignore'
+  }).unref();
+  process.exit(0);
+}
+
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, shell, screen } = require('electron');
 
 const path = require('path');
@@ -15,6 +29,20 @@ const debugLog = (...args) => {
   }
 };
 
+// 🧭 Persistir bounds confiáveis (evita posições inválidas quando minimizada/maximizada)
+const getPersistableBounds = (window) => {
+  if (!window || window.isDestroyed()) return null;
+  const bounds = typeof window.getNormalBounds === 'function'
+    ? window.getNormalBounds()
+    : window.getBounds();
+
+  return {
+    ...bounds,
+    width: Math.max(150, bounds.width || 420),
+    height: Math.max(60, bounds.height || 700)
+  };
+};
+
 // 🛡️ Inicializar store com tratamento de erro para arquivo corrompido
 let store;
 function initializeStore() {
@@ -22,23 +50,33 @@ function initializeStore() {
     store = new Store();
   } catch (error) {
     console.error('⚠️ Arquivo de configuração corrompido. Criando novo...');
-    // Tentar limpar o arquivo corrompido
-    const configPath = path.join(app.getPath('userData'), 'config.json');
-    if (fs.existsSync(configPath)) {
-      try {
-        fs.unlinkSync(configPath);
-        console.log('✅ Arquivo corrompido removido');
-      } catch (unlinkError) {
-        console.error('Erro ao remover arquivo corrompido:', unlinkError);
+    try {
+      // Tentar limpar o arquivo corrompido
+      const { app } = require('electron');
+      if (app && app.isReady()) {
+        const configPath = path.join(app.getPath('userData'), 'config.json');
+        if (fs.existsSync(configPath)) {
+          try {
+            fs.unlinkSync(configPath);
+            console.log('✅ Arquivo corrompido removido');
+          } catch (unlinkError) {
+            console.error('Erro ao remover arquivo corrompido:', unlinkError);
+          }
+        }
       }
+      // Criar novo store limpo
+      store = new Store();
+    } catch (reinitError) {
+      console.error('❌ Erro ao reinicializar store:', reinitError);
+      // Criar store vazio como último recurso
+      store = new Store({ name: 'config-recovery' });
     }
-    // Criar novo store limpo
-    store = new Store();
   }
 }
 let mainWindow;
 let tray;
 let trayManager;
+let lastKnownBounds = null;
 
 // Criar janela principal
 function createWindow() {
@@ -140,6 +178,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
+    lastKnownBounds = getPersistableBounds(mainWindow) || lastKnownBounds;
     if (process.platform === 'darwin') {
       app.focus({ steal: true });
     }
@@ -157,11 +196,14 @@ function createWindow() {
   let saveTimeout;
   const saveBounds = () => {
     clearTimeout(saveTimeout);
+    lastKnownBounds = getPersistableBounds(mainWindow) || lastKnownBounds;
     saveTimeout = setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        const bounds = mainWindow.getBounds();
-        store.set('windowBounds', bounds);
-        debugLog('💾 Posição salva (debounce):', bounds);
+        const bounds = lastKnownBounds || getPersistableBounds(mainWindow);
+        if (bounds) {
+          store.set('windowBounds', bounds);
+          debugLog('💾 Posição salva (debounce):', bounds);
+        }
       }
     }, 300); // Debounce de 300ms (reduzido para salvar mais rápido)
   };
@@ -172,18 +214,22 @@ function createWindow() {
   // Salvar também quando a janela perde o foco (blur)
   mainWindow.on('blur', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const bounds = mainWindow.getBounds();
-      store.set('windowBounds', bounds);
-      debugLog('💾 Posição salva (blur):', bounds);
+      const bounds = lastKnownBounds || getPersistableBounds(mainWindow);
+      if (bounds) {
+        store.set('windowBounds', bounds);
+        debugLog('💾 Posição salva (blur):', bounds);
+      }
     }
   });
 
   // Salvar posição ao fechar
   mainWindow.on('close', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const bounds = mainWindow.getBounds();
-      store.set('windowBounds', bounds);
-      debugLog('💾 Posição salva (close):', bounds);
+      const bounds = lastKnownBounds || getPersistableBounds(mainWindow);
+      if (bounds) {
+        store.set('windowBounds', bounds);
+        debugLog('💾 Posição salva (close):', bounds);
+      }
     }
   });
   
@@ -583,11 +629,18 @@ ipcMain.handle('open-user-window', (event, userEmail) => {
   return { success: true };
 });
 
-ipcMain.handle('minimize-window', (event) => {
-  // Minimizar a janela que enviou o comando
-  const window = BrowserWindow.fromWebContents(event.sender);
-  if (window && !window.isDestroyed()) {
-    window.minimize();
+ipcMain.handle('minimize-window', async (event) => {
+  try {
+    // Minimizar a janela que enviou o comando
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window && !window.isDestroyed()) {
+      window.minimize();
+      return { success: true };
+    }
+    return { success: false, error: 'Window not found' };
+  } catch (error) {
+    console.error('Erro ao minimizar janela:', error);
+    return { success: false, error: error.message };
   }
 });
 
@@ -601,40 +654,56 @@ ipcMain.handle('toggle-devtools', () => {
   }
 });
 
-ipcMain.handle('close-window', (event) => {
-  // 🔴 GRACEFUL SHUTDOWN - Fechar app completamente ao clicar no X
-  const window = BrowserWindow.fromWebContents(event.sender);
-  
-  // Se for a janela principal, sair completamente do app
-  if (window === mainWindow) {
-    debugLog('🔴 Fechando aplicação completamente...');
+ipcMain.handle('close-window', async (event) => {
+  try {
+    // 🔴 GRACEFUL SHUTDOWN - Fechar app completamente ao clicar no X
+    const window = BrowserWindow.fromWebContents(event.sender);
     
-    // Salvar posição da janela antes de fechar
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const bounds = mainWindow.getBounds();
-      store.set('windowBounds', bounds);
-      debugLog('💾 Posição final salva:', bounds);
-    }
-    
-    // Destruir todas as janelas
-    BrowserWindow.getAllWindows().forEach(w => {
-      if (!w.isDestroyed()) {
-        w.destroy();
+    // Se for a janela principal, sair completamente do app
+    if (window === mainWindow) {
+      debugLog('🔴 Fechando aplicação completamente...');
+      
+      // Salvar posição da janela antes de fechar
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        const bounds = lastKnownBounds || getPersistableBounds(mainWindow);
+        if (bounds) {
+          store.set('windowBounds', bounds);
+          debugLog('💾 Posição final salva:', bounds);
+        }
       }
-    });
-    
-    // Sair do aplicativo completamente
-    app.quit();
-  } else {
-    // Se for uma janela secundária, apenas fechá-la
-    if (window && !window.isDestroyed()) {
-      window.close();
+      
+      // Destruir todas as janelas
+      BrowserWindow.getAllWindows().forEach(w => {
+        if (!w.isDestroyed()) {
+          w.destroy();
+        }
+      });
+      
+      // Sair do aplicativo completamente
+      app.quit();
+      return { success: true };
+    } else {
+      // Se for uma janela secundária, apenas fechá-la
+      if (window && !window.isDestroyed()) {
+        window.close();
+        return { success: true };
+      }
+      return { success: false, error: 'Window not found' };
     }
+  } catch (error) {
+    console.error('Erro ao fechar janela:', error);
+    return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('open-url', (event, url) => {
-  shell.openExternal(url);
+ipcMain.handle('open-url', async (event, url) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao abrir URL:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 // Abrir Jira em webview (janela interna)
@@ -1260,6 +1329,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     // Inicializar store (após app estar pronto)
     initializeStore();
+    registerIpcHandlers();
     
     // Definir nome do app (força o nome no macOS)
     app.setName('Jira Monitor');
@@ -1288,9 +1358,11 @@ if (!gotTheLock) {
 // Salvar posição antes de fechar o app (garante salvamento em Ctrl+C)
 app.on('before-quit', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    const bounds = mainWindow.getBounds();
-    store.set('windowBounds', bounds);
-    debugLog('💾 Posição salva antes de fechar:', bounds);
+    const bounds = lastKnownBounds || getPersistableBounds(mainWindow);
+    if (bounds) {
+      store.set('windowBounds', bounds);
+      debugLog('💾 Posição salva antes de fechar:', bounds);
+    }
   }
 });
 

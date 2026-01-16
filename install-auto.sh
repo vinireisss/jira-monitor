@@ -148,6 +148,16 @@ else
     fi
 fi
 
+# Garantir config.json padrão para novos clones
+echo ""
+echo -e "${BLUE}Configurando config.json padrão...${NC}"
+if [ ! -f "$PROJECT_DIR/config.json" ] && [ -f "$PROJECT_DIR/config.example.json" ]; then
+    cp "$PROJECT_DIR/config.example.json" "$PROJECT_DIR/config.json"
+    echo -e "${GREEN}✅ config.json criado a partir de config.example.json${NC}"
+else
+    echo -e "${GREEN}✅ config.json já existe ou config.example.json não encontrado${NC}"
+fi
+
 # 6. Instalar dependências
 echo ""
 echo -e "${BLUE}[6/6]${NC} Instalando dependências..."
@@ -178,6 +188,15 @@ else
     echo -e "${YELLOW}⚠️  Arquivo install-aliases.sh não encontrado${NC}"
 fi
 
+# Aviso sobre ELECTRON_RUN_AS_NODE
+if [ "${ELECTRON_RUN_AS_NODE}" = "1" ]; then
+    echo ""
+    echo -e "${YELLOW}⚠️  Detectamos ELECTRON_RUN_AS_NODE=1 no seu ambiente.${NC}"
+    echo -e "${YELLOW}Isso força o Electron a rodar como Node e o app fica sem resposta.${NC}"
+    echo -e "${YELLOW}Use o alias 'j' (já corrigido) ou rode:${NC}"
+    echo -e "${BLUE}env -u ELECTRON_RUN_AS_NODE ELECTRON_RUN_AS_NODE=0 npm start${NC}"
+fi
+
 # Finalização
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
@@ -189,6 +208,7 @@ echo -e "   ${GREEN}$PROJECT_DIR${NC}"
 echo ""
 echo -e "${BLUE}⚡ Aliases instalados:${NC}"
 echo -e "   ${GREEN}j${NC}              - Abre o Jira Monitor"
+echo -e "   ${GREEN}jira-debug${NC}      - Inicia com logs no terminal"
 echo -e "   ${GREEN}jira-update${NC}    - Atualiza (git pull + npm install)"
 echo -e "   ${GREEN}jira-restart${NC}   - Reinicia o app"
 echo -e "   ${GREEN}jira-status${NC}    - Ver status do Git"
@@ -200,7 +220,7 @@ echo ""
 echo -e "${BLUE}🚀 Para iniciar o Jira Monitor:${NC}"
 echo -e "   ${YELLOW}j${NC}  (depois de recarregar o terminal)"
 echo -e "   ou"
-echo -e "   ${YELLOW}cd $PROJECT_DIR && npm start${NC}"
+echo -e "   ${YELLOW}cd $PROJECT_DIR && env -u ELECTRON_RUN_AS_NODE ELECTRON_RUN_AS_NODE=0 npm start${NC}"
 echo ""
 echo -e "${BLUE}📖 Próximos passos:${NC}"
 echo -e "   1. ${YELLOW}source ~/.zshrc${NC} (ou reabrir terminal)"

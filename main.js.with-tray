@@ -1,3 +1,17 @@
+// 🔁 Auto-relançar se Electron estiver em modo Node (ELECTRON_RUN_AS_NODE)
+if (process.env.ELECTRON_RUN_AS_NODE && !process.env.JIRA_MONITOR_RELAUNCH) {
+  const { spawn } = require('child_process');
+  const env = { ...process.env };
+  delete env.ELECTRON_RUN_AS_NODE;
+  env.JIRA_MONITOR_RELAUNCH = '1';
+  spawn(process.execPath, process.argv.slice(1), {
+    env,
+    detached: true,
+    stdio: 'ignore'
+  }).unref();
+  process.exit(0);
+}
+
 const electron = require('electron');
 const { app, BrowserWindow, Tray, Menu, nativeImage, dialog, shell, screen } = electron;
 const ipcMain = electron.ipcMain;
@@ -11,7 +25,36 @@ const fs = require('fs');
 
 console.log('📦 Módulos carregados, ipcMain:', typeof ipcMain);
 
-const store = new Store();
+// 🛡️ Inicializar store com tratamento de erro para arquivo corrompido
+let store;
+function initializeStore() {
+  try {
+    store = new Store();
+  } catch (error) {
+    console.error('⚠️ Arquivo de configuração corrompido. Criando novo...');
+    try {
+      // Tentar limpar o arquivo corrompido
+      if (app && app.isReady()) {
+        const configPath = path.join(app.getPath('userData'), 'config.json');
+        if (fs.existsSync(configPath)) {
+          try {
+            fs.unlinkSync(configPath);
+            console.log('✅ Arquivo corrompido removido');
+          } catch (unlinkError) {
+            console.error('Erro ao remover arquivo corrompido:', unlinkError);
+          }
+        }
+      }
+      // Criar novo store limpo
+      store = new Store();
+    } catch (reinitError) {
+      console.error('❌ Erro ao reinicializar store:', reinitError);
+      // Criar store vazio como último recurso
+      store = new Store({ name: 'config-recovery' });
+    }
+  }
+}
+
 let mainWindow;
 let tray;
 let trayManager;
@@ -529,11 +572,18 @@ ipcMain.handle('open-user-window', (event, userEmail) => {
   return { success: true };
 });
 
-ipcMain.handle('minimize-window', (event) => {
-  // Minimizar a janela que enviou o comando
-  const window = BrowserWindow.fromWebContents(event.sender);
-  if (window && !window.isDestroyed()) {
-    window.minimize();
+ipcMain.handle('minimize-window', async (event) => {
+  try {
+    // Minimizar a janela que enviou o comando
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window && !window.isDestroyed()) {
+      window.minimize();
+      return { success: true };
+    }
+    return { success: false, error: 'Window not found' };
+  } catch (error) {
+    console.error('Erro ao minimizar janela:', error);
+    return { success: false, error: error.message };
   }
 });
 
@@ -547,16 +597,29 @@ ipcMain.handle('toggle-devtools', () => {
   }
 });
 
-ipcMain.handle('close-window', (event) => {
-  // Fechar apenas a janela que enviou o comando, não o app inteiro
-  const window = BrowserWindow.fromWebContents(event.sender);
-  if (window && !window.isDestroyed()) {
-    window.close();
+ipcMain.handle('close-window', async (event) => {
+  try {
+    // Fechar apenas a janela que enviou o comando, não o app inteiro
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window && !window.isDestroyed()) {
+      window.close();
+      return { success: true };
+    }
+    return { success: false, error: 'Window not found' };
+  } catch (error) {
+    console.error('Erro ao fechar janela:', error);
+    return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('open-url', (event, url) => {
-  shell.openExternal(url);
+ipcMain.handle('open-url', async (event, url) => {
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao abrir URL:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 // Abrir Jira em webview (janela interna)
@@ -1158,6 +1221,9 @@ function createUserMonitorWindow(userEmail) {
 
 // Inicializar app
 app.whenReady().then(() => {
+  // Inicializar store (após app estar pronto)
+  initializeStore();
+  
   // Definir nome do app (força o nome no macOS)
   app.setName('Jira Monitor');
   

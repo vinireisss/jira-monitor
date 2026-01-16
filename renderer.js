@@ -6,7 +6,7 @@ const DEBUG_MODE = false;
 // 🛡️ Função auxiliar para logs condicionais
 const debugLog = (...args) => {
   if (DEBUG_MODE) {
-    debugLog(...args);
+    console.log(...args);
   }
 };
 

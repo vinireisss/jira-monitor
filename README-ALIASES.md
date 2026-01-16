@@ -76,7 +76,21 @@ jira-restart
 
 ---
 
-### 4. `jira-status` - Ver status do Git 📊
+### 4. `jira-debug` - Iniciar com logs no terminal 🪲
+
+Use quando precisar ver erros/stack traces no terminal.
+
+```bash
+jira-debug
+```
+
+**O que faz:**
+- Inicia o app sem redirecionar logs
+- Útil para diagnosticar crashes e erros de inicialização
+
+---
+
+### 5. `jira-status` - Ver status do Git 📊
 
 Verifica se há mudanças locais ou se está desatualizado.
 
@@ -91,7 +105,7 @@ jira-status
 
 ---
 
-### 5. `jira-log` - Ver últimos commits 📜
+### 6. `jira-log` - Ver últimos commits 📜
 
 Veja as últimas 10 atualizações do projeto.
 

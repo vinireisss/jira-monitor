@@ -141,6 +141,7 @@ Depois de instalar corretamente:
 | `jira-restart` | Mata e reinicia o app |
 | `jira-status` | Mostra status do Git |
 | `jira-log` | Mostra últimos 10 commits |
+| `jira-debug` | Inicia com logs no terminal |
 
 ## 💡 Dica: Testar se está funcionando
 

@@ -14,10 +14,11 @@ echo ""
 # Aliases a serem instalados
 ALIASES='
 # 🎯 Jira Monitor - Comandos Rápidos
-alias j="cd ~/dev/nu/jira-monitor && npm start > /dev/null 2>&1 &"
-alias jira-monitor="cd ~/dev/nu/jira-monitor && npm start > /dev/null 2>&1 &"
+alias j="cd ~/dev/nu/jira-monitor && env -u ELECTRON_RUN_AS_NODE ELECTRON_RUN_AS_NODE=0 npm start > /dev/null 2>&1 &"
+alias jira-monitor="cd ~/dev/nu/jira-monitor && env -u ELECTRON_RUN_AS_NODE ELECTRON_RUN_AS_NODE=0 npm start > /dev/null 2>&1 &"
 alias jira-update="cd ~/dev/nu/jira-monitor && git pull origin main && npm install"
-alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -9 -f '\''electron.*jira-monitor'\'' 2>/dev/null; sleep 1; pkill -9 Electron 2>/dev/null; sleep 0.5; npm start > /dev/null 2>&1 &"
+alias jira-restart="cd ~/dev/nu/jira-monitor && pkill -9 -f '\''electron.*jira-monitor'\'' 2>/dev/null; sleep 1; pkill -9 Electron 2>/dev/null; sleep 0.5; env -u ELECTRON_RUN_AS_NODE ELECTRON_RUN_AS_NODE=0 npm start > /dev/null 2>&1 &"
+alias jira-debug="cd ~/dev/nu/jira-monitor && env -u ELECTRON_RUN_AS_NODE ELECTRON_RUN_AS_NODE=0 npm start"
 alias jira-status="cd ~/dev/nu/jira-monitor && git status"
 alias jira-log="cd ~/dev/nu/jira-monitor && git log --oneline -10"
 '
@@ -27,9 +28,18 @@ add_aliases() {
     local file=$1
     
     if [ -f "$file" ]; then
-        # Verificar se já existe
+        # Se já existe bloco anterior, substituir para garantir versão atualizada
         if grep -q "# 🎯 Jira Monitor - Comandos Rápidos" "$file"; then
-            echo "⚠️  Aliases já existem em $file"
+            # Remover bloco antigo
+            awk '
+              BEGIN {skip=0}
+              /^# 🎯 Jira Monitor - Comandos Rápidos/ {skip=1; next}
+              skip && /^alias / {next}
+              skip && !/^alias / {skip=0}
+              {print}
+            ' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+            echo "$ALIASES" >> "$file"
+            echo "✅ Aliases atualizados em $file"
         else
             echo "$ALIASES" >> "$file"
             echo "✅ Aliases adicionados em $file"
