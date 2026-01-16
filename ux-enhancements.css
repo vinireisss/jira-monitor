@@ -131,8 +131,8 @@
   position: fixed;
   top: 70px;
   right: 20px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-  border: 1px solid rgba(102, 126, 234, 0.3);
+  background: var(--card-bg);
+  border: 1px solid var(--modal-border);
   border-radius: 12px;
   padding: 12px;
   min-width: 200px;
@@ -156,7 +156,7 @@
 .daily-activity-header {
   font-size: 12px;
   font-weight: 600;
-  color: #667eea;
+  color: var(--card-text);
   margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
@@ -166,7 +166,7 @@
 .daily-activity-close-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--modal-text-secondary);
   font-size: 16px;
   cursor: pointer;
   padding: 0;
@@ -180,8 +180,8 @@
 }
 
 .daily-activity-close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
+  background: var(--modal-section-bg);
+  color: var(--card-text);
   transform: scale(1.1);
 }
 
@@ -205,12 +205,12 @@
 .daily-stat-value {
   font-size: 18px;
   font-weight: 700;
-  color: white;
+  color: var(--card-text);
 }
 
 .daily-stat-label {
   font-size: 10px;
-  color: #888;
+  color: var(--modal-text-secondary);
   text-transform: uppercase;
 }
 
@@ -688,12 +688,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--modal-border);
 }
 
 .theme-customizer-header h3 {
   margin: 0;
-  color: white;
+  color: var(--modal-text);
   font-size: 18px;
 }
 
@@ -708,7 +708,7 @@
 .theme-option label {
   display: block;
   margin-bottom: 10px;
-  color: #888;
+  color: var(--modal-text-secondary);
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
@@ -731,11 +731,11 @@
 
 .color-swatch:hover {
   transform: scale(1.1);
-  border-color: white;
+  border-color: var(--modal-text);
 }
 
 .color-swatch.active {
-  border-color: white;
+  border-color: var(--modal-text);
   box-shadow: 0 0 20px currentColor;
 }
 
@@ -747,10 +747,10 @@
 
 .theme-preset-btn {
   padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--modal-section-bg);
+  border: 1px solid var(--modal-border);
   border-radius: 8px;
-  color: white;
+  color: var(--modal-text);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 13px;
@@ -758,8 +758,8 @@
 }
 
 .theme-preset-btn:hover {
-  background: rgba(102, 126, 234, 0.2);
-  border-color: #667eea;
+  background: var(--modal-section-bg);
+  border-color: var(--expand-btn-color);
   transform: translateY(-2px);
 }
 
@@ -1500,8 +1500,8 @@
 }
 
 .activity-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: var(--card-bg);
+  border: 2px solid var(--modal-border);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -1525,7 +1525,7 @@
 
 .activity-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: currentColor;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
@@ -1557,16 +1557,15 @@
 .activity-card-value {
   font-size: 36px;
   font-weight: 700;
-  color: white;
+  color: var(--card-text);
   margin-bottom: 4px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   animation: numberPop 0.5s ease-out;
 }
 
 .activity-card-label {
   font-size: 14px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--card-text);
   margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1574,7 +1573,7 @@
 
 .activity-card-sublabel {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--modal-text-secondary);
   font-weight: 500;
 }
 
@@ -1595,7 +1594,8 @@
 /* Detalhes de Atividade Expansível */
 .daily-activity-details {
   margin-top: 16px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--modal-section-bg);
+  border: 1px solid var(--modal-border);
   border-radius: 12px;
   padding: 16px;
   animation: slideDown 0.3s ease-out;
@@ -1612,10 +1612,10 @@
 .activity-detail-title {
   font-size: 14px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--card-text);
   margin-bottom: 8px;
   padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--modal-border);
 }
 
 .activity-detail-list {
@@ -1625,18 +1625,18 @@
 }
 
 .activity-detail-item {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--modal-section-bg);
   padding: 8px 12px;
   border-radius: 6px;
   border-left: 3px solid;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--card-text);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .activity-detail-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--card-bg);
   transform: translateX(4px);
 }
 
@@ -1654,23 +1654,23 @@
 
 .activity-detail-item .item-key {
   font-weight: 600;
-  color: white;
+  color: var(--card-text);
   margin-right: 8px;
 }
 
 .activity-detail-item .item-summary {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--modal-text-secondary);
   font-size: 12px;
 }
 
 .activity-detail-item .item-time {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--modal-text-secondary);
   font-size: 11px;
   margin-top: 4px;
 }
 
 .no-activity-msg {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--modal-text-secondary);
   font-size: 13px;
   text-align: center;
   padding: 12px;

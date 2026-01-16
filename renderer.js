@@ -1497,11 +1497,12 @@ function addInternalNotification(ticket, changeType, changeDescription) {
     commentId: `internal-${timestamp}`
   };
   
-  // Verificar se já existe uma notificação similar (mesmo ticket e tipo nos últimos 5 minutos)
+  // Verificar se já existe uma notificação similar (mesmo ticket, tipo e descrição nos últimos 5 minutos)
   const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
   const exists = internalNotifications.some(n => 
     n.ticketKey === ticket.key && 
     n.type === changeType &&
+    n.body === changeDescription &&
     new Date(n.created).getTime() > fiveMinutesAgo
   );
   
@@ -2945,9 +2946,8 @@ function showDesktopNotifications(newTickets) {
   
   debugLog('✅ Mostrando', newTickets.length, 'notificações desktop');
   
-  // Limite de notificações simultâneas
-  const maxNotifications = 3;
-  const ticketsToNotify = newTickets.slice(0, maxNotifications);
+  // Notificar todas as movimentações para não perder nenhuma atualização
+  const ticketsToNotify = newTickets;
   
   ticketsToNotify.forEach((ticket, index) => {
     setTimeout(() => {
@@ -3006,16 +3006,7 @@ function showDesktopNotifications(newTickets) {
     }, index * 300); // Espaçar notificações por 300ms
   });
   
-  // Se houver mais mudanças, mostrar notificação resumida
-  if (newTickets.length > maxNotifications) {
-    setTimeout(() => {
-      const remaining = newTickets.length - maxNotifications;
-      new Notification('🎫 Jira Monitor', {
-        body: `+${remaining} ${remaining === 1 ? 'atualização' : 'atualizações'}`,
-        icon: 'https://nubank.atlassian.net/favicon.ico'
-      });
-    }, maxNotifications * 300);
-  }
+  // Sem notificação resumida para garantir uma notificação por movimento
 }
 
 // Tocar som de notificação
