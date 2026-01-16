@@ -480,7 +480,6 @@ function updateMonitoredUserIndicator() {
 // Atualizar badges de usuário monitorado nas seções PRO
 function updateProMonitoredUserBadge() {
   const dashboardBadge = document.getElementById('dashboard-monitored-user');
-  const alertsBadge = document.getElementById('alerts-monitored-user');
   
   if (currentConfig.monitorOtherUser && currentConfig.otherUserEmail) {
     const emailParts = currentConfig.otherUserEmail.split('@')[0];
@@ -492,14 +491,8 @@ function updateProMonitoredUserBadge() {
       dashboardBadge.textContent = badgeText;
       dashboardBadge.style.display = 'inline-flex';
     }
-    
-    if (alertsBadge) {
-      alertsBadge.textContent = badgeText;
-      alertsBadge.style.display = 'inline-flex';
-    }
   } else {
     if (dashboardBadge) dashboardBadge.style.display = 'none';
-    if (alertsBadge) alertsBadge.style.display = 'none';
   }
 }
 
@@ -1079,24 +1072,6 @@ function setupEventListeners() {
   if (refreshMetricsBtn) {
     refreshMetricsBtn.addEventListener('click', () => {
       loadPerformanceDashboard();
-    });
-  }
-  
-  // Alertas Proativos
-  const expandAlertsBtn = document.getElementById('expand-proactive-alerts');
-  if (expandAlertsBtn) {
-    expandAlertsBtn.addEventListener('click', () => {
-      const container = document.getElementById('proactive-alerts-container');
-      const isExpanded = expandAlertsBtn.classList.contains('expanded');
-      
-      if (isExpanded) {
-        expandAlertsBtn.classList.remove('expanded');
-        container.style.display = 'none';
-      } else {
-        expandAlertsBtn.classList.add('expanded');
-        container.style.display = 'block';
-        checkProactiveAlerts();
-      }
     });
   }
   
@@ -2017,22 +1992,10 @@ function updateProModeUI() {
       loadPerformanceDashboard(30);
     }
     
-    // Iniciar Alertas Proativos
-    if (typeof startProactiveAlerts === 'function') {
-      startProactiveAlerts();
-    }
-    
-    debugLog('✅ Funcionalidades v1.5.0 ativadas (Dashboard + Alertas)');
+    debugLog('✅ Funcionalidades v1.5.0 ativadas (Dashboard)');
   } else {
     menuProBtn.style.color = 'white';
     menuProBtn.style.fontWeight = 'normal';
-    
-    // Parar alertas proativos ao desativar Modo Pro
-    if (proactiveAlertsInterval) {
-      clearInterval(proactiveAlertsInterval);
-      proactiveAlertsInterval = null;
-      debugLog('⏹️ Alertas proativos desativados');
-    }
   }
 }
 
@@ -7252,190 +7215,6 @@ function displayRecentResolved(recentTickets) {
 }
 
 // ============================================
-// 🔔 ALERTAS PROATIVOS - v1.5.0
-// ============================================
-
-let proactiveAlertsInterval = null;
-
-async function checkProactiveAlerts() {
-  debugLog('🔔 Verificando alertas proativos...');
-  
-  // Atualizar badge de usuário monitorado
-  updateProMonitoredUserBadge();
-  
-  try {
-    // 1. Tickets sem resposta há 4 horas
-    const noResponseResult = await ipcRenderer.invoke('get-tickets-without-response', 4);
-    if (noResponseResult.success && noResponseResult.data.length > 0) {
-      displayNoResponseAlert(noResponseResult.data);
-    } else {
-      hideAlert('alert-no-response');
-    }
-    
-    // 2. Tickets com SLA crítico (15 minutos)
-    const criticalSlaResult = await ipcRenderer.invoke('get-tickets-critical-sla', 15);
-    if (criticalSlaResult.success && criticalSlaResult.data.length > 0) {
-      displayCriticalSlaAlert(criticalSlaResult.data);
-    } else {
-      hideAlert('alert-critical-sla');
-    }
-    
-    // 3. Menções não lidas
-    const mentionsResult = await ipcRenderer.invoke('fetch-mentions');
-    if (mentionsResult.success && mentionsResult.data.issues.length > 0) {
-      displayMentionsAlert(mentionsResult.data.issues);
-    } else {
-      hideAlert('alert-mentions');
-    }
-    
-    // Mostrar mensagem "tudo tranquilo" se não houver alertas
-    updateNoAlertsMessage();
-    
-  } catch (error) {
-    console.error('Erro ao verificar alertas:', error);
-  }
-}
-
-function displayNoResponseAlert(tickets) {
-  const alertCard = document.getElementById('alert-no-response');
-  const alertList = document.getElementById('alert-no-response-list');
-  const alertCount = document.getElementById('alert-no-response-count');
-  
-  if (!alertCard || !alertList || !alertCount) return;
-  
-  alertCard.style.display = 'block';
-  alertCount.textContent = tickets.length;
-  alertList.innerHTML = '';
-  
-  tickets.forEach(ticket => {
-    const item = document.createElement('div');
-    item.className = 'alert-ticket-item';
-    item.onclick = () => openTicketPreview(ticket.key);
-    
-    item.innerHTML = `
-      <span class="alert-ticket-key">${ticket.key}</span>
-      <span class="alert-ticket-summary">${ticket.summary}</span>
-      <span class="alert-ticket-time">${ticket.hoursSinceUpdate}h atrás</span>
-    `;
-    
-    alertList.appendChild(item);
-  });
-  
-  // Enviar notificação desktop (apenas uma vez a cada 2 horas)
-  const lastNotified = localStorage.getItem(`alert-no-response-${tickets[0].key}`);
-  const now = Date.now();
-  if (!lastNotified || now - parseInt(lastNotified) > 2 * 60 * 60 * 1000) {
-    sendDesktopNotification(
-      '⚠️ Tickets sem resposta',
-      `${tickets.length} ticket(s) aguardando resposta há mais de 4 horas`,
-      'warning'
-    );
-    localStorage.setItem(`alert-no-response-${tickets[0].key}`, now.toString());
-  }
-}
-
-function displayCriticalSlaAlert(tickets) {
-  const alertCard = document.getElementById('alert-critical-sla');
-  const alertList = document.getElementById('alert-critical-sla-list');
-  const alertCount = document.getElementById('alert-critical-sla-count');
-  
-  if (!alertCard || !alertList || !alertCount) return;
-  
-  alertCard.style.display = 'block';
-  alertCount.textContent = tickets.length;
-  alertList.innerHTML = '';
-  
-  tickets.forEach(ticket => {
-    const item = document.createElement('div');
-    item.className = 'alert-ticket-item';
-    item.onclick = () => openTicketPreview(ticket.key);
-    
-    item.innerHTML = `
-      <span class="alert-ticket-key">${ticket.key}</span>
-      <span class="alert-ticket-summary">${ticket.summary}</span>
-      <span class="alert-ticket-time">${ticket.minutesUntilDue}min restantes</span>
-    `;
-    
-    alertList.appendChild(item);
-  });
-  
-  // Enviar notificação desktop (crítica!)
-  const lastNotified = localStorage.getItem(`alert-critical-sla-${tickets[0].key}`);
-  const now = Date.now();
-  if (!lastNotified || now - parseInt(lastNotified) > 15 * 60 * 1000) { // A cada 15 min
-    sendDesktopNotification(
-      '🚨 SLA CRÍTICO!',
-      `${tickets.length} ticket(s) próximo do vencimento: ${tickets[0].key}`,
-      'urgent'
-    );
-    localStorage.setItem(`alert-critical-sla-${tickets[0].key}`, now.toString());
-    
-    // Tocar som de alerta
-    if (currentConfig.soundNotifications) {
-      ipcRenderer.invoke('play-sound', '/System/Library/Sounds/Basso.aiff');
-    }
-  }
-}
-
-function displayMentionsAlert(mentions) {
-  const alertCard = document.getElementById('alert-mentions');
-  const alertList = document.getElementById('alert-mentions-list');
-  const alertCount = document.getElementById('alert-mentions-count');
-  
-  if (!alertCard || !alertList || !alertCount) return;
-  
-  alertCard.style.display = 'block';
-  alertCount.textContent = mentions.length;
-  alertList.innerHTML = '';
-  
-  mentions.slice(0, 5).forEach(ticket => {
-    const item = document.createElement('div');
-    item.className = 'alert-ticket-item';
-    item.onclick = () => openTicketPreview(ticket.key);
-    
-    const mentionTime = ticket.mentionedAt ? new Date(ticket.mentionedAt) : null;
-    const timeAgo = mentionTime ? getTimeAgo(mentionTime) : 'recente';
-    
-    item.innerHTML = `
-      <span class="alert-ticket-key">${ticket.key}</span>
-      <span class="alert-ticket-summary">${ticket.fields.summary}</span>
-      <span class="alert-ticket-time">${timeAgo}</span>
-    `;
-    
-    alertList.appendChild(item);
-  });
-}
-
-function hideAlert(alertId) {
-  const alertCard = document.getElementById(alertId);
-  if (alertCard) {
-    alertCard.style.display = 'none';
-  }
-}
-
-function updateNoAlertsMessage() {
-  const noAlertsMsg = document.getElementById('no-alerts-message');
-  const hasAlerts = 
-    document.getElementById('alert-no-response').style.display !== 'none' ||
-    document.getElementById('alert-critical-sla').style.display !== 'none' ||
-    document.getElementById('alert-mentions').style.display !== 'none';
-  
-  if (noAlertsMsg) {
-    noAlertsMsg.style.display = hasAlerts ? 'none' : 'block';
-  }
-}
-
-// Iniciar verificação de alertas proativos (a cada 5 minutos)
-function startProactiveAlerts() {
-  if (proactiveAlertsInterval) {
-    clearInterval(proactiveAlertsInterval);
-  }
-  
-  checkProactiveAlerts(); // Verificar imediatamente
-  proactiveAlertsInterval = setInterval(checkProactiveAlerts, 5 * 60 * 1000); // A cada 5 min
-}
-
-// ============================================
 // ⏱️ TIMER / POMODORO - v1.5.0
 // ============================================
 
@@ -7666,8 +7445,6 @@ async function saveWorklog(timeSpentSeconds = null) {
 // Exportar funções para uso global
 window.showTimerWidget = showTimerWidget;
 window.loadPerformanceDashboard = loadPerformanceDashboard;
-window.checkProactiveAlerts = checkProactiveAlerts;
-window.startProactiveAlerts = startProactiveAlerts;
 
 console.log('✅ Funcionalidades v1.5.0 carregadas: Dashboard, Alertas, Timer');
 

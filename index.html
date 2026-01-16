@@ -773,61 +773,6 @@
           </button>
         </div>
 
-        <!-- 🔔 ALERTAS PROATIVOS -->
-        <div class="pro-section" id="proactive-alerts-section">
-          <div class="pro-section-header">
-            <h3 class="pro-section-title" data-i18n="alerts.title">🔔 Alertas Proativos</h3>
-            <span class="pro-monitored-user-badge" id="alerts-monitored-user" style="display: none;"></span>
-            <button class="expand-btn-inline expanded" id="expand-proactive-alerts" title="Colapsar" data-i18n="stats.expand" data-i18n-title>
-              <svg class="expand-icon" viewBox="0 0 24 24" width="16" height="16">
-                <path fill="currentColor" d="M7 10l5 5 5-5z"/>
-              </svg>
-            </button>
-          </div>
-          
-          <div class="proactive-alerts-container" id="proactive-alerts-container">
-            <!-- Tickets sem resposta -->
-            <div class="alert-card alert-warning" id="alert-no-response" style="display: none;">
-              <div class="alert-header">
-                <div class="alert-icon">⚠️</div>
-                <div class="alert-title" data-i18n="alerts.noResponse">Tickets sem resposta</div>
-                <div class="alert-count" id="alert-no-response-count">0</div>
-              </div>
-              <div class="alert-body" id="alert-no-response-list">
-                <!-- Lista será gerada dinamicamente -->
-              </div>
-            </div>
-            
-            <!-- SLA Crítico -->
-            <div class="alert-card alert-danger" id="alert-critical-sla" style="display: none;">
-              <div class="alert-header">
-                <div class="alert-icon">🚨</div>
-                <div class="alert-title" data-i18n="alerts.criticalSla">SLA Crítico</div>
-                <div class="alert-count" id="alert-critical-sla-count">0</div>
-              </div>
-              <div class="alert-body" id="alert-critical-sla-list">
-                <!-- Lista será gerada dinamicamente -->
-              </div>
-            </div>
-            
-            <!-- Menções não lidas -->
-            <div class="alert-card alert-info" id="alert-mentions" style="display: none;">
-              <div class="alert-header">
-                <div class="alert-icon">💬</div>
-                <div class="alert-title" data-i18n="alerts.mentions">Menções em comentários</div>
-                <div class="alert-count" id="alert-mentions-count">0</div>
-              </div>
-              <div class="alert-body" id="alert-mentions-list">
-                <!-- Lista será gerada dinamicamente -->
-              </div>
-            </div>
-            
-            <div class="no-alerts-message" id="no-alerts-message">
-              <div class="no-alerts-icon">✨</div>
-              <div class="no-alerts-text" data-i18n="alerts.allClear">Tudo tranquilo! Nenhum alerta no momento.</div>
-            </div>
-          </div>
-        </div>
       </div>
       
       <!-- ⏱️ WIDGET DE TIMER/POMODORO (flutuante) -->

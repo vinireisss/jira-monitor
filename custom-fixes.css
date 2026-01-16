@@ -436,7 +436,6 @@
 .activity-detail-list,
 .custom-buttons-container,
 .daily-activity-details,
-.proactive-alerts-container,
 .performance-details,
 .recent-resolved-list {
   scrollbar-width: none !important; /* Firefox */
@@ -449,7 +448,6 @@
 .activity-detail-list::-webkit-scrollbar,
 .custom-buttons-container::-webkit-scrollbar,
 .daily-activity-details::-webkit-scrollbar,
-.proactive-alerts-container::-webkit-scrollbar,
 .performance-details::-webkit-scrollbar,
 .recent-resolved-list::-webkit-scrollbar {
   display: none !important; /* Chrome, Safari, Opera */

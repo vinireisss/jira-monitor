@@ -35,36 +35,7 @@ Ao monitorar outro usuário (ex: João), algumas funcionalidades PRO ainda mostr
 
 ---
 
-### 2. 🔔 Alertas Proativos
-
-**Novo:** Badge visual `👤 João` ao lado do título quando monitorando outro usuário
-
-```
-┌─────────────────────────────────────────────┐
-│ 🔔 Alertas Proativos  👤 João               │
-│                                             │
-│ ⚠️ Sem Resposta (3)                         │
-│   - IT-1234: Último comentário não foi     │
-│     do João (foi do cliente)               │
-│                                             │
-│ 🚨 SLA Crítico (1)                          │
-│   - IT-5678: Vence em 12 minutos           │
-│     (ticket do João)                       │
-│                                             │
-│ 💬 Menções (2)                              │
-│   - IT-9012: João foi mencionado           │
-│     (não você)                             │
-└─────────────────────────────────────────────┘
-```
-
-**Garantia:** 
-- "Sem Resposta" = último comentário não foi do João
-- "Menções" = João foi mencionado (não você)
-- "SLA" = tickets do João
-
----
-
-### 3. ⏱️ Timer / Pomodoro
+### 2. ⏱️ Timer / Pomodoro
 
 **Comportamento:** Funciona normalmente com tickets do usuário monitorado
 
@@ -74,7 +45,7 @@ Ao monitorar outro usuário (ex: João), algumas funcionalidades PRO ainda mostr
 
 ---
 
-### 4. 🔄 Troca de Usuário
+### 3. 🔄 Troca de Usuário
 
 **Novo:** Badges atualizam automaticamente ao trocar de usuário
 
@@ -149,11 +120,9 @@ return lastCommentAuthor !== userEmail;
 
 3. **Verificar Badges**
    - ✅ Dashboard mostra `👤 [Nome]`?
-   - ✅ Alertas mostra `👤 [Nome]`?
 
 4. **Verificar Dados**
    - ✅ Métricas são do usuário monitorado?
-   - ✅ Alertas são do usuário monitorado?
 
 5. **Voltar para Você**
    - Clicar em "Você" e selecionar seu email
@@ -174,18 +143,6 @@ Ver arquivo: `TESTE-MODO-PRO-USUARIO-MONITORADO.md`
 📊 Carregando Dashboard de Performance...
 📊 Atualizando Modo Pro com dados de: joao.silva@email.com
 
-// Alertas
-🔔 Verificando alertas proativos...
-🔔 Buscando notificações para: {
-  monitorOtherUser: true,
-  otherUserEmail: 'joao.silva@email.com',
-  userEmail: 'joao.silva@email.com',
-  assignee: '"joao.silva@email.com"'
-}
-
-// Tickets sem resposta
-🎯 Tickets sem resposta: 3
-  - IT-1234: Último comentário de cliente@empresa.com (não joao.silva@email.com)
 ```
 
 ---
@@ -200,15 +157,11 @@ Ver arquivo: `TESTE-MODO-PRO-USUARIO-MONITORADO.md`
 **Antes (v1.6.0):**
 ```
 Dashboard: ✅ Métricas do João
-Alertas "Sem Resposta": ❌ Verificava se MARIA respondeu
-Alertas "Menções": ❌ Mostrava menções à MARIA
 ```
 
 **Depois (v1.6.1):**
 ```
 Dashboard: ✅ Métricas do João
-Alertas "Sem Resposta": ✅ Verifica se JOÃO respondeu
-Alertas "Menções": ✅ Mostra menções ao JOÃO
 Badge Visual: ✅ 👤 João (claramente visível)
 ```
 
@@ -220,7 +173,6 @@ Badge Visual: ✅ 👤 João (claramente visível)
 - [x] `getRecentNotifications()` usa `userEmail`
 - [x] `_getTodayUserComments()` usa `userEmail`
 - [x] Badge no Dashboard de Performance
-- [x] Badge nos Alertas Proativos
 - [x] Badges aparecem/desaparecem corretamente
 - [x] `updateProMonitoredUserBadge()` criada
 - [x] Integração com `updateMonitoredUserIndicator()`

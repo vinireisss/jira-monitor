@@ -216,7 +216,6 @@ window.confetti.basic()
 |---------|--------|--------|
 | Dashboard | ✅ | ✅ |
 | Timer/Pomodoro | ✅ | ✅ |
-| Alertas Proativos | ✅ | ✅ |
 | Templates | ❌ | ✅ ⭐ NEW |
 | Confetti | ❌ | ✅ ⭐ NEW |
 | Cores Prioridade | ❌ | ✅ ⭐ NEW |

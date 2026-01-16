@@ -523,32 +523,6 @@ Clique para expandir e ver:
 
 ---
 
-#### 5. 🔔 Alertas Proativos
-
-Sistema de alertas inteligentes:
-
-```
-┌──────────────────────────────────────┐
-│ 🔔 Alertas Proativos                 │
-│                                      │
-│  ⚠️ Tickets sem resposta (3)        │
-│     IT-12345 - 6h sem atualização   │
-│     IT-12346 - 8h sem atualização   │
-│     IT-12347 - 12h sem atualização  │
-│                                      │
-│  🚨 SLA Crítico (2)                  │
-│     IT-12348 - Vence em 30min       │
-│     IT-12349 - Vence em 45min       │
-└──────────────────────────────────────┘
-```
-
-Tipos de alertas:
-- **⚠️ Tickets sem resposta**: Tickets há muito tempo sem atualização
-- **🚨 SLA Crítico**: Tickets prestes a estourar o SLA
-- **💬 Menções**: Comentários onde você foi mencionado
-
----
-
 ### Preview de Ticket no Modo Pro
 
 Ao clicar em um ticket no Modo Pro, você pode:
@@ -1140,7 +1114,7 @@ R: Sim! Desde que você não tenha saído completamente ("Sair" no menu da Menu 
 ### Modo Pro
 
 **P: O que é Modo Pro?**  
-R: São recursos avançados: edição de tickets, comentários, anexos, dashboards e alertas proativos.
+R: São recursos avançados: edição de tickets, comentários, anexos e dashboards.
 
 **P: Modo Pro consome mais recursos?**  
 R: Sim, um pouco mais. Se notar lentidão, desative temporariamente.
@@ -1228,7 +1202,6 @@ Entre em contato pelos canais:
 - ⚡ **Modo Pro** com recursos avançados
 - 🌍 **Suporte a Idiomas** (PT-BR, EN, ES)
 - 📊 **Dashboard de Performance**
-- 🔔 **Alertas Proativos**
 
 Veja o [CHANGELOG.md](CHANGELOG.md) completo.
 

@@ -63,7 +63,6 @@ Facilitar a instalação para novos usuários, garantindo que o projeto seja sem
 
 - **Interface Visual**
   - ✅ Novo badge `👤 [Nome]` no **Dashboard de Performance** quando monitorando outro usuário
-  - ✅ Novo badge `👤 [Nome]` nos **Alertas Proativos** quando monitorando outro usuário
   - ✅ Badges aparecem apenas quando `monitorOtherUser === true`
   - ✅ Estilo: fundo amarelo translúcido com borda, discreto mas visível
 
@@ -80,16 +79,15 @@ Facilitar a instalação para novos usuários, garantindo que o projeto seja sem
 
 Todas as funcionalidades PRO agora respeitam corretamente o usuário monitorado:
 - ✅ Dashboard de Performance (métricas, gráficos, tickets resolvidos)
-- ✅ Alertas Proativos (sem resposta, SLA crítico, menções)
 - ✅ Timer / Pomodoro (tickets do usuário monitorado)
 - ✅ Notificações internas (sino)
 - ✅ Indicadores visuais (badges)
 
 ### 🎯 Impacto
 
-**Antes:** Ao monitorar João, o Dashboard mostrava suas métricas, mas os Alertas de "sem resposta" verificavam se **você** (usuário logado) tinha respondido.
+**Antes:** Ao monitorar João, o Dashboard mostrava suas métricas, mas outras áreas ainda refletiam o usuário logado.
 
-**Depois:** Ao monitorar João, **TUDO** mostra dados de João - métricas, alertas, menções, comentários.
+**Depois:** Ao monitorar João, as métricas e indicadores visuais mostram corretamente os dados do usuário monitorado.
 
 ---
 
@@ -117,7 +115,7 @@ Todas as funcionalidades PRO agora respeitam corretamente o usuário monitorado:
   - Borda colorida em todos os tickets baseada na prioridade
   - Vermelho (Highest), Laranja (High), Azul (Medium), Verde (Low), Cinza (Lowest)
   - Badges visuais de prioridade
-  - Aplicado em: listas de tickets, alertas, tickets resolvidos
+  - Aplicado em: listas de tickets e tickets resolvidos
   
 - **🔍 Fuzzy Search**
   - Busca aproximada/inteligente de tickets
@@ -169,29 +167,16 @@ Todas as funcionalidades PRO agora respeitam corretamente o usuário monitorado:
   - Contador de sessões Pomodoro (1-4)
   - Indicador de próxima ação (trabalho/pausa)
   
-- **🔔 Alertas Proativos** (Modo Pro)
-  - Alerta de tickets sem resposta há X horas (padrão: 4h)
-  - Alerta de SLA crítico (15 minutos antes do vencimento)
-  - Alerta de menções não lidas em comentários
-  - Cards visuais com cores distintas (warning/danger/info)
-  - Contador de alertas por categoria
-  - Lista clicável de tickets em cada alerta
-  - Notificações desktop automáticas
-  - Mensagem "Tudo tranquilo" quando não há alertas
-  - Verificação automática a cada 5 minutos
-  - Throttling inteligente de notificações (evita spam)
-
 ### ✨ Melhorado
 - **Modo Pro expandido** com 3 novas seções
-- Sistema de notificações mais inteligente com alertas proativos
 - Integração completa com Jira API para worklogs
 - Performance otimizada com cache de métricas
 - Animações suaves para novos componentes (slideInRight, slideInUp)
 - UX aprimorada com feedback visual em tempo real
 
 ### 🔧 Técnico
-- Novos IPC handlers: `get-performance-metrics`, `add-worklog`, `get-worklogs`, `get-tickets-without-response`, `get-tickets-critical-sla`
-- Novos métodos no JiraService: `getPerformanceMetrics()`, `addWorklog()`, `getWorklogs()`, `getTicketsWithoutResponseSince()`, `getTicketsWithCriticalSLA()`
+- Novos IPC handlers: `get-performance-metrics`, `add-worklog`, `get-worklogs`
+- Novos métodos no JiraService: `getPerformanceMetrics()`, `addWorklog()`, `getWorklogs()`
 - 800+ linhas de CSS para novos componentes
 - 1000+ linhas de JavaScript para lógica das novas features
 - Canvas API para gráficos de pizza

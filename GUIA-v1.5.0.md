@@ -6,7 +6,7 @@ Esta versão traz **3 grandes funcionalidades** que transformam o Jira Monitor e
 
 1. **📊 Dashboard de Performance** - Métricas e análises detalhadas
 2. **⏱️ Timer & Pomodoro** - Rastreamento de tempo com worklog automático
-3. **🔔 Alertas Proativos** - Notificações inteligentes
+3. **🔔 Notificações** - Alertas do sistema
 
 ---
 
@@ -115,73 +115,13 @@ O timer pode salvar automaticamente o tempo trabalhado no Jira:
 
 ---
 
-## 🔔 Alertas Proativos
-
-### Como Acessar
-
-1. Ative o **Modo Pro** (`Cmd+P`)
-2. Role até encontrar a seção **"🔔 Alertas Proativos"**
-3. Esta seção está sempre expandida por padrão
-
-### Tipos de Alertas
-
-#### ⚠️ Tickets sem Resposta
-- **O que é**: Tickets em "Waiting for Support" ou "In Progress" sem atualização há **4 horas**
-- **Por que importa**: Cliente pode estar esperando sua resposta
-- **O que fazer**: Verificar e responder o ticket
-
-#### 🚨 SLA Crítico
-- **O que é**: Tickets com vencimento em **15 minutos ou menos**
-- **Por que importa**: SLA prestes a estourar!
-- **O que fazer**: Priorizar imediatamente esse ticket
-
-#### 💬 Menções em Comentários
-- **O que é**: Tickets onde você foi mencionado (@seu-nome) em comentários
-- **Por que importa**: Alguém precisa de sua atenção/resposta
-- **O que fazer**: Ler o comentário e responder
-
-### Como Funcionam as Notificações
-
-#### Desktop
-- Notificações aparecem automaticamente no sistema operacional
-- Sons são tocados para alertas críticos (SLA)
-- **Throttling inteligente**: Evita spam (mesma notificação não repete em curto período)
-
-#### Verificação Automática
-- Alertas são verificados **a cada 5 minutos**
-- Você não precisa fazer nada, o sistema cuida disso
-- Quando não há alertas, aparece: **"✨ Tudo tranquilo! Nenhum alerta no momento."**
-
-### Interagindo com Alertas
-
-```bash
-# Ver detalhes do ticket
-Clique em qualquer item da lista de alertas
-
-# Limpar alertas
-Os alertas desaparecem automaticamente quando resolvidos
-(ex: respondeu o ticket = alerta some)
-
-# Pausar alertas
-Desative o Modo Pro temporariamente
-```
-
-### Dicas
-- Configure notificações desktop nas permissões do sistema
-- SLA crítico recebe notificação a cada 15 min até ser resolvido
-- Tickets sem resposta recebem notificação a cada 2 horas
-- Use os alertas para priorizar seu trabalho
-
----
-
 ## 🚀 Fluxo de Trabalho Sugerido
 
 ### 1. Início do Dia
 ```bash
 1. Abrir Jira Monitor
 2. Ativar Modo Pro (Cmd+P)
-3. Verificar Alertas Proativos
-4. Priorizar tickets com SLA crítico
+3. Priorizar tickets com SLA crítico
 ```
 
 ### 2. Durante o Trabalho
@@ -198,9 +138,7 @@ Desative o Modo Pro temporariamente
 ```bash
 1. Verificar Dashboard de Performance
 2. Ver quantos tickets fechou hoje
-3. Verificar se há alertas pendentes
-4. Responder tickets sem resposta
-5. Planejar dia seguinte baseado em métricas
+3. Planejar dia seguinte baseado em métricas
 ```
 
 ---
@@ -210,7 +148,6 @@ Desative o Modo Pro temporariamente
 ### Para Analistas de Suporte L1/L2
 - Use o Timer para rastrear tempo em cada ticket
 - Dashboard mostra sua produtividade
-- Alertas garantem que nenhum ticket seja esquecido
 - Heatmap ajuda a identificar melhor horário de trabalho
 
 ### Para Líderes de Equipe

@@ -268,13 +268,6 @@ assets/
   - Heatmap de atividade
   - Lista de últimos resolvidos
 
-#### `alertas-proativos.png`
-- **O que mostrar**: Seção de Alertas Proativos
-- **Conteúdo**:
-  - ⚠️ Tickets sem resposta (3)
-  - 🚨 SLA Crítico (2)
-  - 💬 Menções (1)
-
 #### `ticket-preview-modo-pro.png`
 - **O que mostrar**: Preview de ticket com recursos Pro
 - **Destacar**:
@@ -567,7 +560,6 @@ Antes de considerar completo:
 - [ ] Menções (@)
 - [ ] Anexos
 - [ ] Dashboard de Performance
-- [ ] Alertas Proativos
 
 ### Screenshots de Estados
 - [ ] Loading

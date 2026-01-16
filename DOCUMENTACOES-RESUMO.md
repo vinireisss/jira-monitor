@@ -48,7 +48,6 @@
   - Tickets de Telefonia
   - Tickets Avaliados
   - Dashboard de Performance
-  - Alertas Proativos
   - Edição de tickets
   - Comentários e menções
   - Anexos

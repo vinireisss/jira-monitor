@@ -4358,155 +4358,6 @@ body {
 }
 
 /* ============================================
-   🔔 ALERTAS PROATIVOS - v1.5.0
-   ============================================ */
-
-.proactive-alerts-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.alert-card {
-  background: var(--card-bg);
-  border-radius: 10px;
-  padding: 14px;
-  border-left: 4px solid;
-  transition: all 0.3s;
-  animation: slideInRight 0.4s ease-out;
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.alert-warning {
-  border-left-color: #f39c12;
-  background: linear-gradient(90deg, rgba(243, 156, 18, 0.05), var(--card-bg));
-}
-
-.alert-danger {
-  border-left-color: #e74c3c;
-  background: linear-gradient(90deg, rgba(231, 76, 60, 0.05), var(--card-bg));
-}
-
-.alert-info {
-  border-left-color: #3498db;
-  background: linear-gradient(90deg, rgba(52, 152, 219, 0.05), var(--card-bg));
-}
-
-.alert-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.alert-icon {
-  font-size: 24px;
-  line-height: 1;
-}
-
-.alert-title {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--card-text);
-}
-
-.alert-count {
-  background: rgba(231, 76, 60, 0.15);
-  color: #e74c3c;
-  font-weight: 700;
-  font-size: 13px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  min-width: 28px;
-  text-align: center;
-}
-
-.alert-warning .alert-count {
-  background: rgba(243, 156, 18, 0.15);
-  color: #f39c12;
-}
-
-.alert-info .alert-count {
-  background: rgba(52, 152, 219, 0.15);
-  color: #3498db;
-}
-
-.alert-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.alert-ticket-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  background: var(--modal-section-bg);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-
-.alert-ticket-item:hover {
-  border-color: #667eea;
-  transform: translateX(4px);
-  background: var(--card-bg);
-}
-
-.alert-ticket-key {
-  font-weight: 600;
-  color: #667eea;
-  font-size: 12px;
-  margin-right: 8px;
-}
-
-.alert-ticket-summary {
-  flex: 1;
-  font-size: 12px;
-  color: var(--card-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.alert-ticket-time {
-  font-size: 11px;
-  color: #999;
-  white-space: nowrap;
-  margin-left: 8px;
-}
-
-.no-alerts-message {
-  text-align: center;
-  padding: 32px 16px;
-  color: #999;
-}
-
-.no-alerts-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.7;
-}
-
-.no-alerts-text {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* ============================================
    ⏱️ TIMER / POMODORO WIDGET - v1.5.0
    ============================================ */
 
@@ -5193,31 +5044,26 @@ body {
 
 /* 🌈 CORES POR PRIORIDADE */
 .ticket-item[data-priority="Highest"],
-.alert-ticket-item[data-priority="Highest"],
 .recent-resolved-item[data-priority="Highest"] {
   border-left: 4px solid #e74c3c !important;
 }
 
 .ticket-item[data-priority="High"],
-.alert-ticket-item[data-priority="High"],
 .recent-resolved-item[data-priority="High"] {
   border-left: 4px solid #f39c12 !important;
 }
 
 .ticket-item[data-priority="Medium"],
-.alert-ticket-item[data-priority="Medium"],
 .recent-resolved-item[data-priority="Medium"] {
   border-left: 4px solid #3498db !important;
 }
 
 .ticket-item[data-priority="Low"],
-.alert-ticket-item[data-priority="Low"],
 .recent-resolved-item[data-priority="Low"] {
   border-left: 4px solid #2ecc71 !important;
 }
 
 .ticket-item[data-priority="Lowest"],
-.alert-ticket-item[data-priority="Lowest"],
 .recent-resolved-item[data-priority="Lowest"] {
   border-left: 4px solid #95a5a6 !important;
 }
@@ -5341,23 +5187,19 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Aplicar também nos itens de alerta e badge */
-.alert-ticket-item[data-sla-status="safe"],
+/* Aplicar também nos badges */
 .badge-ticket-item[data-sla-status="safe"] {
   border-left-color: #2ecc71 !important;
 }
 
-.alert-ticket-item[data-sla-status="warning"],
 .badge-ticket-item[data-sla-status="warning"] {
   border-left-color: #f39c12 !important;
 }
 
-.alert-ticket-item[data-sla-status="critical"],
 .badge-ticket-item[data-sla-status="critical"] {
   border-left-color: #e74c3c !important;
 }
 
-.alert-ticket-item[data-sla-status="overdue"],
 .badge-ticket-item[data-sla-status="overdue"] {
   border-left-color: #c0392b !important;
   animation: sla-overdue-pulse 2s ease-in-out infinite;

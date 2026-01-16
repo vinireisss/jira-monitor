@@ -32,7 +32,6 @@ O idioma padrão é **Português (Brasil)**. Na primeira vez que você abrir o a
 - **Modo Pro**: Todas as seções (Atividade de Hoje, Telefonia, Dashboard de Performance, etc.)
 - **Modais**: Configurações, Templates, Busca Rápida, Atalhos, etc.
 - **Notificações**: Títulos e mensagens
-- **Alertas Proativos**: Todos os alertas e mensagens
 - **Timer/Pomodoro**: Todos os controles e labels
 - **Mensagens de Erro**: Todas as mensagens de erro e avisos
 - **Botões**: Todos os botões (Salvar, Cancelar, Fechar, etc.)

@@ -76,13 +76,6 @@ const i18n = {
     'perf.last10': '📋 Últimos 10 Resolvidos',
     'perf.updateMetrics': 'Atualizar Métricas',
     
-    // Proactive Alerts
-    'alerts.title': '🔔 Alertas Proativos',
-    'alerts.noResponse': 'Tickets sem resposta',
-    'alerts.criticalSla': 'SLA Crítico',
-    'alerts.mentions': 'Menções em comentários',
-    'alerts.allClear': 'Tudo tranquilo! Nenhum alerta no momento.',
-    
     // Timer Widget
     'timer.title': 'Timer',
     'timer.minimize': 'Minimizar',
@@ -569,13 +562,6 @@ const i18n = {
     'perf.productive': 'Horarios más productivos (últimos 30 días)',
     'perf.last10': '📋 Últimos 10 Resueltos',
     'perf.updateMetrics': 'Actualizar Métricas',
-    
-    // Proactive Alerts
-    'alerts.title': '🔔 Alertas Proactivas',
-    'alerts.noResponse': 'Tickets sin respuesta',
-    'alerts.criticalSla': 'SLA Crítico',
-    'alerts.mentions': 'Menciones en comentarios',
-    'alerts.allClear': '¡Todo tranquilo! No hay alertas en este momento.',
     
     // Timer Widget
     'timer.title': 'Temporizador',
