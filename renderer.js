@@ -927,7 +927,7 @@ function setupEventListeners() {
   const simCardsCountBtn = document.getElementById('sim-cards-count-btn');
   if (simCardsCountBtn) {
     simCardsCountBtn.addEventListener('click', () => {
-      if (currentStats && currentStats.simCardsTickets && currentStats.simCardsTickets.jql) {
+      if (currentStats && currentStats.simcardPendingTickets && currentStats.simcardPendingTickets.jql) {
         const jiraUrl = currentConfig.jiraUrl || 'https://nubank.atlassian.net';
         ipcRenderer.send('open-url', `${jiraUrl}/issues/?filter=52128`);
       }
@@ -3068,9 +3068,39 @@ function updateProModeSection(stats) {
   // Atualizar indicador de usuário no Modo Pro
   updateProModeUserIndicator();
   
-  // SIM Cards
-  if (stats.simCardsTickets) {
-    document.getElementById('sim-cards-count').textContent = stats.simCardsTickets.count || 0;
+  // 📱 SIM Cards - Atualizar contador no card
+  if (stats.simcardPendingTickets) {
+    animateNumber('stat-simcard', stats.simcardPendingTickets.count || 0);
+    debugLog('📱 SIM Cards count:', stats.simcardPendingTickets.count);
+  } else {
+    animateNumber('stat-simcard', 0);
+    debugLog('⚠️ SIM Cards: Nenhum dado recebido');
+  }
+  
+  // 🤖 L0 Jira Bot - Atualizar contador no card
+  if (stats.l0BotTickets) {
+    animateNumber('stat-l0bot', stats.l0BotTickets.count || 0);
+    debugLog('🤖 L0 Bot count:', stats.l0BotTickets.count);
+  } else {
+    animateNumber('stat-l0bot', 0);
+    debugLog('⚠️ L0 Bot: Nenhum dado recebido');
+  }
+  
+  // 🎯 All L1 Open - Atualizar contador no card
+  if (stats.l1OpenTickets) {
+    animateNumber('stat-l1open', stats.l1OpenTickets.count || 0);
+    debugLog('🎯 L1 Open count:', stats.l1OpenTickets.count);
+  } else {
+    animateNumber('stat-l1open', 0);
+    debugLog('⚠️ L1 Open: Nenhum dado recebido');
+  }
+  
+  // SIM Cards - contador antigo (mantido para compatibilidade se houver referência em outro lugar)
+  if (stats.simcardPendingTickets) {
+    const simCardsCountEl = document.getElementById('sim-cards-count');
+    if (simCardsCountEl) {
+      simCardsCountEl.textContent = stats.simcardPendingTickets.count || 0;
+    }
   }
   
   // =========================================================
@@ -4054,12 +4084,12 @@ function toggleEvaluatedTicketsExpansion() {
 
 // Função para carregar lista de tickets SIM Cards
 function loadSimCardsTicketsList() {
-  if (!currentStats || !currentStats.simCardsTickets) {
+  if (!currentStats || !currentStats.simcardPendingTickets) {
     document.getElementById('tickets-list-sim-cards').innerHTML = '<p style="color: #666; text-align: center; padding: 12px;">Nenhum ticket de SIM Card</p>';
     return;
   }
   
-  const tickets = currentStats.simCardsTickets.tickets || [];
+  const tickets = currentStats.simcardPendingTickets.tickets || [];
   const ticketsList = document.getElementById('tickets-list-sim-cards');
   
   if (tickets.length === 0) {
@@ -7996,6 +8026,98 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// 🔍 DEBUG: Função para testar contadores customizados
+window.debugCustomCounters = async function() {
+  console.log('\n════════════════════════════════════════════════════════');
+  console.log('🔍 DEBUG: CONTADORES CUSTOMIZADOS');
+  console.log('════════════════════════════════════════════════════════\n');
+  
+  if (!currentStats) {
+    console.log('⚠️  Nenhum dado de stats disponível ainda. Aguarde a primeira atualização.');
+    return;
+  }
+  
+  console.log('📊 CONTADORES ATUAIS:\n');
+  
+  // SIM Cards
+  console.log('📱 TICKETS PENDING SIMCARD:');
+  if (currentStats.simcardPendingTickets) {
+    console.log(`   ✅ Count: ${currentStats.simcardPendingTickets.count}`);
+    console.log(`   ✅ Tickets: ${currentStats.simcardPendingTickets.tickets?.length || 0}`);
+    console.log(`   📋 JQL: ${currentStats.simcardPendingTickets.jql || 'N/A'}`);
+    if (currentStats.simcardPendingTickets.tickets && currentStats.simcardPendingTickets.tickets.length > 0) {
+      console.log('   🎫 Primeiros tickets:');
+      currentStats.simcardPendingTickets.tickets.slice(0, 5).forEach((t, idx) => {
+        console.log(`      ${idx + 1}. ${t.key} - ${t.status} - ${t.summary?.substring(0, 50)}...`);
+      });
+    }
+  } else {
+    console.log('   ❌ Dados não encontrados');
+  }
+  
+  console.log('\n🤖 TICKETS L0 JIRA BOT:');
+  if (currentStats.l0BotTickets) {
+    console.log(`   ✅ Count: ${currentStats.l0BotTickets.count}`);
+    console.log(`   ✅ Tickets: ${currentStats.l0BotTickets.tickets?.length || 0}`);
+    console.log(`   📋 JQL: ${currentStats.l0BotTickets.jql || 'N/A'}`);
+    if (currentStats.l0BotTickets.tickets && currentStats.l0BotTickets.tickets.length > 0) {
+      console.log('   🎫 Primeiros tickets:');
+      currentStats.l0BotTickets.tickets.slice(0, 5).forEach((t, idx) => {
+        console.log(`      ${idx + 1}. ${t.key} - ${t.status} - ${t.summary?.substring(0, 50)}...`);
+      });
+    }
+  } else {
+    console.log('   ❌ Dados não encontrados');
+  }
+  
+  console.log('\n🎯 ALL L1 OPEN:');
+  if (currentStats.l1OpenTickets) {
+    console.log(`   ✅ Count: ${currentStats.l1OpenTickets.count}`);
+    console.log(`   ✅ Tickets: ${currentStats.l1OpenTickets.tickets?.length || 0}`);
+    console.log(`   📋 JQL: ${currentStats.l1OpenTickets.jql || 'N/A'}`);
+    if (currentStats.l1OpenTickets.tickets && currentStats.l1OpenTickets.tickets.length > 0) {
+      console.log('   🎫 Primeiros tickets:');
+      currentStats.l1OpenTickets.tickets.slice(0, 5).forEach((t, idx) => {
+        console.log(`      ${idx + 1}. ${t.key} - ${t.status} - ${t.summary?.substring(0, 50)}...`);
+      });
+    }
+  } else {
+    console.log('   ❌ Dados não encontrados');
+  }
+  
+  console.log('\n💡 ANÁLISE:');
+  
+  const allZero = (currentStats.simcardPendingTickets?.count || 0) === 0 &&
+                  (currentStats.l0BotTickets?.count || 0) === 0 &&
+                  (currentStats.l1OpenTickets?.count || 0) === 0;
+  
+  if (allZero) {
+    console.log('⚠️  Todos os contadores estão em 0');
+    console.log('\n📋 Possíveis causas:');
+    console.log('   1. Não há tickets que correspondam aos filtros configurados');
+    console.log('   2. As JQLs podem precisar de ajuste');
+    console.log('   3. Você pode não ter permissão para ver essas filas');
+    console.log('\n💡 Teste as JQLs acima diretamente no Jira:');
+    console.log('   Issues > Search > JQL');
+  } else {
+    console.log('✅ Pelo menos um contador tem dados!');
+    
+    const emptyOnes = [];
+    if ((currentStats.simcardPendingTickets?.count || 0) === 0) emptyOnes.push('SIM Cards');
+    if ((currentStats.l0BotTickets?.count || 0) === 0) emptyOnes.push('L0 Bot');
+    if ((currentStats.l1OpenTickets?.count || 0) === 0) emptyOnes.push('L1 Open');
+    
+    if (emptyOnes.length > 0) {
+      console.log(`⚠️  Contadores vazios: ${emptyOnes.join(', ')}`);
+    }
+  }
+  
+  console.log('\n════════════════════════════════════════════════════════\n');
+  console.log('💾 Use window.currentStats para inspecionar todos os dados');
+  console.log('🔄 Execute refreshData() para forçar atualização');
+  console.log('════════════════════════════════════════════════════════\n');
+};
+
 // Exportar funções
 window.showTemplatesModal = showTemplatesModal;
 window.useTemplate = useTemplate;
@@ -8004,5 +8126,29 @@ window.deleteTemplate = deleteTemplate;
 window.celebrateTicketResolved = celebrateTicketResolved;
 window.applyPriorityColors = applyPriorityColors;
 
+// Exportar variáveis de debug
+Object.defineProperty(window, 'currentStats', {
+  get: () => currentStats,
+  enumerable: true
+});
+
+Object.defineProperty(window, 'currentConfig', {
+  get: () => currentConfig,
+  enumerable: true
+});
+
+// Função para forçar atualização (se ainda não existe)
+if (typeof window.refreshData !== 'function') {
+  window.refreshData = function() {
+    console.log('🔄 Forçando atualização dos dados...');
+    if (typeof refreshData === 'function') {
+      refreshData();
+    } else {
+      console.warn('⚠️  Função refreshData não encontrada no escopo');
+    }
+  };
+}
+
 console.log('🎨 UX Enhancements v1.6.0: Templates, Confetti, Priority Colors');
+console.log('🔍 Debug: Execute debugCustomCounters() no console para diagnosticar contadores');
 

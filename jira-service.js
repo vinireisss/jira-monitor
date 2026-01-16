@@ -983,12 +983,19 @@ class JiraService {
 
   async _getSimCardsTickets() {
     try {
+      safeLog('\n🔍 ════════════════════════════════════════════════════════');
+      safeLog('🔍 INICIANDO: Busca de Tickets SIM Cards (Filtro 52128)');
+      safeLog('🔍 ════════════════════════════════════════════════════════');
+      
       // Buscar JQL do filtro 52128
+      safeLog('📋 Buscando JQL do filtro 52128...');
       const filterData = await this._makeRequest('/rest/api/3/filter/52128');
       let jql = filterData.jql;
+      safeLog(`📋 JQL Original do filtro: ${jql}`);
       
       // Adicionar "Waiting for Customer" e "Aguardando Cliente" se não estiverem incluídos
       if (!jql.includes('Waiting for Customer') && !jql.includes('Aguardando Cliente')) {
+        safeLog('🔧 Adicionando status "Waiting for Customer" à JQL...');
         // Encontrar a parte do status e adicionar os novos status
         jql = jql.replace(
           /status\s+in\s*\([^)]+\)/i,
@@ -997,9 +1004,12 @@ class JiraService {
             return match.replace(')', `, ${newStatuses})`);
           }
         );
+        safeLog(`📋 JQL Modificada: ${jql}`);
       }
       
+      safeLog('🔍 Executando busca com JQL...');
       const data = await this._searchJql(jql, ['status', 'summary', 'key', 'duedate', 'updated', 'project', 'assignee', 'customfield_10123', 'customfield_10124']);
+      safeLog(`✅ API retornou ${data.issues?.length || 0} tickets (antes do filtro)`);
       
       // 🔥 FILTRO: Garantir que apenas tickets com status válido sejam contados
       // (similar ao filtro aplicado em fetchStats)
@@ -1012,14 +1022,36 @@ class JiraService {
         'Waiting for approval', 'Aguardando Aprovação'
       ];
       
+      safeLog('🔍 Aplicando filtro de status válidos...');
       const filteredIssues = (data.issues || []).filter(issue => {
         const status = issue.fields.status?.name || '';
         const isValid = validStatuses.includes(status);
         if (!isValid && status !== 'Resolved' && status !== 'Closed' && status !== 'Canceled') {
-          console.warn(`⚠️ [SIM Cards] Ticket ${issue.key} tem status incomum: "${status}"`);
+          safeLog(`⚠️ [SIM Cards] Ticket ${issue.key} tem status incomum: "${status}" - REMOVIDO`);
         }
         return isValid;
       });
+      
+      safeLog(`✅ Após filtro: ${filteredIssues.length} tickets válidos`);
+      
+      if (filteredIssues.length > 0) {
+        safeLog('📝 Primeiros 5 tickets:');
+        filteredIssues.slice(0, 5).forEach((issue, idx) => {
+          safeLog(`   ${idx + 1}. ${issue.key} - ${issue.fields.status.name}`);
+        });
+      } else {
+        safeLog('⚠️ ATENÇÃO: Filtro removeu TODOS os tickets!');
+        if (data.issues?.length > 0) {
+          safeLog('📊 Status dos tickets que foram removidos:');
+          data.issues.slice(0, 5).forEach(issue => {
+            safeLog(`   - ${issue.key}: ${issue.fields.status?.name || 'SEM STATUS'}`);
+          });
+        }
+      }
+      
+      safeLog('🔍 ════════════════════════════════════════════════════════');
+      safeLog(`🔍 RESULTADO FINAL: ${filteredIssues.length} tickets SIM Cards`);
+      safeLog('🔍 ════════════════════════════════════════════════════════\n');
       
       return {
         count: filteredIssues.length,
@@ -1035,6 +1067,7 @@ class JiraService {
         originalCount: data.issues?.length || 0
       };
     } catch (error) {
+      safeLog(`❌ ERRO ao buscar SIM Cards: ${error.message}`);
       console.error('Erro ao buscar tickets de SIM cards:', error);
       return { count: 0, tickets: [], jql: '' };
     }
@@ -1045,24 +1078,50 @@ class JiraService {
    */
   async _getL0BotTickets() {
     try {
+      safeLog('\n🔍 ════════════════════════════════════════════════════════');
+      safeLog('🔍 INICIANDO: Busca de Tickets L0 Jira Bot (Queue 7631)');
+      safeLog('🔍 ════════════════════════════════════════════════════════');
+      
       // Tentar buscar JQL do filtro/queue se possível, senão usar JQL direta
       let jql = 'project = "IT" AND statusCategory != "Done" AND (queue = 7631 OR "Service Desk Queue" = 7631) ORDER BY created DESC';
+      safeLog(`📋 JQL Padrão: ${jql}`);
       
       // Tentar buscar via endpoint de queue se disponível (API Service Desk)
+      safeLog('📋 Tentando obter JQL via API Service Desk...');
       try {
         const queueData = await this._makeRequest('/rest/servicedeskapi/servicedesk/IT/queue/7631');
         if (queueData && queueData.jql) {
           jql = queueData.jql;
           safeLog(`✅ JQL da Fila L0 Bot obtida via API: ${jql}`);
+        } else {
+          safeLog('ℹ️ API retornou dados mas sem JQL, usando JQL manual');
         }
       } catch (e) {
-        safeLog(`ℹ️ Não foi possível obter JQL da fila via API Service Desk, usando JQL manual.`);
+        safeLog(`ℹ️ Não foi possível obter JQL da fila via API Service Desk: ${e.message}`);
+        safeLog('ℹ️ Usando JQL manual');
       }
 
-      safeLog(`🔍 Buscando L0 Bot com JQL: ${jql}`);
+      safeLog(`🔍 Executando busca com JQL: ${jql}`);
       const data = await this._searchJql(jql, ['status', 'summary', 'key', 'updated', 'assignee']);
       
-      safeLog(`✅ L0 Bot retornou ${data.issues?.length || 0} tickets`);
+      safeLog(`✅ API retornou ${data.issues?.length || 0} tickets`);
+      
+      if (data.issues && data.issues.length > 0) {
+        safeLog('📝 Primeiros 5 tickets:');
+        data.issues.slice(0, 5).forEach((issue, idx) => {
+          safeLog(`   ${idx + 1}. ${issue.key} - ${issue.fields.status.name}`);
+        });
+      } else {
+        safeLog('⚠️ ATENÇÃO: Nenhum ticket encontrado para esta query!');
+        safeLog('💡 Verifique:');
+        safeLog('   1. Se a queue 7631 está correta');
+        safeLog('   2. Se você tem permissão para ver tickets desta queue');
+        safeLog('   3. Se há tickets nesta queue no Jira');
+      }
+      
+      safeLog('🔍 ════════════════════════════════════════════════════════');
+      safeLog(`🔍 RESULTADO FINAL: ${data.issues?.length || 0} tickets L0 Bot`);
+      safeLog('🔍 ════════════════════════════════════════════════════════\n');
       
       return {
         count: data.issues?.length || 0,
@@ -1076,7 +1135,8 @@ class JiraService {
         jql: jql
       };
     } catch (error) {
-      safeLog(`⚠️ Erro ao buscar L0 Bot: ${error.message}`);
+      safeLog(`❌ ERRO ao buscar L0 Bot: ${error.message}`);
+      safeLog(`❌ Stack: ${error.stack}`);
       return { count: 0, tickets: [], jql: '' };
     }
   }
@@ -1086,24 +1146,50 @@ class JiraService {
    */
   async _getL1OpenTickets() {
     try {
+      safeLog('\n🔍 ════════════════════════════════════════════════════════');
+      safeLog('🔍 INICIANDO: Busca de Tickets All L1 Open (Queue 3015)');
+      safeLog('🔍 ════════════════════════════════════════════════════════');
+      
       // Tentar buscar JQL do filtro/queue se possível, senão usar JQL direta
       let jql = 'project = "IT" AND statusCategory != "Done" AND (queue = 3015 OR "Service Desk Queue" = 3015) ORDER BY created DESC';
+      safeLog(`📋 JQL Padrão: ${jql}`);
       
       // Tentar buscar via endpoint de queue se disponível (API Service Desk)
+      safeLog('📋 Tentando obter JQL via API Service Desk...');
       try {
         const queueData = await this._makeRequest('/rest/servicedeskapi/servicedesk/IT/queue/3015');
         if (queueData && queueData.jql) {
           jql = queueData.jql;
           safeLog(`✅ JQL da Fila All L1 Open obtida via API: ${jql}`);
+        } else {
+          safeLog('ℹ️ API retornou dados mas sem JQL, usando JQL manual');
         }
       } catch (e) {
-        safeLog(`ℹ️ Não foi possível obter JQL da fila via API Service Desk, usando JQL manual.`);
+        safeLog(`ℹ️ Não foi possível obter JQL da fila via API Service Desk: ${e.message}`);
+        safeLog('ℹ️ Usando JQL manual');
       }
 
-      safeLog(`🔍 Buscando All L1 Open com JQL: ${jql}`);
+      safeLog(`🔍 Executando busca com JQL: ${jql}`);
       const data = await this._searchJql(jql, ['status', 'summary', 'key', 'updated', 'assignee']);
       
-      safeLog(`✅ All L1 Open retornou ${data.issues?.length || 0} tickets`);
+      safeLog(`✅ API retornou ${data.issues?.length || 0} tickets`);
+      
+      if (data.issues && data.issues.length > 0) {
+        safeLog('📝 Primeiros 5 tickets:');
+        data.issues.slice(0, 5).forEach((issue, idx) => {
+          safeLog(`   ${idx + 1}. ${issue.key} - ${issue.fields.status.name}`);
+        });
+      } else {
+        safeLog('⚠️ ATENÇÃO: Nenhum ticket encontrado para esta query!');
+        safeLog('💡 Verifique:');
+        safeLog('   1. Se a queue 3015 está correta');
+        safeLog('   2. Se você tem permissão para ver tickets desta queue');
+        safeLog('   3. Se há tickets nesta queue no Jira');
+      }
+      
+      safeLog('🔍 ════════════════════════════════════════════════════════');
+      safeLog(`🔍 RESULTADO FINAL: ${data.issues?.length || 0} tickets All L1 Open`);
+      safeLog('🔍 ════════════════════════════════════════════════════════\n');
 
       return {
         count: data.issues?.length || 0,
@@ -1117,7 +1203,8 @@ class JiraService {
         jql: jql
       };
     } catch (error) {
-      safeLog(`⚠️ Erro ao buscar All L1 Open: ${error.message}`);
+      safeLog(`❌ ERRO ao buscar All L1 Open: ${error.message}`);
+      safeLog(`❌ Stack: ${error.stack}`);
       return { count: 0, tickets: [], jql: '' };
     }
   }
