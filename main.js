@@ -144,7 +144,7 @@ function createWindow() {
     icon: windowIcon,
     frame: false,
     transparent: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     resizable: true,
     webPreferences: {
       nodeIntegration: true,
@@ -1183,7 +1183,7 @@ function createUserMonitorWindow(userEmail) {
     icon: windowIcon,
     frame: false,
     transparent: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     resizable: true,
     webPreferences: {
       nodeIntegration: true,
