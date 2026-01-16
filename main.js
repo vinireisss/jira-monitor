@@ -17,22 +17,24 @@ const debugLog = (...args) => {
 
 // 🛡️ Inicializar store com tratamento de erro para arquivo corrompido
 let store;
-try {
-  store = new Store();
-} catch (error) {
-  console.error('⚠️ Arquivo de configuração corrompido. Criando novo...');
-  // Tentar limpar o arquivo corrompido
-  const configPath = path.join(app.getPath('userData'), 'config.json');
-  if (fs.existsSync(configPath)) {
-    try {
-      fs.unlinkSync(configPath);
-      console.log('✅ Arquivo corrompido removido');
-    } catch (unlinkError) {
-      console.error('Erro ao remover arquivo corrompido:', unlinkError);
+function initializeStore() {
+  try {
+    store = new Store();
+  } catch (error) {
+    console.error('⚠️ Arquivo de configuração corrompido. Criando novo...');
+    // Tentar limpar o arquivo corrompido
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+    if (fs.existsSync(configPath)) {
+      try {
+        fs.unlinkSync(configPath);
+        console.log('✅ Arquivo corrompido removido');
+      } catch (unlinkError) {
+        console.error('Erro ao remover arquivo corrompido:', unlinkError);
+      }
     }
+    // Criar novo store limpo
+    store = new Store();
   }
-  // Criar novo store limpo
-  store = new Store();
 }
 let mainWindow;
 let tray;
@@ -488,6 +490,7 @@ function createJiraWebviewWindow(url, ticketKey) {
 }
 
 // IPC Handlers
+function registerIpcHandlers() {
 ipcMain.handle('get-config', () => {
   // 🔥 FIX: SEMPRE ler do config.json do projeto para evitar cache corrompido
   const projectConfigPath = path.join(__dirname, 'config.json');
@@ -1069,6 +1072,7 @@ ipcMain.handle('get-tickets-critical-sla', async (event, minutesBefore) => {
     return { success: false, error: error.message };
   }
 });
+} // Fim de registerIpcHandlers()
 
 // Criar janela para monitorar outro usuário
 function createUserMonitorWindow(userEmail) {
@@ -1254,6 +1258,9 @@ if (!gotTheLock) {
   
   // Inicializar app
   app.whenReady().then(() => {
+    // Inicializar store (após app estar pronto)
+    initializeStore();
+    
     // Definir nome do app (força o nome no macOS)
     app.setName('Jira Monitor');
     
