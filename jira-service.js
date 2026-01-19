@@ -1629,16 +1629,21 @@ class JiraService {
 
   async _getTodayUserComments() {
     try {
-      const assignee = this._getAssignee();
       const userEmail = this.monitorOtherUser && this.otherUserEmail ? this.otherUserEmail : this.email;
+      const monitoredAccountId = await this.getMonitoredUserAccountId();
       
-      // Buscar tickets atualizados hoje onde o usuário é assignee
+      // ESTRATÉGIA: Buscar tickets relacionados ao usuário que foram atualizados hoje
+      // e filtrar comentários manualmente (porque JQL "commenter" tem bug/atraso de indexação)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
-      const jql = `assignee = ${assignee} AND updated >= "${todayStr}" ORDER BY updated DESC`;
+      const todayStr = today.toISOString().split('T')[0];
+      const assignee = this._getAssignee();
+      
+      // Buscar tickets onde o usuário participou de alguma forma OU tickets do projeto IT atualizados hoje
+      const jql = `(assignee = ${assignee} OR reporter = ${assignee} OR watcher = ${assignee} OR project = IT) AND updated >= "${todayStr}" ORDER BY updated DESC`;
       
       const data = await this._searchJql(jql, ['key', 'summary', 'comment', 'project', 'customfield_10123', 'customfield_10124']);
+      const usedJql = jql;
       
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
@@ -1647,15 +1652,34 @@ class JiraService {
       
       // Verificar comentários em cada ticket
       for (const issue of (data.issues || [])) {
-        const comments = issue.fields.comment?.comments || [];
+        let comments = issue.fields.comment?.comments || [];
         
         // Filtrar comentários feitos pelo usuário hoje
-        const userCommentsToday = comments.filter(comment => {
+        let userCommentsToday = comments.filter(comment => {
           const commentDate = new Date(comment.created);
-          const authorEmail = comment.author.emailAddress || comment.author.name;
+          const authorAccountId = comment.author?.accountId || '';
+          const authorEmail = comment.author?.emailAddress || comment.author?.name || '';
+          const isSameUser = (monitoredAccountId && authorAccountId === monitoredAccountId) ||
+            (userEmail && authorEmail === userEmail);
           
-          return commentDate >= startOfDay && authorEmail === userEmail;
+          return commentDate >= startOfDay && isSameUser;
         });
+        
+        // Se houver paginação de comentários, SEMPRE buscar todos para garantir
+        const totalComments = issue.fields.comment?.total || comments.length;
+        if (totalComments > comments.length) {
+          const allComments = await this._getAllIssueComments(issue.key, 200);
+          comments = allComments.length > 0 ? allComments : comments;
+          userCommentsToday = comments.filter(comment => {
+            const commentDate = new Date(comment.created);
+            const authorAccountId = comment.author?.accountId || '';
+            const authorEmail = comment.author?.emailAddress || comment.author?.name || '';
+            const isSameUser = (monitoredAccountId && authorAccountId === monitoredAccountId) ||
+              (userEmail && authorEmail === userEmail);
+            
+            return commentDate >= startOfDay && isSameUser;
+          });
+        }
         
         // Adicionar à lista
         userCommentsToday.forEach(comment => {
@@ -1670,12 +1694,40 @@ class JiraService {
       
       safeLog(`💬 Comentários feitos hoje: ${commentsToday.length}`, {
         ticketsVerificados: data.issues?.length || 0,
+        jqlUsado: usedJql,
+        accountIdMonitorado: monitoredAccountId,
         comentariosEncontrados: commentsToday.map(c => ({ ticket: c.ticketKey, data: c.commentCreated }))
       });
       
       return commentsToday;
     } catch (error) {
       console.error('❌ Erro ao buscar comentários de hoje:', error);
+      return [];
+    }
+  }
+
+  async _getAllIssueComments(ticketKey, maxComments = 200) {
+    try {
+      const pageSize = 100;
+      let startAt = 0;
+      let allComments = [];
+      
+      while (allComments.length < maxComments) {
+        const endpoint = `/rest/api/3/issue/${ticketKey}/comment?startAt=${startAt}&maxResults=${pageSize}`;
+        const response = await this._makeRequest(endpoint);
+        const comments = response?.comments || [];
+        
+        allComments = allComments.concat(comments);
+        startAt += comments.length;
+        
+        if (startAt >= (response?.total || 0) || comments.length === 0) {
+          break;
+        }
+      }
+      
+      return allComments;
+    } catch (error) {
+      console.error('❌ Erro ao buscar comentários do ticket:', ticketKey, error);
       return [];
     }
   }
