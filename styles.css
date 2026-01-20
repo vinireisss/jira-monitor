@@ -49,6 +49,11 @@ body {
   --expand-btn-color: #667eea;
   --expand-btn-hover-bg: rgba(102, 126, 234, 0.25);
   --expand-btn-shadow: rgba(102, 126, 234, 0.3);
+  
+  /* Gráfico de Tendência */
+  --trend-value-color: rgba(255, 255, 255, 0.95);
+  --trend-date-color: rgba(255, 255, 255, 0.85);
+  --trend-chart-bg: rgba(255, 255, 255, 0.1);
 }
 
 /* Tema Escuro */
@@ -78,6 +83,11 @@ body {
   --expand-btn-color: #c4b5fd;
   --expand-btn-hover-bg: rgba(139, 92, 246, 0.4);
   --expand-btn-shadow: rgba(139, 92, 246, 0.5);
+  
+  /* Gráfico de Tendência Dark */
+  --trend-value-color: #e0e0e0;
+  --trend-date-color: #b0b0b0;
+  --trend-chart-bg: rgba(255, 255, 255, 0.05);
 }
 
 /* Tema Claro */
@@ -107,6 +117,11 @@ body {
   --expand-btn-color: #5568d3;
   --expand-btn-hover-bg: rgba(102, 126, 234, 0.2);
   --expand-btn-shadow: rgba(102, 126, 234, 0.25);
+  
+  /* Gráfico de Tendência Light */
+  --trend-value-color: #2c3e50;
+  --trend-date-color: #5a6c7d;
+  --trend-chart-bg: #f7f9fb;
 }
 
 /* Contraste extra no Light Mode */
@@ -1797,7 +1812,7 @@ body {
   justify-content: space-around;
   height: 150px;
   padding: 16px 8px 8px 8px;
-  background: #f8f9fa;
+  background: var(--trend-chart-bg);
   border-radius: 8px;
 }
 
@@ -1816,7 +1831,7 @@ body {
 }
 
 .trend-bar-value {
-  color: #333;
+  color: var(--trend-value-color);
   font-size: 12px;
   font-weight: 600;
 }
@@ -1831,7 +1846,7 @@ body {
 }
 
 .trend-bar-date {
-  color: #666;
+  color: var(--trend-date-color);
   font-size: 10px;
   text-align: center;
 }
