@@ -3284,14 +3284,15 @@ async function loadProjectTickets(projectKey, container) {
               const timeDiff = dueDate - now;
               const diffMinutes = Math.floor(timeDiff / 60000);
               
+              // Thresholds alinhados com o Jira (warning em 30 min)
               if (diffMinutes < 0) {
                 slaStatus = 'overdue'; // 🔴 Estourado
+              } else if (diffMinutes <= 30) {
+                slaStatus = 'critical'; // 🔴 Crítico (≤ 30 min)
               } else if (diffMinutes <= 60) {
-                slaStatus = 'critical'; // 🔴 Crítico (< 1h)
-              } else if (diffMinutes <= 180) {
-                slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+                slaStatus = 'warning'; // 🟡 Atenção (30-60 min)
               } else {
-                slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+                slaStatus = 'safe'; // 🟢 Seguro (> 1h)
               }
             }
           }
@@ -3808,41 +3809,38 @@ function getSlaDate(ticket) {
 }
 
 // 🎯 Verificar se o SLA foi estourado (campo breached do JSM)
+// 
+// IMPORTANTE: Apenas verifica SLAs EM ANDAMENTO (ongoingCycle).
+// SLAs já completados (completedCycles) NÃO são considerados para o status.
+// Isso evita que tickets já respondidos fiquem com indicador vermelho,
+// permitindo foco nos tickets que realmente precisam de atenção.
+//
+// Contribuição: Vinicius Reis (@vinireisss)
 function isSlaBreached(ticket) {
   if (!ticket || !ticket.fields) return false;
   
   // Verificar customfield_10123 (Time to resolution)
   const timeToResolution = ticket.fields.customfield_10123;
   if (timeToResolution) {
-    // Verificar ongoingCycle.breached
+    // Verificar APENAS ongoingCycle.breached (SLA em andamento)
     if (timeToResolution.ongoingCycle && timeToResolution.ongoingCycle.breached === true) {
       debugLog(`🔴 SLA BREACHED detectado em customfield_10123 para ${ticket.key}`);
       return true;
     }
-    // Verificar completedCycles
-    if (timeToResolution.completedCycles && timeToResolution.completedCycles.length > 0) {
-      const lastCycle = timeToResolution.completedCycles[timeToResolution.completedCycles.length - 1];
-      if (lastCycle.breached === true) {
-        debugLog(`🔴 SLA BREACHED detectado em completedCycles (customfield_10123) para ${ticket.key}`);
-        return true;
-      }
-    }
+    // REMOVIDO: Verificação de completedCycles
+    // Motivo: Se o SLA foi completado (respondido/resolvido), não deve mais
+    // aparecer como breached, mesmo que tenha estourado antes de ser atendido.
   }
   
   // Verificar customfield_10124 (Time to first response)
   const timeToFirstResponse = ticket.fields.customfield_10124;
   if (timeToFirstResponse) {
+    // Verificar APENAS ongoingCycle.breached (SLA em andamento)
     if (timeToFirstResponse.ongoingCycle && timeToFirstResponse.ongoingCycle.breached === true) {
       debugLog(`🔴 SLA BREACHED detectado em customfield_10124 para ${ticket.key}`);
       return true;
     }
-    if (timeToFirstResponse.completedCycles && timeToFirstResponse.completedCycles.length > 0) {
-      const lastCycle = timeToFirstResponse.completedCycles[timeToFirstResponse.completedCycles.length - 1];
-      if (lastCycle.breached === true) {
-        debugLog(`🔴 SLA BREACHED detectado em completedCycles (customfield_10124) para ${ticket.key}`);
-        return true;
-      }
-    }
+    // REMOVIDO: Verificação de completedCycles
   }
   
   return false;
@@ -3914,14 +3912,15 @@ function loadTicketsList(cardId) {
           const timeDiff = dueDate - now;
           const diffMinutes = Math.floor(timeDiff / 60000);
           
+          // Thresholds alinhados com o Jira (warning em 30 min)
           if (diffMinutes < 0) {
             slaStatus = 'overdue'; // 🔴 Estourado
+          } else if (diffMinutes <= 30) {
+            slaStatus = 'critical'; // 🔴 Crítico (≤ 30 min)
           } else if (diffMinutes <= 60) {
-            slaStatus = 'critical'; // 🔴 Crítico (< 1h)
-          } else if (diffMinutes <= 180) {
-            slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+            slaStatus = 'warning'; // 🟡 Atenção (30-60 min)
           } else {
-            slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+            slaStatus = 'safe'; // 🟢 Seguro (> 1h)
           }
           
           // 🔔 Verificar se houve mudança de status e notificar
@@ -4073,14 +4072,15 @@ function loadSimCardsTicketsList() {
         const timeDiff = dueDate - now;
         const diffMinutes = Math.floor(timeDiff / 60000);
         
+        // Thresholds alinhados com o Jira (warning em 30 min)
         if (diffMinutes < 0) {
           slaStatus = 'overdue'; // 🔴 Estourado
+        } else if (diffMinutes <= 30) {
+          slaStatus = 'critical'; // 🔴 Crítico (≤ 30 min)
         } else if (diffMinutes <= 60) {
-          slaStatus = 'critical'; // 🔴 Crítico (< 1h)
-        } else if (diffMinutes <= 180) {
-          slaStatus = 'warning'; // 🟡 Atenção (1-3h)
+          slaStatus = 'warning'; // 🟡 Atenção (30-60 min)
         } else {
-          slaStatus = 'safe'; // 🟢 Seguro (> 3h)
+          slaStatus = 'safe'; // 🟢 Seguro (> 1h)
         }
       }
     }
