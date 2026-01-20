@@ -18,6 +18,7 @@ const path = require('path');
 const Store = require('electron-store');
 const fs = require('fs');
 const TrayManager = require('./tray-manager');
+const AutoUpdater = require('./auto-updater');
 
 // 🎛️ CONTROLE DE DEBUG: Altere para true para ver logs detalhados
 const DEBUG_MODE = false;
@@ -77,6 +78,7 @@ let mainWindow;
 let tray;
 let trayManager;
 let lastKnownBounds = null;
+let autoUpdater;
 
 // Criar janela principal
 function createWindow() {
@@ -1346,6 +1348,44 @@ if (!gotTheLock) {
     
     createWindow();
     createTray(); // Ícone do tray no menu bar
+    
+    // Inicializar auto-updater (verifica atualizações via git)
+    autoUpdater = new AutoUpdater({
+      debug: DEBUG_MODE,
+      onUpdateAvailable: (updateInfo) => {
+        autoUpdater.showUpdateNotification(updateInfo);
+      },
+      onError: (error) => {
+        debugLog('⚠️ Erro no auto-updater:', error.message);
+      }
+    });
+    autoUpdater.startChecking();
+    
+    // Conectar o TrayManager ao auto-updater
+    if (trayManager) {
+      trayManager.setOnCheckForUpdates(async () => {
+        const result = await autoUpdater.checkForUpdates();
+        if (result.hasUpdate) {
+          autoUpdater.showUpdateDialog(result);
+        } else if (!result.error) {
+          dialog.showMessageBox({
+            type: 'info',
+            title: 'Jira Monitor',
+            message: 'Você está na versão mais recente!',
+            buttons: ['OK']
+          });
+        }
+      });
+    }
+    
+    // Expor auto-updater para verificação manual via IPC
+    ipcMain.handle('check-for-updates', async () => {
+      return await autoUpdater.checkForUpdates();
+    });
+    
+    ipcMain.handle('perform-update', async () => {
+      return await autoUpdater.updateAndRestart();
+    });
     
     // Forçar app a ficar em primeiro plano no macOS
     if (process.platform === 'darwin') {

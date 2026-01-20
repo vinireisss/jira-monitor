@@ -5,9 +5,10 @@ let Tray, Menu, nativeImage;
 const { RED_ICON, YELLOW_ICON, GREEN_ICON, GRAY_ICON } = require('./tray-icon-generator');
 
 class TrayManager {
-  constructor(mainWindow, recreateWindowFn) {
+  constructor(mainWindow, recreateWindowFn, options = {}) {
     this.mainWindow = mainWindow;
     this.recreateWindowFn = recreateWindowFn; // Função para recriar a janela se destruída
+    this.onCheckForUpdates = options.onCheckForUpdates || null; // Callback para verificar atualizações
     this.tray = null;
     this.ticketsData = {
       critical: [], // Tickets com SLA estourado
@@ -289,8 +290,12 @@ class TrayManager {
         click: () => this.showMainWindow()
       },
       {
-        label: '🔄 Atualizar Agora',
+        label: '🔄 Atualizar Tickets',
         click: () => this.refreshTickets()
+      },
+      {
+        label: '⬆️ Verificar Atualizações do App',
+        click: () => this.checkForAppUpdates()
       }
     );
     
@@ -426,6 +431,23 @@ class TrayManager {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send('manual-refresh');
     }
+  }
+
+  /**
+   * Verifica se há atualizações do app disponíveis
+   */
+  checkForAppUpdates() {
+    if (this.onCheckForUpdates) {
+      this.onCheckForUpdates();
+    }
+  }
+
+  /**
+   * Define o callback para verificar atualizações do app
+   * @param {Function} callback - Função a ser chamada
+   */
+  setOnCheckForUpdates(callback) {
+    this.onCheckForUpdates = callback;
   }
 
     /**
