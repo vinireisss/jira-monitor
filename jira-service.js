@@ -499,10 +499,14 @@ class JiraService {
     const pendingJql = `assignee = ${assignee} AND resolution = Unresolved AND status in ("Pending", "Pendente") AND project = IT`;
     
     // Query adicional para tickets criados hoje (inclusive os já fechados, para atividade diária)
-    // Usar data específica ao invés de startOfDay() para garantir fuso horário correto
+    // 🕐 FIX TIMEZONE: Usar data local para garantir fuso horário correto
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Criar string de data no formato YYYY-MM-DD usando timezone local
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
     const todayCreatedJql = `assignee = ${assignee} AND created >= "${todayStr}" ORDER BY created DESC`;
     
     // 🎯 Query para tickets RESOLVIDOS hoje (independente de quando foram criados)
@@ -1634,9 +1638,17 @@ class JiraService {
       
       // ESTRATÉGIA: Buscar tickets relacionados ao usuário que foram atualizados hoje
       // e filtrar comentários manualmente (porque JQL "commenter" tem bug/atraso de indexação)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      
+      // 🕐 FIX TIMEZONE: Usar data local para consistência
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      // Criar string de data no formato YYYY-MM-DD usando timezone local
+      const year = startOfDay.getFullYear();
+      const month = String(startOfDay.getMonth() + 1).padStart(2, '0');
+      const day = String(startOfDay.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+      
       const assignee = this._getAssignee();
       
       // Buscar tickets onde o usuário participou de alguma forma OU tickets do projeto IT atualizados hoje
@@ -1644,9 +1656,6 @@ class JiraService {
       
       const data = await this._searchJql(jql, ['key', 'summary', 'comment', 'project', 'customfield_10123', 'customfield_10124']);
       const usedJql = jql;
-      
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
       
       const commentsToday = [];
       
@@ -1690,6 +1699,22 @@ class JiraService {
             commentBody: this._convertADFToHTML(comment.body)
           });
         });
+      }
+      
+      // 🔍 LOG FORÇADO (sempre ativo, não depende de DEBUG_MODE)
+      console.log(`\n💬 [COMENTÁRIOS HOJE] Total encontrado: ${commentsToday.length}`);
+      console.log(`   📋 Tickets verificados: ${data.issues?.length || 0}`);
+      console.log(`   🆔 Account ID monitorado: ${monitoredAccountId}`);
+      console.log(`   📧 Email monitorado: ${userEmail}`);
+      console.log(`   📅 Data início do dia: ${startOfDay.toISOString()}`);
+      console.log(`   🔍 JQL usado: ${usedJql}`);
+      if (commentsToday.length > 0) {
+        console.log(`   ✅ Comentários encontrados:`);
+        commentsToday.forEach(c => {
+          console.log(`      - ${c.ticketKey} às ${c.commentCreated}`);
+        });
+      } else {
+        console.log(`   ⚠️  NENHUM comentário encontrado hoje!`);
       }
       
       safeLog(`💬 Comentários feitos hoje: ${commentsToday.length}`, {

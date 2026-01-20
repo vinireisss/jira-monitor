@@ -2415,6 +2415,7 @@ async function fetchAndUpdateStats() {
         }
         
         // Comentários feitos hoje
+        console.log('🔍 [RENDERER] Dados de comentários recebidos do backend:', result.data.todayComments);
         if (result.data.todayComments && result.data.todayComments.length > 0) {
           dailyActivity.commented = result.data.todayComments.length;
           dailyActivity.commentedTickets = result.data.todayComments.map(comment => ({
@@ -2422,7 +2423,12 @@ async function fetchAndUpdateStats() {
             summary: comment.ticketSummary,
             time: comment.commentCreated
           }));
+          console.log(`✅ ${dailyActivity.commented} comentários detectados hoje:`, dailyActivity.commentedTickets);
           debugLog(`✅ ${dailyActivity.commented} comentários detectados hoje`);
+        } else {
+          console.log('⚠️ [RENDERER] NENHUM comentário recebido do backend!');
+          console.log('   - todayComments existe?', !!result.data.todayComments);
+          console.log('   - todayComments.length:', result.data.todayComments?.length || 0);
         }
         
         debugLog('📊 Atividade diária atualizada:', {
