@@ -4652,23 +4652,42 @@ function displayTicketPreview(ticket) {
       <div class="ticket-section">
         <h3 class="ticket-section-title">📎 Anexos (${ticket.attachments.length})</h3>
         <div class="attachments-list">
-          ${ticket.attachments.map(att => `
-            <div class="attachment-item">
-              ${att.mimeType && att.mimeType.startsWith('image/') ? `
-                <img class="attachment-preview" src="" data-attachment-id="${att.id}" alt="${att.filename}">
-              ` : `
-                <div class="attachment-icon">📄</div>
-              `}
-              <div class="attachment-name">${att.filename}</div>
-              <div class="attachment-meta">${formatFileSize(att.size)} • ${new Date(att.created).toLocaleDateString('pt-BR')}</div>
-              <div class="attachment-actions">
+          ${ticket.attachments.map(att => {
+            const isPreviewable = att.mimeType && (
+              att.mimeType.startsWith('image/') || 
+              att.mimeType === 'application/pdf' ||
+              att.mimeType.startsWith('video/')
+            );
+            
+            let icon = '📄';
+            if (att.mimeType) {
+              if (att.mimeType.startsWith('image/')) icon = '🖼️';
+              else if (att.mimeType === 'application/pdf') icon = '📕';
+              else if (att.mimeType.startsWith('video/')) icon = '🎬';
+              else if (att.mimeType.includes('word')) icon = '📝';
+              else if (att.mimeType.includes('excel') || att.mimeType.includes('spreadsheet')) icon = '📊';
+              else if (att.mimeType.includes('powerpoint') || att.mimeType.includes('presentation')) icon = '📊';
+              else if (att.mimeType.includes('zip') || att.mimeType.includes('compressed')) icon = '🗜️';
+            }
+            
+            return `
+              <div class="attachment-item">
                 ${att.mimeType && att.mimeType.startsWith('image/') ? `
-                  <button class="attachment-btn" onclick="showAttachmentPreview('${att.id}')">👁️ Preview</button>
-                ` : ''}
-                <button class="attachment-btn" onclick="downloadAttachment('${att.id}', '${att.filename}')">⬇️ Baixar</button>
+                  <img class="attachment-preview" src="" data-attachment-id="${att.id}" alt="${att.filename}">
+                ` : `
+                  <div class="attachment-icon">${icon}</div>
+                `}
+                <div class="attachment-name" title="${att.filename}">${att.filename}</div>
+                <div class="attachment-meta">${formatFileSize(att.size)} • ${new Date(att.created).toLocaleDateString('pt-BR')}</div>
+                <div class="attachment-actions">
+                  ${isPreviewable ? `
+                    <button class="attachment-btn" onclick="showAttachmentPreview('${att.id}', '${att.filename.replace(/'/g, "\\'")}', '${att.mimeType}')">👁️ Abrir</button>
+                  ` : ''}
+                  <button class="attachment-btn" onclick="downloadAttachment('${att.id}', '${att.filename.replace(/'/g, "\\'")}')">⬇️ Baixar</button>
+                </div>
               </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
         <button class="btn-primary" style="margin-top: 12px;" onclick="selectAndUploadAttachments('${ticket.key}')">➕ Adicionar Anexo</button>
       </div>
@@ -6924,55 +6943,101 @@ window.openTicketPreview = openTicketPreview;
 window.hideTicketPreview = hideTicketPreview;
 window.openTrendDay = openTrendDay;
 window.downloadAttachment = downloadAttachment;
-window.showAttachmentPreview = async (attachmentId) => {
-  debugLog('🖼️ showAttachmentPreview chamada com ID:', attachmentId);
-  debugLog('🖼️ Tipo do attachmentId:', typeof attachmentId);
+
+// Função auxiliar para determinar o tipo de preview
+function getPreviewType(mimeType) {
+  if (!mimeType) return 'unsupported';
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType.startsWith('video/')) return 'video';
+  return 'unsupported';
+}
+
+window.showAttachmentPreview = async (attachmentId, filename = 'arquivo', mimeType = '') => {
+  debugLog('🖼️ showAttachmentPreview chamada', { attachmentId, filename, mimeType });
+  
+  const previewType = getPreviewType(mimeType);
   
   // Criar modal de preview se não existir
   let modal = document.getElementById('attachment-preview-modal');
-  debugLog('🖼️ Modal existente?', !!modal);
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'attachment-preview-modal';
     modal.className = 'attachment-preview-modal';
-    modal.innerHTML = `
-      <div class="attachment-preview-overlay" onclick="hideAttachmentPreview()"></div>
-      <div class="attachment-preview-content">
-        <button class="attachment-preview-close" onclick="hideAttachmentPreview()" title="Fechar (ESC)">✕</button>
-        <div class="attachment-preview-loader">
-          <div class="loader-spinner"></div>
-          <p>Carregando imagem...</p>
-        </div>
-        <img class="attachment-preview-image" alt="Preview" style="display: none;">
-        <div class="attachment-preview-error" style="display: none;">
-          <p>❌ Erro ao carregar imagem</p>
-        </div>
-      </div>
-    `;
     document.body.appendChild(modal);
   }
+  
+  // Conteúdo do modal baseado no tipo
+  modal.innerHTML = `
+    <div class="attachment-preview-overlay" onclick="hideAttachmentPreview()"></div>
+    <div class="attachment-preview-content">
+      <div class="attachment-preview-header">
+        <div class="attachment-preview-title" title="${filename}">${filename}</div>
+        <div class="attachment-preview-actions">
+          <button class="attachment-preview-btn secondary" onclick="downloadAttachment('${attachmentId}', '${filename.replace(/'/g, "\\'")}')">
+            ⬇️ Baixar
+          </button>
+          <button class="attachment-preview-btn" onclick="hideAttachmentPreview()">
+            ✕ Fechar
+          </button>
+        </div>
+      </div>
+      <div class="attachment-preview-body">
+        <div class="attachment-preview-loader">
+          <div class="loader-spinner"></div>
+          <p>Carregando arquivo...</p>
+        </div>
+        <img class="attachment-preview-image" alt="Preview" style="display: none;">
+        <video class="attachment-preview-video" controls style="display: none;"></video>
+        <iframe class="attachment-preview-pdf" style="display: none;"></iframe>
+        <div class="attachment-preview-unsupported" style="display: none;">
+          <div class="attachment-preview-unsupported-icon">📄</div>
+          <div class="attachment-preview-unsupported-text">
+            Este tipo de arquivo não pode ser visualizado diretamente.
+          </div>
+        </div>
+        <div class="attachment-preview-error" style="display: none;">
+          <p>❌ Erro ao carregar arquivo</p>
+        </div>
+      </div>
+    </div>
+  `;
   
   // Mostrar modal
   modal.style.display = 'flex';
   
-  // Reset do estado
+  // Elementos do modal
   const loader = modal.querySelector('.attachment-preview-loader');
   const img = modal.querySelector('.attachment-preview-image');
+  const video = modal.querySelector('.attachment-preview-video');
+  const pdf = modal.querySelector('.attachment-preview-pdf');
+  const unsupported = modal.querySelector('.attachment-preview-unsupported');
   const error = modal.querySelector('.attachment-preview-error');
   
+  // Reset do estado
   loader.style.display = 'block';
   img.style.display = 'none';
+  video.style.display = 'none';
+  pdf.style.display = 'none';
+  unsupported.style.display = 'none';
   error.style.display = 'none';
   
+  // Se não é suportado, mostrar mensagem
+  if (previewType === 'unsupported') {
+    loader.style.display = 'none';
+    unsupported.style.display = 'block';
+    return;
+  }
+  
   try {
-    // Buscar URL da imagem
+    // Buscar URL do anexo
     const result = await ipcRenderer.invoke('get-attachment-url', attachmentId);
     
     if (!result.success) {
       throw new Error(result.error || 'Falha ao obter URL do anexo');
     }
     
-    // Fazer fetch da imagem com autenticação
+    // Fazer fetch do arquivo com autenticação
     const response = await fetch(result.url, {
       headers: {
         'Authorization': `Basic ${btoa(currentConfig.jiraEmail + ':' + currentConfig.jiraApiToken)}`
@@ -6980,23 +7045,50 @@ window.showAttachmentPreview = async (attachmentId) => {
     });
     
     if (!response.ok) {
-      throw new Error('Falha ao carregar imagem');
+      throw new Error('Falha ao carregar arquivo');
     }
     
     const blob = await response.blob();
-    const imageUrl = URL.createObjectURL(blob);
+    const fileUrl = URL.createObjectURL(blob);
     
-    // Carregar imagem
-    img.src = imageUrl;
-    img.onload = () => {
-      loader.style.display = 'none';
-      img.style.display = 'block';
-    };
-    img.onerror = () => {
-      loader.style.display = 'none';
-      error.style.display = 'block';
-      URL.revokeObjectURL(imageUrl);
-    };
+    // Armazenar URL para limpeza posterior
+    modal.dataset.currentFileUrl = fileUrl;
+    
+    // Renderizar baseado no tipo
+    if (previewType === 'image') {
+      img.src = fileUrl;
+      img.onload = () => {
+        loader.style.display = 'none';
+        img.style.display = 'block';
+      };
+      img.onerror = () => {
+        loader.style.display = 'none';
+        error.style.display = 'block';
+        URL.revokeObjectURL(fileUrl);
+      };
+    } else if (previewType === 'video') {
+      video.src = fileUrl;
+      video.onloadeddata = () => {
+        loader.style.display = 'none';
+        video.style.display = 'block';
+      };
+      video.onerror = () => {
+        loader.style.display = 'none';
+        error.style.display = 'block';
+        URL.revokeObjectURL(fileUrl);
+      };
+    } else if (previewType === 'pdf') {
+      pdf.src = fileUrl;
+      pdf.onload = () => {
+        loader.style.display = 'none';
+        pdf.style.display = 'block';
+      };
+      // Para PDFs, aguardar um pouco antes de mostrar
+      setTimeout(() => {
+        loader.style.display = 'none';
+        pdf.style.display = 'block';
+      }, 500);
+    }
     
   } catch (err) {
     console.error('Erro ao carregar preview:', err);
@@ -7009,11 +7101,25 @@ window.hideAttachmentPreview = () => {
   const modal = document.getElementById('attachment-preview-modal');
   if (modal) {
     modal.style.display = 'none';
-    const img = modal.querySelector('.attachment-preview-image');
-    if (img && img.src) {
-      URL.revokeObjectURL(img.src);
-      img.src = '';
+    
+    // Limpar recursos
+    const fileUrl = modal.dataset.currentFileUrl;
+    if (fileUrl) {
+      URL.revokeObjectURL(fileUrl);
+      delete modal.dataset.currentFileUrl;
     }
+    
+    // Limpar elementos de mídia
+    const img = modal.querySelector('.attachment-preview-image');
+    const video = modal.querySelector('.attachment-preview-video');
+    const pdf = modal.querySelector('.attachment-preview-pdf');
+    
+    if (img) img.src = '';
+    if (video) {
+      video.pause();
+      video.src = '';
+    }
+    if (pdf) pdf.src = '';
   }
 };
 
